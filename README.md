@@ -2,6 +2,8 @@
 
 Cross-reference [EmuReady](https://www.emuready.com) emulation compatibility data with current Steam sales. Find discounted games that run well on your handheld device.
 
+![SteamUReady](screenshot.png)
+
 ## Features
 
 - **Full EmuReady catalog** — loads all 11,000+ compatibility listings
