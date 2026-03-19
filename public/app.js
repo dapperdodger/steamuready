@@ -21,6 +21,7 @@ const state = {
     sort:          'discount_desc',
     cc:            'us',
     shops:         [], // empty = all stores
+    apps:          [], // empty = all apps
   },
 };
 
@@ -46,6 +47,7 @@ const el = {
   resultsCount: $('resultsCount'),
   gamesGrid:    $('gamesGrid'),
   pagination:   $('pagination'),
+  appList:      $('appList'),
   storeList:    $('storeList'),
   histLowCheck: $('histLowCheck'),
 };
@@ -111,6 +113,7 @@ async function init() {
     populateCompatList(scales);
     populateRegions(regions);
     populateStores(shops);
+    initAppFilter();
     initPreferredDevicesModal();
 
     const isFirstVisit = loadPreferredDeviceIds() === null;
@@ -472,6 +475,13 @@ function updateRegionNote() {
   el.regionNote.textContent = notes[cc] || '';
 }
 
+/* ── App filter checkboxes ──────────────────────────────────────────────────── */
+function initAppFilter() {
+  el.appList.querySelectorAll('input').forEach(cb => {
+    cb.addEventListener('change', () => fetchGames(true));
+  });
+}
+
 /* ── Populate store checkboxes ──────────────────────────────────────────────── */
 function populateStores(shops) {
   state.allShops = shops;
@@ -551,6 +561,7 @@ async function fetchGames(resetPage = true) {
     sort:          state.filters.sort,
     cc:            state.filters.cc,
     shops:         state.filters.shops.join(',') || '',
+    apps:          state.filters.apps.join(',') || '',
     histLow:       state.filters.histLow ? '1' : '',
     page:          state.page,
   };
@@ -593,6 +604,7 @@ function readFilters() {
   state.filters.sort          = el.sortSelect.value;
   state.filters.cc            = el.regionSelect?.value || 'us';
   state.filters.shops         = [...el.storeList.querySelectorAll('input:checked')].map(i => i.value);
+  state.filters.apps          = [...el.appList.querySelectorAll('input:checked')].map(i => i.value);
   state.filters.histLow       = el.histLowCheck.checked;
 
   const activeDisc = document.querySelector('.disc-btn.active');
@@ -825,6 +837,9 @@ el.resetBtn.addEventListener('click', () => {
   // Reset discount
   document.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('.disc-btn[data-value="0"]')?.classList.add('active');
+
+  // Reset app filter
+  el.appList.querySelectorAll('input').forEach(i => { i.checked = false; });
 
   // Reset stores
   el.storeList.querySelectorAll('input').forEach(i => { i.checked = false; });

@@ -49,6 +49,22 @@ function isAllowedEmulator(listing) {
   return ALLOWED_EMULATOR_TERMS.some(term => name.includes(term));
 }
 
+// Canonical app slugs — order matters: gamehublite before gamehub
+const APP_DEFINITIONS = [
+  { slug: 'winlator',    test: n => n.includes('winlator') },
+  { slug: 'gamenative',  test: n => n.includes('gamenative') || n.includes('game native') },
+  { slug: 'gamehublite', test: n => (n.includes('gamehub') || n.includes('game hub')) && n.includes('lite') },
+  { slug: 'gamehub',     test: n => (n.includes('gamehub') || n.includes('game hub')) && !n.includes('lite') },
+];
+
+function getEmulatorApp(emulatorName) {
+  const n = (emulatorName ?? '').toLowerCase();
+  for (const app of APP_DEFINITIONS) {
+    if (app.test(n)) return app.slug;
+  }
+  return null;
+}
+
 // ── Shops list ────────────────────────────────────────────────────────────────
 app.get('/api/shops', async (req, res) => {
   try {
@@ -140,6 +156,7 @@ app.get('/api/games', async (req, res) => {
       page = 1,
       cc = 'us',
       shops: rawShops = '',
+      apps: rawApps = '',
     } = req.query;
 
     const deviceIdList = rawDeviceIds ? rawDeviceIds.split(',').filter(Boolean) : [];
@@ -148,6 +165,7 @@ app.get('/api/games', async (req, res) => {
     }
     const hasDeviceFilter = true;
     const shopIds = rawShops ? rawShops.split(',').map(Number).filter(Boolean) : [...ALLOWED_SHOP_IDS];
+    const appSlugs = rawApps ? new Set(rawApps.split(',').filter(Boolean)) : null;
 
     // Resolve performanceId → all scales with rank ≤ selected
     let perfIds = null;
@@ -174,6 +192,14 @@ app.get('/api/games', async (req, res) => {
     // 2. Get EmuReady listings — reuses the same cache entry populated in step 1
     const listingFilter = hasDeviceFilter ? { deviceIds: deviceIdList } : {};
     let listings = (await emuready.getAllListings(listingFilter)).filter(isAllowedEmulator);
+
+    // Filter by app (emulator)
+    if (appSlugs && appSlugs.size) {
+      listings = listings.filter(l => {
+        const slug = getEmulatorApp(l.emulator?.name);
+        return slug && appSlugs.has(slug);
+      });
+    }
 
     // Filter by performance
     if (perfIds && perfIds.length) {
