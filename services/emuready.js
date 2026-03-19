@@ -1,4 +1,5 @@
 const axios = require('axios');
+const cache = require('./cache');
 
 const BASE = 'https://www.emuready.com/api/trpc';
 const HEADERS = {
@@ -7,17 +8,7 @@ const HEADERS = {
   'Referer': 'https://www.emuready.com/listings',
 };
 
-const _cache = {};
-const TTL = 30 * 60 * 1000;
-
-function getCached(k) {
-  const e = _cache[k];
-  return e && Date.now() - e.ts < TTL ? e.data : null;
-}
-function setCache(k, data) {
-  _cache[k] = { data, ts: Date.now() };
-  return data;
-}
+const TTL = 30 * 60 * 1000; // 30 min
 
 async function trpcGet(procedure, input = {}) {
   const inputEnc = encodeURIComponent(JSON.stringify({ json: input }));
@@ -31,10 +22,8 @@ async function trpcGet(procedure, input = {}) {
 }
 
 async function getDevices() {
-  const k = 'devices';
-  const hit = getCached(k);
-  if (hit) return hit;
-  try {
+  const k = 'emu:devices';
+  return cache.getOrFetch(k, async () => {
     const data = await trpcGet('devices.get', { limit: 1000 });
     const list = data?.devices ?? data?.data ?? (Array.isArray(data) ? data : []);
     const normalized = list.map(d => ({
@@ -43,42 +32,35 @@ async function getDevices() {
     }));
     normalized.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     console.log(`[EmuReady] loaded ${normalized.length} devices`);
-    return setCache(k, normalized);
-  } catch (e) {
+    return normalized;
+  }, TTL).catch(e => {
     console.error('[EmuReady] devices error:', e.message);
     return [];
-  }
+  });
 }
 
 async function getPerformanceScales() {
-  const k = 'perf';
-  const hit = getCached(k);
-  if (hit) return hit;
-  try {
+  const k = 'emu:perf';
+  return cache.getOrFetch(k, async () => {
     const data = await trpcGet('listings.performanceScales', {});
     const list = Array.isArray(data) ? data : data?.performanceScales ?? [];
     list.sort((a, b) => (a.rank ?? a.position ?? 0) - (b.rank ?? b.position ?? 0));
-    return setCache(k, list);
-  } catch (e) {
+    return list;
+  }, TTL).catch(e => {
     console.error('[EmuReady] performanceScales error:', e.message);
     return [];
-  }
+  });
 }
 
 async function getListings({ deviceId, performanceId, page = 1, limit = 200 } = {}) {
-  const k = `listings_${deviceId}_${performanceId}_${page}_${limit}`;
-  const hit = getCached(k);
-  if (hit) return hit;
+  const k = `emu:listings:${deviceId}:${performanceId}:${page}:${limit}`;
   const input = { page, limit };
   if (deviceId) input.deviceIds = [deviceId];
   if (performanceId) input.performanceIds = [performanceId];
-  try {
-    const data = await trpcGet('listings.get', input);
-    return setCache(k, data);
-  } catch (e) {
+  return cache.getOrFetch(k, () => trpcGet('listings.get', input), TTL).catch(e => {
     console.error('[EmuReady] listings error:', e.message);
     return { data: [], total: 0 };
-  }
+  });
 }
 
 // Fetch ALL listings across all pages for given filters.
@@ -87,53 +69,66 @@ async function getListings({ deviceId, performanceId, page = 1, limit = 200 } = 
 async function getAllListings(filters, onProgress) {
   const deviceIds = (filters && filters.deviceIds) || [];
   const performanceIds = (filters && filters.performanceIds) || [];
-  const k = 'all_listings_' + deviceIds.join(',') + '__' + performanceIds.join(',');
-  const hit = getCached(k);
-  if (hit) {
-    console.log('[EmuReady] cache hit: ' + hit.length + ' listings');
-    return hit;
+  const k = `emu:all_listings:${deviceIds.join(',')}:${performanceIds.join(',')}`;
+
+  const cached = await cache.get(k);
+  if (cached) {
+    console.log('[EmuReady] cache hit: ' + cached.length + ' listings');
+    return cached;
   }
+
+  if (cache.inflight.has(k)) {
+    console.log('[EmuReady] deduped: waiting on in-flight fetch');
+    return cache.inflight.get(k);
+  }
+
   console.log('[EmuReady] fetching all listing pages...');
-  const PAGE_SIZE = 100;
-  let all = [];
-  let page = 1;
-  let totalPages = 1;
-  while (page <= totalPages) {
-    try {
-      const input = { page, limit: PAGE_SIZE };
-      if (deviceIds.length) input.deviceIds = deviceIds;
-      if (performanceIds.length) input.performanceIds = performanceIds;
-      const data = await trpcGet('listings.get', input);
-      const items = (data && data.listings) || (data && data.data) || [];
-      all = all.concat(items);
-      if (page === 1 && data && data.pagination) {
-        totalPages = data.pagination.pages || 1;
-        console.log('[EmuReady] total: ' + data.pagination.total + ', ' + totalPages + ' pages');
-      }
-      console.log('[EmuReady] page ' + page + '/' + totalPages + ': +' + items.length + ' (total: ' + all.length + ')');
-      if (onProgress) onProgress(all.length, (data.pagination && data.pagination.total) || all.length);
-      if (items.length < PAGE_SIZE) break;
-      page++;
-      if (page <= totalPages) await new Promise(r => setTimeout(r, 200));
-    } catch (e) {
-      console.error('[EmuReady] page ' + page + ' error: ' + e.message);
-      await new Promise(r => setTimeout(r, 1000));
+  const fetchPromise = (async () => {
+    const PAGE_SIZE = 100;
+    let all = [];
+    let page = 1;
+    let totalPages = 1;
+    while (page <= totalPages) {
       try {
-        const input2 = { page, limit: PAGE_SIZE };
-        if (deviceIds.length) input2.deviceIds = deviceIds;
-        if (performanceIds.length) input2.performanceIds = performanceIds;
-        const data2 = await trpcGet('listings.get', input2);
-        all = all.concat((data2 && data2.listings) || (data2 && data2.data) || []);
-      } catch (e2) { /* skip */ }
-      page++;
+        const input = { page, limit: PAGE_SIZE };
+        if (deviceIds.length) input.deviceIds = deviceIds;
+        if (performanceIds.length) input.performanceIds = performanceIds;
+        const data = await trpcGet('listings.get', input);
+        const items = (data && data.listings) || (data && data.data) || [];
+        all = all.concat(items);
+        if (page === 1 && data && data.pagination) {
+          totalPages = data.pagination.pages || 1;
+          console.log('[EmuReady] total: ' + data.pagination.total + ', ' + totalPages + ' pages');
+        }
+        console.log('[EmuReady] page ' + page + '/' + totalPages + ': +' + items.length + ' (total: ' + all.length + ')');
+        if (onProgress) onProgress(all.length, (data.pagination && data.pagination.total) || all.length);
+        if (items.length < PAGE_SIZE) break;
+        page++;
+        if (page <= totalPages) await new Promise(r => setTimeout(r, 200));
+      } catch (e) {
+        console.error('[EmuReady] page ' + page + ' error: ' + e.message);
+        await new Promise(r => setTimeout(r, 1000));
+        try {
+          const input2 = { page, limit: PAGE_SIZE };
+          if (deviceIds.length) input2.deviceIds = deviceIds;
+          if (performanceIds.length) input2.performanceIds = performanceIds;
+          const data2 = await trpcGet('listings.get', input2);
+          all = all.concat((data2 && data2.listings) || (data2 && data2.data) || []);
+        } catch (e2) { /* skip */ }
+        page++;
+      }
     }
-  }
-  console.log('[EmuReady] done: ' + all.length + ' listings');
-  return setCache(k, all);
+    console.log('[EmuReady] done: ' + all.length + ' listings');
+    await cache.set(k, all, TTL);
+    return all;
+  })().finally(() => cache.inflight.delete(k));
+
+  cache.inflight.set(k, fetchPromise);
+  return fetchPromise;
 }
 
-function clearCache() {
-  Object.keys(_cache).forEach(k => delete _cache[k]);
+async function clearCache() {
+  await cache.delPattern('emu:*');
 }
 
 module.exports = { getDevices, getPerformanceScales, getListings, getAllListings, clearCache };

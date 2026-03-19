@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { redis, delPattern } = require('./cache');
 
 const ITAD_BASE = 'https://api.isthereanydeal.com';
 const STEAM_SHOP_ID = 61;
@@ -16,22 +17,16 @@ const REGIONS = {
   pl: { label: '🇵🇱 PLN',  sym: 'zł'  },
 };
 
-// ── Cache ─────────────────────────────────────────────────────────────────────
-// All entries live in one object; key prefixes differentiate types:
-//   `title:${titleLower}`            → { id, matchTitle, imageUrl, ts } | { id: null, ts }
-//   `overview:${cc}:${shopsKey}`     → { map: Map<itadId, overviewItem>, ts }
-//   `shops:${cc}`                    → { data: [...], ts }
-const _cache = {};
-const TITLE_TTL    = 24 * 60 * 60 * 1000; // 24 h — titles are stable
-const OVERVIEW_TTL = 15 * 60 * 1000;      // 15 m — prices change
-const SHOPS_TTL    = 60 * 60 * 1000;      // 1 h  — shop list rarely changes
+const TITLE_TTL    = 24 * 60 * 60 * 1000; // 24 h
+const OVERVIEW_TTL = 15 * 60 * 1000;      // 15 m
+const SHOPS_TTL    =      60 * 60 * 1000; //  1 h
 
 // ── Phase 1: Batch title → ITAD ID resolution + Steam appId lookup ────────────
-// POST /lookup/id/title/v1   — resolves titles → ITAD UUIDs (up to 200/call)
-// POST /lookup/shop/61/id/v1 — resolves ITAD UUIDs → Steam appIds (up to 200/call)
-// Image URLs are then derived from Steam CDN with no per-game calls.
+// Returns { [titleLower]: cacheEntry } for all resolved titles.
 async function resolveTitlesBatch(titles) {
   const BATCH_SIZE = 200;
+  const resolved = {};
+
   for (let i = 0; i < titles.length; i += BATCH_SIZE) {
     const batch = titles.slice(i, i + BATCH_SIZE);
 
@@ -48,44 +43,55 @@ async function resolveTitlesBatch(titles) {
       console.warn(`[Store] batch title lookup failed (offset ${i}):`, e.message);
     }
 
-    // Seed cache entries (imageUrl filled in next step for matched titles)
+    // Build initial entries (imageUrl filled in next step for matched titles)
+    const entries = {};
     for (const [title, id] of Object.entries(lookupResult)) {
-      _cache[`title:${title.toLowerCase()}`] = id
-        ? { id, matchTitle: title, imageUrl: '', ts: Date.now() }
-        : { id: null, ts: Date.now() };
+      entries[title.toLowerCase()] = id
+        ? { id, matchTitle: title, imageUrl: '' }
+        : { id: null };
     }
 
     // 1b. ITAD UUIDs → Steam appIds (batch, one call per 200)
     const matchedIds = Object.values(lookupResult).filter(Boolean);
-    if (!matchedIds.length) continue;
+    if (matchedIds.length) {
+      try {
+        const res = await axios.post(
+          `${ITAD_BASE}/lookup/shop/${STEAM_SHOP_ID}/id/v1`,
+          matchedIds,
+          { params: { key: process.env.ITAD_API_KEY }, timeout: 15000 }
+        );
+        const steamMap = res.data ?? {}; // { itadUuid: ["app/123456", ...] }
 
-    try {
-      const res = await axios.post(
-        `${ITAD_BASE}/lookup/shop/${STEAM_SHOP_ID}/id/v1`,
-        matchedIds,
-        { params: { key: process.env.ITAD_API_KEY }, timeout: 15000 }
-      );
-      const steamMap = res.data ?? {}; // { itadUuid: ["app/123456", ...] }
-
-      for (const [title, id] of Object.entries(lookupResult)) {
-        if (!id) continue;
-        const shopIds = steamMap[id];
-        const appEntry = shopIds?.find(s => s.startsWith('app/'));
-        if (appEntry) {
-          const steamAppId = appEntry.replace('app/', '');
-          const entry = _cache[`title:${title.toLowerCase()}`];
-          if (entry) entry.imageUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${steamAppId}/header.jpg`;
+        for (const [title, id] of Object.entries(lookupResult)) {
+          if (!id) continue;
+          const shopIds = steamMap[id];
+          const appEntry = shopIds?.find(s => s.startsWith('app/'));
+          if (appEntry) {
+            const steamAppId = appEntry.replace('app/', '');
+            const key = title.toLowerCase();
+            if (entries[key]) {
+              entries[key].imageUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${steamAppId}/header.jpg`;
+            }
+          }
         }
+      } catch (e) {
+        console.warn(`[Store] Steam appId lookup failed (offset ${i}):`, e.message);
       }
-    } catch (e) {
-      console.warn(`[Store] Steam appId lookup failed (offset ${i}):`, e.message);
     }
+
+    // Write all entries to Redis and collect results
+    const pipeline = redis.pipeline();
+    for (const [key, entry] of Object.entries(entries)) {
+      pipeline.set(`store:title:${key}`, JSON.stringify(entry), 'PX', TITLE_TTL);
+    }
+    await pipeline.exec();
+    Object.assign(resolved, entries);
   }
+
+  return resolved;
 }
 
 // ── Phase 2: Fetch overview for a batch of ITAD IDs ───────────────────────────
-// POST /games/overview/v2 returns current best price + all-time historical low
-// for up to 200 games per call. Replaces /games/prices/v3.
 async function fetchOverviewAPI(itadIds, cc, shops) {
   const country = cc.toUpperCase();
   const shopsParam = shops.length ? shops.join(',') : undefined;
@@ -111,34 +117,42 @@ async function fetchOverviewAPI(itadIds, cc, shops) {
 }
 
 function toNum(v) {
-  // ITAD returns price amounts as either number or numeric string
   return parseFloat(v) || 0;
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-// Given a list of EmuReady game titles, returns Map(titleLower → deal).
-// cc    — ISO 3166-1 alpha-2 lowercase (e.g. 'us')
-// shops — array of ITAD shop IDs; empty = all shops
 async function getDealsForTitles(titles, cc = 'us', shops = []) {
   const shopsKey = shops.length ? shops.slice().sort().join(',') : 'all';
   const t0 = Date.now();
 
-  // ── Phase 1: batch-resolve uncached/stale title → ITAD ID mappings ────────
-  const needsLookup = titles.filter(t => {
-    const e = _cache[`title:${t.toLowerCase()}`];
-    return !e || Date.now() - e.ts > TITLE_TTL;
-  });
+  // ── Phase 1: pipeline-read all title cache entries ─────────────────────────
+  const pipeline = redis.pipeline();
+  for (const t of titles) pipeline.get(`store:title:${t.toLowerCase()}`);
+  const pipeResults = await pipeline.exec();
 
+  const titleCache = {};
+  const needsLookup = [];
+  for (let i = 0; i < titles.length; i++) {
+    const raw = pipeResults[i][1]; // [err, value]
+    if (raw) {
+      titleCache[titles[i].toLowerCase()] = JSON.parse(raw);
+    } else {
+      needsLookup.push(titles[i]);
+    }
+  }
+
+  // ── Phase 2: batch-resolve uncached titles ─────────────────────────────────
   if (needsLookup.length) {
     console.log(`[Store] batch-resolving ${needsLookup.length} titles…`);
-    await resolveTitlesBatch(needsLookup);
+    const newEntries = await resolveTitlesBatch(needsLookup);
+    Object.assign(titleCache, newEntries);
     console.log(`[Store] title resolution done (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
   }
 
-  // ── Phase 2: collect matched ITAD IDs ─────────────────────────────────────
+  // ── Phase 3: collect matched ITAD IDs ─────────────────────────────────────
   const itadIds = [];
   for (const title of titles) {
-    const e = _cache[`title:${title.toLowerCase()}`];
+    const e = titleCache[title.toLowerCase()];
     if (e?.id) itadIds.push(e.id);
   }
 
@@ -147,37 +161,40 @@ async function getDealsForTitles(titles, cc = 'us', shops = []) {
     return new Map();
   }
 
-  // ── Phase 3: fetch overview — current price + historical low ──────────────
-  const overviewKey = `overview:${cc}:${shopsKey}`;
-  let overviewEntry = _cache[overviewKey];
-  const now = Date.now();
+  // ── Phase 4: fetch overview — current price + historical low ──────────────
+  // Overview is stored as a JSON array of [id, item] pairs (Map serialization)
+  const overviewKey = `store:overview:${cc}:${shopsKey}`;
+  let overviewRaw = await redis.get(overviewKey);
+  let overviewMap;
 
-  if (!overviewEntry || now - overviewEntry.ts > OVERVIEW_TTL) {
-    console.log(`[Store/${cc}/${shopsKey}] overview cache miss — fetching ${itadIds.length} games…`);
-    const pairs = await fetchOverviewAPI(itadIds, cc, shops);
-    _cache[overviewKey] = { map: new Map(pairs), ts: now };
-    overviewEntry = _cache[overviewKey];
-    console.log(`[Store/${cc}/${shopsKey}] overview cache built: ${overviewEntry.map.size} entries`);
-  } else {
-    const missing = itadIds.filter(id => !overviewEntry.map.has(id));
+  if (overviewRaw) {
+    overviewMap = new Map(JSON.parse(overviewRaw));
+    const missing = itadIds.filter(id => !overviewMap.has(id));
     if (missing.length) {
       console.log(`[Store/${cc}/${shopsKey}] fetching ${missing.length} new entries (incremental)…`);
       const pairs = await fetchOverviewAPI(missing, cc, shops);
-      pairs.forEach(([id, item]) => overviewEntry.map.set(id, item));
+      pairs.forEach(([id, item]) => overviewMap.set(id, item));
+      await redis.set(overviewKey, JSON.stringify([...overviewMap.entries()]), 'PX', OVERVIEW_TTL);
     } else {
-      console.log(`[Store/${cc}/${shopsKey}] overview cache hit (${overviewEntry.map.size} entries)`);
+      console.log(`[Store/${cc}/${shopsKey}] overview cache hit (${overviewMap.size} entries)`);
     }
+  } else {
+    console.log(`[Store/${cc}/${shopsKey}] overview cache miss — fetching ${itadIds.length} games…`);
+    const pairs = await fetchOverviewAPI(itadIds, cc, shops);
+    overviewMap = new Map(pairs);
+    await redis.set(overviewKey, JSON.stringify([...overviewMap.entries()]), 'PX', OVERVIEW_TTL);
+    console.log(`[Store/${cc}/${shopsKey}] overview cache built: ${overviewMap.size} entries`);
   }
 
-  // ── Phase 4: assemble result Map(titleLower → deal object) ────────────────
+  // ── Phase 5: assemble result Map(titleLower → deal object) ────────────────
   const sym = REGIONS[cc]?.sym ?? '$';
   const result = new Map();
 
   for (const title of titles) {
-    const titleEntry = _cache[`title:${title.toLowerCase()}`];
+    const titleEntry = titleCache[title.toLowerCase()];
     if (!titleEntry?.id) continue;
 
-    const item = overviewEntry.map.get(titleEntry.id);
+    const item = overviewMap.get(titleEntry.id);
     if (!item?.current) continue;
 
     const current = item.current;
@@ -198,8 +215,6 @@ async function getDealsForTitles(titles, cc = 'us', shops = []) {
       priceFormatted:         price === 0 ? 'Free' : `${sym}${price.toFixed(2)}`,
       originalPriceFormatted: (current.cut ?? 0) > 0 ? `${sym}${originalPrice.toFixed(2)}` : '',
       currency:               current.price?.currency ?? cc.toUpperCase(),
-      // TODO: display historical low in the UI — show badge/tooltip like
-      //       "Historical low: $X.XX (-YY%) at StoreName on Date"
       historicalLow: lowest ? {
         price:          toNum(lowest.price?.amount),
         cut:            lowest.cut ?? 0,
@@ -218,21 +233,21 @@ async function getDealsForTitles(titles, cc = 'us', shops = []) {
 
 // ── Shops list ────────────────────────────────────────────────────────────────
 async function getShops(cc = 'us') {
-  const k = `shops:${cc}`;
-  const e = _cache[k];
-  if (e && Date.now() - e.ts < SHOPS_TTL) return e.data;
+  const k = `store:shops:${cc}`;
+  const raw = await redis.get(k);
+  if (raw) return JSON.parse(raw);
 
   const res = await axios.get(`${ITAD_BASE}/service/shops/v1`, {
     params: { country: cc.toUpperCase() },
     timeout: 10000,
   });
   const data = res.data ?? [];
-  _cache[k] = { data, ts: Date.now() };
+  await redis.set(k, JSON.stringify(data), 'PX', SHOPS_TTL);
   return data;
 }
 
-function clearCache() {
-  Object.keys(_cache).forEach(k => delete _cache[k]);
+async function clearCache() {
+  await delPattern('store:*');
 }
 
 module.exports = { getDealsForTitles, getShops, clearCache, REGIONS, STEAM_SHOP_ID };

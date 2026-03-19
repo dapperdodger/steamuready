@@ -4,6 +4,7 @@ const path = require('path');
 const Fuse = require('fuse.js');
 const emuready = require('./services/emuready');
 const store = require('./services/store');
+const { redis, delPattern } = require('./services/cache');
 
 const app = express();
 app.use(express.json());
@@ -77,10 +78,10 @@ app.get('/api/shops', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Correlation cache: the expensive Fuse.js matching runs once per region,
+// Correlation cache: the expensive title-matching runs once per region/devices,
 // then subsequent requests use instant Map lookups.
+// Stored in Redis as a JSON array of [key, entry] pairs (Map serialization).
 // ═══════════════════════════════════════════════════════════════════════════════
-const _corrCache = {};       // cacheKey → { gameMap, ts }
 const CORR_TTL = 15 * 60 * 1000;
 
 // Returns Map(gameNameLower → { gameName, sg, matchScore })
@@ -89,12 +90,14 @@ const CORR_TTL = 15 * 60 * 1000;
 async function getCorrelationMap(cc, deviceIds = [], shopIds = []) {
   const shopsKey = shopIds.length ? shopIds.slice().sort().join(',') : 'all';
   const cacheKey = deviceIds.length
-    ? `${cc}:${shopsKey}:${[...deviceIds].sort().join(',')}`
-    : `${cc}:${shopsKey}`;
-  const cached = _corrCache[cacheKey];
-  if (cached && Date.now() - cached.ts < CORR_TTL) {
-    console.log(`[Corr/${cacheKey}] cache hit: ${cached.gameMap.size} matches`);
-    return cached.gameMap;
+    ? `corr:${cc}:${shopsKey}:${[...deviceIds].sort().join(',')}`
+    : `corr:${cc}:${shopsKey}`;
+
+  const cached = await redis.get(cacheKey);
+  if (cached) {
+    const gameMap = new Map(JSON.parse(cached));
+    console.log(`[Corr/${cacheKey}] cache hit: ${gameMap.size} matches`);
+    return gameMap;
   }
 
   const label = deviceIds.length ? `${cc}/${shopsKey} (${deviceIds.length} device(s))` : `${cc}/${shopsKey}`;
@@ -107,9 +110,8 @@ async function getCorrelationMap(cc, deviceIds = [], shopIds = []) {
 
   if (!allListings.length) {
     console.log(`[Corr/${label}] no EmuReady listings`);
-    const empty = new Map();
-    _corrCache[cacheKey] = { gameMap: empty, ts: Date.now() };
-    return empty;
+    await redis.set(cacheKey, '[]', 'PX', CORR_TTL);
+    return new Map();
   }
 
   // Extract unique game titles
@@ -140,7 +142,7 @@ async function getCorrelationMap(cc, deviceIds = [], shopIds = []) {
   const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
   console.log(`[Corr/${label}] done: ${gameMap.size} matches in ${elapsed}s`);
 
-  _corrCache[cacheKey] = { gameMap, ts: Date.now() };
+  await redis.set(cacheKey, JSON.stringify([...gameMap.entries()]), 'PX', CORR_TTL);
   return gameMap;
 }
 
@@ -336,9 +338,11 @@ app.get('/api/games', async (req, res) => {
 
 // ── Cache refresh ─────────────────────────────────────────────────────────────
 app.post('/api/refresh', async (req, res) => {
-  emuready.clearCache();
-  store.clearCache();
-  Object.keys(_corrCache).forEach(k => delete _corrCache[k]);
+  await Promise.all([
+    emuready.clearCache(),
+    store.clearCache(),
+    delPattern('corr:*'),
+  ]);
   res.json({ ok: true, message: 'Cache cleared. Next request will re-fetch.' });
 });
 
@@ -348,6 +352,15 @@ app.get('/api/status', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`\n🎮  SteamUReady  →  http://localhost:${PORT}\n`);
+});
+
+// ── Graceful shutdown (ECS/ALB task draining) ─────────────────────────────────
+process.on('SIGTERM', () => {
+  console.log('[shutdown] SIGTERM received — draining connections…');
+  server.close(() => {
+    console.log('[shutdown] all connections closed, exiting');
+    process.exit(0);
+  });
 });

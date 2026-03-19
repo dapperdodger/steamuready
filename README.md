@@ -16,16 +16,26 @@ Cross-reference [EmuReady](https://www.emuready.com) emulation compatibility dat
 - **Search, sort, paginate** — by name, price, discount, compatibility
 - **Smart caching** — first load ~3 min, then instant (~15ms) for 15–30 min
 
+## Requirements
+
+- **Node.js** 18+
+- **Redis** — used for caching EmuReady and Steam data between requests. Must be running before starting the server.
+  - macOS: `brew install redis && brew services start redis`
+  - Linux: `sudo apt install redis-server && sudo systemctl start redis`
+  - Windows: [Memurai](https://www.memurai.com/) or WSL with `sudo service redis-server start`
+  - Docker: `docker run -d -p 6379:6379 redis`
+
 ## Quick start
 
 ```bash
+cp .env.example .env   # set REDIS_URL if not using the default localhost:6379
 npm install
 npm start
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-The first request will take ~3 minutes while it fetches all EmuReady listings (111 pages) and Steam sale pages (67+ pages). Subsequent requests are served from cache.
+The first request will take ~3 minutes while it fetches all EmuReady listings (111 pages) and Steam sale pages (67+ pages). Subsequent requests are served from Redis cache.
 
 Use `npm run dev` for auto-reload during development (requires nodemon).
 
@@ -34,7 +44,7 @@ Use `npm run dev` for auto-reload during development (requires nodemon).
 1. **EmuReady** — queries the public tRPC API to fetch all device/game/emulator/performance listings
 2. **Steam** — scrapes the Steam store search results (HTML) for all currently discounted games
 3. **Correlation** — uses [Fuse.js](https://fusejs.io/) fuzzy matching to find EmuReady games in the Steam sale catalog, with structural validation to avoid false positives
-4. **Caching** — raw data and correlation results are cached in-memory (EmuReady 30 min, Steam 15 min, correlation map 15 min)
+4. **Caching** — raw data and correlation results are cached in Redis (EmuReady 30 min, Steam 15 min, correlation map 15 min). In-flight request deduplication prevents cache stampedes on cold starts.
 
 ## API
 
@@ -49,8 +59,9 @@ Use `npm run dev` for auto-reload during development (requires nodemon).
 ## Tech stack
 
 - **Backend** — Node.js, Express, Axios, Cheerio, Fuse.js
+- **Cache** — Redis (via ioredis)
 - **Frontend** — Vanilla JS, CSS (dark theme)
-- No database, no build step, no framework
+- No build step, no framework
 
 ## License
 
