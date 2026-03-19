@@ -31,7 +31,6 @@ const el = {
   progressBar:  $('progressBar'),
   statusDot:    $('statusDot'),
   cacheLabel:   $('cacheLabel'),
-  refreshBtn:   $('refreshBtn'),
   deviceSearch:       $('deviceSearch'),       // text input for filtering
   deviceDropdown:     $('deviceDropdown'),     // dropdown list
   deviceChips:        $('deviceChips'),        // selected device chips container
@@ -807,19 +806,6 @@ document.querySelectorAll('.disc-btn').forEach(btn => {
   });
 });
 
-// Refresh
-el.refreshBtn.addEventListener('click', async () => {
-  el.refreshBtn.classList.add('spinning');
-  el.cacheLabel.textContent = t('refreshing');
-  try {
-    await api.refresh();
-    await fetchGames(true);
-    el.cacheLabel.textContent = t('cacheCleared');
-    setTimeout(() => { el.cacheLabel.textContent = ''; }, 3000);
-  } finally {
-    el.refreshBtn.classList.remove('spinning');
-  }
-});
 
 // Reset
 el.resetBtn.addEventListener('click', () => {

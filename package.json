@@ -8,6 +8,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.1013.0",
     "axios": "^1.6.7",
     "dotenv": "^17.3.1",
     "express": "^4.18.3",

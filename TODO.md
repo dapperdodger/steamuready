@@ -11,12 +11,11 @@
   - [x] Add in-flight request deduplication to prevent cache stampede
   - [x] Add graceful shutdown handler (SIGTERM) for ALB task draining
   - [ ] Tune ECS health check grace period to account for cache warm-up time
-  - [ ] Consider a dedicated background cache-warmer task so user requests never hit cold paths
-    - [ ] If we do this then we can space out review retrieval
+  - [x] Consider a dedicated background cache-warmer task so user requests never hit cold paths - not done, decided against
   - [ ] Test ITAD API reachability from AWS datacenter IPs (no scraping risk, but worth confirming)
-- [ ] Dockerization
+- [x Dockerization
 - [ ] Using GameNative as source alongside emuready
-- [ ] Filter/Sorting by reviews
+- [ ] Filter/Sorting by reviews (will need to get data as part of cache warmer, and not get it otherwise)
 
 
 
