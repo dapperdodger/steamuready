@@ -2,6 +2,7 @@
 const state = {
   devices:   [],
   perfScales: [],
+  allShops:  [],
   games:     [],
   total:     0,
   page:      1,
@@ -18,6 +19,7 @@ const state = {
     search:        '',
     sort:          'discount_desc',
     cc:            'us',
+    shops:         [], // empty = all stores
   },
 };
 
@@ -43,6 +45,7 @@ const el = {
   resultsCount: $('resultsCount'),
   gamesGrid:    $('gamesGrid'),
   pagination:   $('pagination'),
+  storeList:    $('storeList'),
 };
 
 /* ── API ───────────────────────────────────────────────────────────────────── */
@@ -55,6 +58,7 @@ const api = {
   devices()       { return api.json('/api/devices'); },
   perfScales()    { return api.json('/api/performance-scales'); },
   regions()       { return api.json('/api/regions'); },
+  shops(cc)       { return api.json(`/api/shops?cc=${cc || 'us'}`); },
   games(params)   {
     const q = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => { if (v !== '' && v !== null && v !== undefined) q.set(k, v); });
@@ -89,19 +93,31 @@ async function init() {
   showSkeletons();
 
   try {
-    // Devices + perf scales + regions in parallel
-    const [devices, scales, regions] = await Promise.all([
+    // Devices + perf scales + regions + shops in parallel
+    const [devices, scales, regions, shops] = await Promise.all([
       api.devices().catch(() => []),
       api.perfScales().catch(() => []),
       api.regions().catch(() => ({})),
+      api.shops('us').catch(() => []),
     ]);
 
     state.devices    = devices;
     state.perfScales = scales;
+    state.allShops   = shops;
 
     populateDevices(devices);
     populateCompatList(scales);
     populateRegions(regions);
+    populateStores(shops);
+    initPreferredDevicesModal();
+
+    const isFirstVisit = loadPreferredDeviceIds() === null;
+    if (isFirstVisit) {
+      openPreferredDevicesModal();
+    } else {
+      applyPreferredDevices();
+      applyPreferredCompat();
+    }
 
     el.statusDot.className = 'status-dot ok';
     el.cacheLabel.textContent = '';
@@ -216,6 +232,212 @@ function onDeviceKey(e) {
   opts[_deviceFocusIdx]?.scrollIntoView({ block: 'nearest' });
 }
 
+/* ── Preferred devices (localStorage) ──────────────────────────────────────── */
+const PREF_KEY        = 'preferredDevices';
+const PREF_COMPAT_KEY = 'preferredCompat';
+
+function loadPreferredDeviceIds() {
+  try { return JSON.parse(localStorage.getItem(PREF_KEY)); } catch { return null; }
+}
+
+function savePreferredDeviceIds(ids) {
+  localStorage.setItem(PREF_KEY, JSON.stringify(ids));
+}
+
+function applyPreferredDevices() {
+  const ids = loadPreferredDeviceIds();
+  if (!ids || !ids.length) return;
+  ids.forEach(id => {
+    const d = state.devices.find(x => x.id === id);
+    if (d && !_selectedDevices.has(d.id)) addDevice(d);
+  });
+}
+
+function loadPreferredCompatId() {
+  return localStorage.getItem(PREF_COMPAT_KEY); // null = never set; '' = All
+}
+
+function savePreferredCompatId(id) {
+  localStorage.setItem(PREF_COMPAT_KEY, id ?? '');
+}
+
+function applyPreferredCompat() {
+  const id = loadPreferredCompatId();
+  if (id === null) return;
+  const selector = id === '' ? '[data-value=""]' : `[data-value="${CSS.escape(id)}"]`;
+  const item = el.compatList.querySelector(`.compat-item${selector}`);
+  if (!item) return;
+  el.compatList.querySelectorAll('.compat-item').forEach(i => i.classList.remove('selected'));
+  item.classList.add('selected');
+  item.querySelector('input').checked = true;
+}
+
+/* ── Preferred devices modal ────────────────────────────────────────────────── */
+const _prefSelectedDevices = new Map(); // id → {id, name} — used only inside modal
+let _prefDeviceFocusIdx = -1;
+
+const prefEl = {
+  modal:        document.getElementById('prefDevicesModal'),
+  search:       document.getElementById('prefDeviceSearch'),
+  dropdown:     document.getElementById('prefDeviceDropdown'),
+  chips:        document.getElementById('prefDeviceChips'),
+  compatSelect: document.getElementById('prefCompatSelect'),
+  skipBtn:      document.getElementById('prefDevicesSkip'),
+  saveBtn:      document.getElementById('prefDevicesSave'),
+};
+
+function openPreferredDevicesModal() {
+  // Seed modal with current preferred device ids
+  _prefSelectedDevices.clear();
+  const savedIds = loadPreferredDeviceIds() || [];
+  savedIds.forEach(id => {
+    const d = state.devices.find(x => x.id === id);
+    if (d) _prefSelectedDevices.set(d.id, d);
+  });
+  prefRenderChips();
+  prefEl.search.value = '';
+  prefEl.dropdown.hidden = true;
+  // Seed compat select with saved preference
+  const savedCompat = loadPreferredCompatId();
+  if (savedCompat !== null) prefEl.compatSelect.value = savedCompat;
+  prefEl.modal.hidden = false;
+  prefEl.search.focus();
+}
+
+function closePreferredDevicesModal() {
+  prefEl.modal.hidden = true;
+}
+
+function prefRenderChips() {
+  prefEl.chips.innerHTML = '';
+  _prefSelectedDevices.forEach(d => {
+    const chip = document.createElement('div');
+    chip.className = 'device-chip';
+    chip.dataset.id = d.id;
+    chip.innerHTML = `<span title="${escHtml(d.name)}">${escHtml(d.name)}</span><button type="button" title="${t('deviceRemove')}">×</button>`;
+    chip.querySelector('button').addEventListener('click', () => {
+      _prefSelectedDevices.delete(d.id);
+      prefRenderChips();
+    });
+    prefEl.chips.appendChild(chip);
+  });
+  prefEl.search.placeholder = t(_prefSelectedDevices.size ? 'deviceAddPlaceholder' : 'deviceSearchPlaceholder');
+}
+
+function prefRenderDropdown(devices, q = '') {
+  prefEl.dropdown.innerHTML = '';
+  _prefDeviceFocusIdx = -1;
+  if (!devices.length) {
+    prefEl.dropdown.innerHTML = `<div class="device-opt-empty">${t('deviceNoResults')}</div>`;
+  } else {
+    devices.forEach(d => {
+      const div = document.createElement('div');
+      div.className = 'device-opt';
+      div.dataset.id = d.id;
+      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      div.innerHTML = q ? d.name.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>') : d.name;
+      div.addEventListener('mousedown', e => { e.preventDefault(); prefAddDevice(d); });
+      prefEl.dropdown.appendChild(div);
+    });
+  }
+  prefEl.dropdown.hidden = false;
+}
+
+function prefAddDevice(d) {
+  if (_prefSelectedDevices.has(d.id)) return;
+  _prefSelectedDevices.set(d.id, d);
+  prefEl.search.value = '';
+  prefRenderChips();
+  prefEl.dropdown.hidden = true;
+  _prefDeviceFocusIdx = -1;
+}
+
+function initPreferredDevicesModal() {
+  prefEl.search.addEventListener('input', () => {
+    const q = prefEl.search.value.trim().toLowerCase();
+    const matches = q
+      ? state.devices.filter(d => d.name.toLowerCase().includes(q) && !_prefSelectedDevices.has(d.id)).slice(0, 60)
+      : state.devices.filter(d => !_prefSelectedDevices.has(d.id)).slice(0, 60);
+    prefRenderDropdown(matches, q);
+  });
+
+  prefEl.search.addEventListener('focus', () => {
+    const q = prefEl.search.value.trim().toLowerCase();
+    const matches = q
+      ? state.devices.filter(d => d.name.toLowerCase().includes(q) && !_prefSelectedDevices.has(d.id)).slice(0, 60)
+      : state.devices.filter(d => !_prefSelectedDevices.has(d.id)).slice(0, 60);
+    prefRenderDropdown(matches, q);
+  });
+
+  prefEl.search.addEventListener('keydown', e => {
+    const opts = [...prefEl.dropdown.querySelectorAll('.device-opt')];
+    if (e.key === 'Escape') { prefEl.dropdown.hidden = true; return; }
+    if (!opts.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _prefDeviceFocusIdx = Math.min(_prefDeviceFocusIdx + 1, opts.length - 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      _prefDeviceFocusIdx = Math.max(_prefDeviceFocusIdx - 1, 0);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (_prefDeviceFocusIdx >= 0) {
+        const id = opts[_prefDeviceFocusIdx].dataset.id;
+        const d = state.devices.find(x => x.id === id);
+        if (d) prefAddDevice(d);
+      }
+      return;
+    } else { return; }
+    opts.forEach((o, i) => o.classList.toggle('focused', i === _prefDeviceFocusIdx));
+    opts[_prefDeviceFocusIdx]?.scrollIntoView({ block: 'nearest' });
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#prefDeviceCombo')) prefEl.dropdown.hidden = true;
+  });
+
+  // Populate compat select from perfScales
+  prefEl.compatSelect.innerHTML = `<option value="">${t('compatAll')}</option>`;
+  const sortedScales = [...state.perfScales].sort((a, b) =>
+    (a.rank ?? a.position ?? 99) - (b.rank ?? b.position ?? 99)
+  );
+  sortedScales.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.label ?? s.description ?? `Rank ${s.rank ?? s.position}`;
+    prefEl.compatSelect.appendChild(opt);
+  });
+
+  prefEl.skipBtn.addEventListener('click', () => {
+    savePreferredDeviceIds([]);
+    savePreferredCompatId('');
+    closePreferredDevicesModal();
+  });
+
+  prefEl.saveBtn.addEventListener('click', () => {
+    const ids = [..._prefSelectedDevices.keys()];
+    savePreferredDeviceIds(ids);
+    savePreferredCompatId(prefEl.compatSelect.value);
+    // Apply new preferred devices to the main selection (add any not already selected)
+    _prefSelectedDevices.forEach(d => {
+      if (!_selectedDevices.has(d.id)) addDevice(d);
+    });
+    applyPreferredCompat();
+    closePreferredDevicesModal();
+    fetchGames(true);
+  });
+
+  // Close on overlay click
+  prefEl.modal.addEventListener('click', e => {
+    if (e.target === prefEl.modal) {
+      savePreferredDeviceIds([...(_prefSelectedDevices.keys())]);
+      closePreferredDevicesModal();
+    }
+  });
+
+  document.getElementById('managePreferredBtn').addEventListener('click', openPreferredDevicesModal);
+}
+
 /* ── Populate region select ──────────────────────────────────────────────────── */
 function populateRegions(regions) {
   el.regionSelect.innerHTML = '';
@@ -246,6 +468,23 @@ function updateRegionNote() {
     pl: '',
   };
   el.regionNote.textContent = notes[cc] || '';
+}
+
+/* ── Populate store checkboxes ──────────────────────────────────────────────── */
+function populateStores(shops) {
+  state.allShops = shops;
+  el.storeList.innerHTML = '';
+  shops.forEach(s => {
+    const label = document.createElement('label');
+    label.className = 'store-item';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = s.id;
+    cb.addEventListener('change', () => fetchGames(true));
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(s.title));
+    el.storeList.appendChild(label);
+  });
 }
 
 /* ── Populate compat radio list ─────────────────────────────────────────────── */
@@ -288,6 +527,12 @@ function populateCompatList(scales) {
 /* ── Fetch & render games ───────────────────────────────────────────────────── */
 async function fetchGames(resetPage = true) {
   if (state.loading) return;
+
+  if (_selectedDevices.size === 0) {
+    showDevicePrompt();
+    return;
+  }
+
   state.loading = true;
 
   if (resetPage) state.page = 1;
@@ -303,6 +548,7 @@ async function fetchGames(resetPage = true) {
     search:        state.filters.search,
     sort:          state.filters.sort,
     cc:            state.filters.cc,
+    shops:         state.filters.shops.join(',') || '',
     page:          state.page,
   };
 
@@ -343,6 +589,7 @@ function readFilters() {
   state.filters.search        = el.searchInput.value.trim();
   state.filters.sort          = el.sortSelect.value;
   state.filters.cc            = el.regionSelect?.value || 'us';
+  state.filters.shops         = [...el.storeList.querySelectorAll('input:checked')].map(i => i.value);
 
   const activeDisc = document.querySelector('.disc-btn.active');
   state.filters.minDiscount = activeDisc ? parseInt(activeDisc.dataset.value) : 0;
@@ -392,6 +639,7 @@ function buildCard(g) {
       <div class="card-game-name">${escHtml(g.gameName)}</div>
 
       <div class="card-meta">
+        ${g.storeName ? `<span class="tag tag-store">${escHtml(g.storeName)}</span>` : ''}
         ${g.device  ? `<span class="tag" title="${escHtml(g.device)}">${escHtml(g.device)}</span>` : ''}
         ${g.emulator ? `<span class="tag" title="${escHtml(g.emulator)}">${escHtml(g.emulator)}</span>` : ''}
         ${g.system  ? `<span class="tag" title="${escHtml(g.system)}">${escHtml(g.system)}</span>` : ''}
@@ -411,10 +659,10 @@ function buildCard(g) {
 
     <div class="card-footer">
       <a href="${escHtml(g.storeUrl)}" target="_blank" rel="noopener" class="btn-steam">
-        <svg viewBox="0 0 24 24" fill="currentColor">
-          <path d="M11.98 0C5.366 0 0 5.367 0 12c0 6.63 5.366 12 11.98 12 6.615 0 12.02-5.37 12.02-12S18.595 0 11.98 0zM6.31 18.66l-1.95-1.12 4.24-7.34a3.72 3.72 0 0 1 2.12-.9l-4.41 9.36zm9.39-3.4a3.71 3.71 0 0 1-5.1-1.36 3.72 3.72 0 0 1 1.36-5.1 3.71 3.71 0 0 1 5.1 1.36 3.72 3.72 0 0 1-1.36 5.1z"/>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
         </svg>
-        ${t('viewOnSteam')}
+        ${t('viewOnStore')(escHtml(g.storeName || 'Store'))}
       </a>
     </div>`;
 
@@ -492,6 +740,17 @@ function showSkeletons(n = 12) {
   el.resultsCount.innerHTML = t('loading');
 }
 
+function showDevicePrompt() {
+  el.gamesGrid.innerHTML = `
+    <div class="state-box">
+      <div class="icon">🎮</div>
+      <h3>${t('devicePromptTitle')}</h3>
+      <p>${t('devicePromptMsg')}</p>
+    </div>`;
+  el.pagination.innerHTML = '';
+  el.resultsCount.innerHTML = '';
+}
+
 function showError(msg) {
   el.gamesGrid.innerHTML = `
     <div class="state-box">
@@ -561,6 +820,9 @@ el.resetBtn.addEventListener('click', () => {
   document.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('.disc-btn[data-value="0"]')?.classList.add('active');
 
+  // Reset stores
+  el.storeList.querySelectorAll('input').forEach(i => { i.checked = false; });
+
   fetchGames(true);
 });
 
@@ -568,7 +830,9 @@ el.resetBtn.addEventListener('click', () => {
 document.addEventListener('languagechange', () => {
   updateRegionNote();
   renderChips();
-  if (state.loaded) {
+  if (_selectedDevices.size === 0) {
+    showDevicePrompt();
+  } else if (state.loaded) {
     renderGames();
     updateCount();
   }
