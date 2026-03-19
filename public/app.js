@@ -84,7 +84,7 @@ function compatClass(rank) {
 async function init() {
   progress(10);
   el.statusDot.className = 'status-dot';
-  el.cacheLabel.textContent = 'Chargement…';
+  el.cacheLabel.textContent = t('loading');
 
   showSkeletons();
 
@@ -110,7 +110,7 @@ async function init() {
     await fetchGames();
   } catch (e) {
     el.statusDot.className = 'status-dot err';
-    el.cacheLabel.textContent = 'Erreur API';
+    el.cacheLabel.textContent = t('apiError');
     showError(e.message);
     progress(100);
   }
@@ -142,7 +142,7 @@ function renderDropdown(devices, q = '') {
   el.deviceDropdown.innerHTML = '';
   _deviceFocusIdx = -1;
   if (!devices.length) {
-    el.deviceDropdown.innerHTML = '<div class="device-opt-empty">Aucun résultat</div>';
+    el.deviceDropdown.innerHTML = `<div class="device-opt-empty">${t('deviceNoResults')}</div>`;
   } else {
     devices.forEach(d => {
       const div = document.createElement('div');
@@ -181,11 +181,11 @@ function renderChips() {
     const chip = document.createElement('div');
     chip.className = 'device-chip';
     chip.dataset.id = d.id;
-    chip.innerHTML = `<span title="${escHtml(d.name)}">${escHtml(d.name)}</span><button type="button" title="Retirer">×</button>`;
+    chip.innerHTML = `<span title="${escHtml(d.name)}">${escHtml(d.name)}</span><button type="button" title="${t('deviceRemove')}">×</button>`;
     chip.querySelector('button').addEventListener('click', () => removeDevice(d.id));
     el.deviceChips.appendChild(chip);
   });
-  el.deviceSearch.placeholder = _selectedDevices.size ? 'Ajouter un appareil…' : 'Rechercher un appareil…';
+  el.deviceSearch.placeholder = t(_selectedDevices.size ? 'deviceAddPlaceholder' : 'deviceSearchPlaceholder');
 }
 
 function clearAllDevices() {
@@ -240,9 +240,9 @@ function updateRegionNote() {
     us: '', fr: '', gb: '', de: '',
     ca: '',
     au: '',
-    br: 'Prix souvent plus bas qu\'en USD',
-    tr: 'Prix très réduits — promos parfois différentes',
-    ar: 'Prix très bas — peut nécessiter un VPN',
+    br: t('regionNoteBR'),
+    tr: t('regionNoteTR'),
+    ar: t('regionNoteAR'),
     pl: '',
   };
   el.regionNote.textContent = notes[cc] || '';
@@ -254,7 +254,7 @@ function populateCompatList(scales) {
     <label class="compat-item selected" data-value="">
       <input type="radio" name="compat" value="" checked />
       <span class="compat-dot dot-0"></span>
-      <span class="compat-label-text">Toutes</span>
+      <span class="compat-label-text" data-i18n="compatAll">${t('compatAll')}</span>
     </label>`;
 
   // Sort by rank ascending: rank 1 (Perfect) first
@@ -356,9 +356,8 @@ function renderGames() {
     el.gamesGrid.innerHTML = `
       <div class="state-box">
         <div class="icon">🎮</div>
-        <h3>Aucun jeu trouvé</h3>
-        <p>Essaie avec un autre appareil ou élargis les filtres.<br/>
-           Les promos Steam changent souvent — reviens plus tard !</p>
+        <h3>${t('noGamesTitle')}</h3>
+        <p>${t('noGamesMsg')}</p>
       </div>`;
     return;
   }
@@ -372,7 +371,7 @@ function renderGames() {
 
 function buildCard(g) {
   const cls    = compatClass(g.performanceRank);
-  const label  = g.performanceLabel || (g.performanceRank ? `Niveau ${g.performanceRank}` : '?');
+  const label  = g.performanceLabel || (g.performanceRank ? t('rankLabel')(g.performanceRank) : '?');
 
   const div = document.createElement('div');
   div.className = 'card';
@@ -415,7 +414,7 @@ function buildCard(g) {
         <svg viewBox="0 0 24 24" fill="currentColor">
           <path d="M11.98 0C5.366 0 0 5.367 0 12c0 6.63 5.366 12 11.98 12 6.615 0 12.02-5.37 12.02-12S18.595 0 11.98 0zM6.31 18.66l-1.95-1.12 4.24-7.34a3.72 3.72 0 0 1 2.12-.9l-4.41 9.36zm9.39-3.4a3.71 3.71 0 0 1-5.1-1.36 3.72 3.72 0 0 1 1.36-5.1 3.71 3.71 0 0 1 5.1 1.36 3.72 3.72 0 0 1-1.36 5.1z"/>
         </svg>
-        Voir sur Steam
+        ${t('viewOnSteam')}
       </a>
     </div>`;
 
@@ -482,22 +481,22 @@ function updateCount() {
   const { total, page, totalPages } = state;
   if (!state.loaded) { el.resultsCount.innerHTML = ''; return; }
   el.resultsCount.innerHTML = total
-    ? `<strong>${total}</strong> jeu${total > 1 ? 'x' : ''} trouvé${total > 1 ? 's' : ''} — page ${page}/${totalPages}`
-    : 'Aucun résultat';
+    ? t('resultsCount')(total, page, totalPages)
+    : t('noResults');
 }
 
 /* ── Skeletons ──────────────────────────────────────────────────────────────── */
 function showSkeletons(n = 12) {
   el.gamesGrid.innerHTML = Array(n).fill('<div class="skeleton"></div>').join('');
   el.pagination.innerHTML = '';
-  el.resultsCount.innerHTML = 'Chargement…';
+  el.resultsCount.innerHTML = t('loading');
 }
 
 function showError(msg) {
   el.gamesGrid.innerHTML = `
     <div class="state-box">
       <div class="icon">⚠️</div>
-      <h3>Erreur</h3>
+      <h3>${t('errorTitle')}</h3>
       <p>${escHtml(msg)}</p>
     </div>`;
 }
@@ -534,11 +533,11 @@ document.querySelectorAll('.disc-btn').forEach(btn => {
 // Refresh
 el.refreshBtn.addEventListener('click', async () => {
   el.refreshBtn.classList.add('spinning');
-  el.cacheLabel.textContent = 'Actualisation…';
+  el.cacheLabel.textContent = t('refreshing');
   try {
     await api.refresh();
     await fetchGames(true);
-    el.cacheLabel.textContent = 'Cache vidé ✓';
+    el.cacheLabel.textContent = t('cacheCleared');
     setTimeout(() => { el.cacheLabel.textContent = ''; }, 3000);
   } finally {
     el.refreshBtn.classList.remove('spinning');
@@ -563,6 +562,16 @@ el.resetBtn.addEventListener('click', () => {
   document.querySelector('.disc-btn[data-value="0"]')?.classList.add('active');
 
   fetchGames(true);
+});
+
+/* ── Re-render dynamic content on language change ───────────────────────────── */
+document.addEventListener('languagechange', () => {
+  updateRegionNote();
+  renderChips();
+  if (state.loaded) {
+    renderGames();
+    updateCount();
+  }
 });
 
 /* ── Boot ───────────────────────────────────────────────────────────────────── */

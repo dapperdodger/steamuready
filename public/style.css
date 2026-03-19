@@ -470,6 +470,23 @@ select option { background: var(--card); }
 .btn-refresh.spinning svg { animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Language switcher ───────────────────────────────────────────────────────── */
+.lang-switcher { display: flex; gap: 2px; }
+.lang-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  border-radius: var(--radius-sm);
+  padding: 3px 7px;
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .3px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.lang-btn:hover { color: var(--text); border-color: var(--border-light); }
+.lang-btn.active { color: var(--accent); border-color: var(--accent-dim); }
+
 /* ── Tooltip for notes ───────────────────────────────────────────────────────── */
 .has-notes { cursor: help; }
 .card-notes {
