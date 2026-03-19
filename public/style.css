@@ -104,6 +104,13 @@ body {
   font-size: .75rem; font-weight: 600; color: var(--muted);
   text-transform: uppercase; letter-spacing: .5px;
 }
+.filter-checkbox {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .85rem; color: var(--text); cursor: pointer;
+}
+.filter-checkbox input[type="checkbox"] {
+  width: auto; margin: 0; accent-color: var(--accent);
+}
 
 /* Selects */
 select, input[type="text"], input[type="number"] {
@@ -258,6 +265,16 @@ select option { background: var(--card); }
   background: #4c6741;
   color: #a4d97a;
   font-size: .72rem; font-weight: 800;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  letter-spacing: .3px;
+  line-height: 1.2;
+}
+.hist-low-badge {
+  position: absolute; bottom: 8px; left: 8px;
+  background: #6b4f1a;
+  color: #ffd166;
+  font-size: .68rem; font-weight: 700;
   padding: 3px 7px;
   border-radius: var(--radius-sm);
   letter-spacing: .3px;

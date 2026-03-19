@@ -135,6 +135,7 @@ app.get('/api/games', async (req, res) => {
       deviceIds: rawDeviceIds = '',
       performanceId,
       maxPrice, minDiscount = 0,
+      histLow,
       search, sort = 'discount_desc',
       page = 1,
       cc = 'us',
@@ -262,6 +263,10 @@ app.get('/api/games', async (req, res) => {
     const minDisc = parseInt(minDiscount) || 0;
     if (minDisc > 0) {
       filtered = filtered.filter(g => g.discountPercent >= minDisc);
+    }
+
+    if (histLow === '1') {
+      filtered = filtered.filter(g => g.historicalLow && g.price <= g.historicalLow.price);
     }
 
     // 5. Sort

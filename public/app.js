@@ -16,6 +16,7 @@ const state = {
     minPrice:      '',
     maxPrice:      '',
     minDiscount:   0,
+    histLow:       false,
     search:        '',
     sort:          'discount_desc',
     cc:            'us',
@@ -46,6 +47,7 @@ const el = {
   gamesGrid:    $('gamesGrid'),
   pagination:   $('pagination'),
   storeList:    $('storeList'),
+  histLowCheck: $('histLowCheck'),
 };
 
 /* ── API ───────────────────────────────────────────────────────────────────── */
@@ -549,6 +551,7 @@ async function fetchGames(resetPage = true) {
     sort:          state.filters.sort,
     cc:            state.filters.cc,
     shops:         state.filters.shops.join(',') || '',
+    histLow:       state.filters.histLow ? '1' : '',
     page:          state.page,
   };
 
@@ -590,6 +593,7 @@ function readFilters() {
   state.filters.sort          = el.sortSelect.value;
   state.filters.cc            = el.regionSelect?.value || 'us';
   state.filters.shops         = [...el.storeList.querySelectorAll('input:checked')].map(i => i.value);
+  state.filters.histLow       = el.histLowCheck.checked;
 
   const activeDisc = document.querySelector('.disc-btn.active');
   state.filters.minDiscount = activeDisc ? parseInt(activeDisc.dataset.value) : 0;
@@ -619,6 +623,7 @@ function renderGames() {
 function buildCard(g) {
   const cls    = compatClass(g.performanceRank);
   const label  = g.performanceLabel || (g.performanceRank ? t('rankLabel')(g.performanceRank) : '?');
+  const isHistLow = g.historicalLow && g.price <= g.historicalLow.price;
 
   const div = document.createElement('div');
   div.className = 'card';
@@ -633,6 +638,7 @@ function buildCard(g) {
       <div class="card-img-placeholder" style="display:none">🎮</div>
       <span class="discount-badge">−${g.discountPercent}%</span>
       <span class="compat-badge compat-${cls}">${escHtml(label)}</span>
+      ${isHistLow ? `<span class="hist-low-badge" title="${escHtml(g.historicalLow.priceFormatted)} · ${escHtml(g.historicalLow.shop)}">${t('histLowBadge')}</span>` : ''}
     </div>
 
     <div class="card-body"${notesAttr}>
@@ -822,6 +828,9 @@ el.resetBtn.addEventListener('click', () => {
 
   // Reset stores
   el.storeList.querySelectorAll('input').forEach(i => { i.checked = false; });
+
+  // Reset historical low
+  el.histLowCheck.checked = false;
 
   fetchGames(true);
 });
