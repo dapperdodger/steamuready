@@ -897,5 +897,42 @@ document.addEventListener('languagechange', () => {
   }
 });
 
+/* ── Konami Code Easter Egg ─────────────────────────────────────────────────── */
+(function () {
+  const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+  let seq = 0;
+  let toastEl = null;
+  let hideTimer = null;
+
+  document.addEventListener('keydown', e => {
+    if (e.key === KONAMI[seq]) {
+      seq++;
+      if (seq === KONAMI.length) {
+        seq = 0;
+        triggerKonami();
+      }
+    } else {
+      seq = e.key === KONAMI[0] ? 1 : 0;
+    }
+  });
+
+  function triggerKonami() {
+    if (toastEl) {
+      clearTimeout(hideTimer);
+      toastEl.remove();
+      toastEl = null;
+    }
+    toastEl = document.createElement('div');
+    toastEl.className = 'konami-toast';
+    toastEl.innerHTML = '🎮 +30 lives unlocked<br><span style="font-size:.8rem;font-weight:400;opacity:.8">Too bad this isn\'t that kind of game</span>';
+    document.body.appendChild(toastEl);
+
+    hideTimer = setTimeout(() => {
+      toastEl.classList.add('hide');
+      toastEl.addEventListener('animationend', () => { toastEl?.remove(); toastEl = null; }, { once: true });
+    }, 3500);
+  }
+})();
+
 /* ── Boot ───────────────────────────────────────────────────────────────────── */
 init();

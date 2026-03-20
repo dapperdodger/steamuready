@@ -9,7 +9,14 @@ const { redis, delPattern } = require('./services/cache');
 
 const app = express();
 app.set('trust proxy', 1); // honour X-Forwarded-For from ALB
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      'img-src': ["'self'", 'data:', 'https://cdn.akamai.steamstatic.com'],
+    },
+  },
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -150,21 +157,22 @@ async function getCorrelationMap(cc, deviceIds = [], shopIds = []) {
 }
 
 // ── Rate limiter: 1 new search per 30 s per IP (pagination exempt) ────────────
-const RATE_WINDOW_MS = 30 * 1000;
+const RATE_WINDOW_MS = 10 * 1000;
+const RATE_LIMIT_MAX = 10;
 async function gamesRateLimiter(req, res, next) {
   const page = parseInt(req.query.page) || 1;
   if (page > 1) return next(); // pagination is free
 
   const key = `ratelimit:games:${req.ip}`;
-  const exists = await redis.exists(key);
-  if (exists) {
+  const count = await redis.incr(key);
+  if (count === 1) await redis.pexpire(key, RATE_WINDOW_MS);
+  if (count > RATE_LIMIT_MAX) {
     const ttl = await redis.pttl(key);
     return res.status(429).json({
       error: 'Rate limit exceeded. Please wait before searching again.',
       retryAfter: Math.ceil(ttl / 1000),
     });
   }
-  await redis.set(key, '1', 'PX', RATE_WINDOW_MS);
   next();
 }
 

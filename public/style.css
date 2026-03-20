@@ -606,6 +606,38 @@ select option { background: var(--card); }
 }
 .attribution a:hover { color: var(--text); }
 
+/* ── Konami Easter Egg ───────────────────────────────────────────────────────── */
+@keyframes konami-slide-in {
+  from { transform: translateY(120%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes konami-slide-out {
+  from { transform: translateY(0);    opacity: 1; }
+  to   { transform: translateY(120%); opacity: 0; }
+}
+.konami-toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  background: linear-gradient(135deg, #1b2838, #66c0f4 200%);
+  color: #fff;
+  border: 1px solid #66c0f4;
+  border-radius: var(--radius-lg);
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+  box-shadow: 0 8px 32px rgba(0,0,0,.6), 0 0 24px rgba(102,192,244,.25);
+  z-index: 9999;
+  text-align: center;
+  pointer-events: none;
+  animation: konami-slide-in .4s cubic-bezier(.22,1,.36,1) forwards;
+}
+.konami-toast.hide {
+  animation: konami-slide-out .4s ease-in forwards;
+}
+
 /* ── Tooltip for notes ───────────────────────────────────────────────────────── */
 .has-notes { cursor: help; }
 .card-notes {
