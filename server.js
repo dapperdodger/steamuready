@@ -17,7 +17,7 @@ app.use(helmet({
     },
   },
 }));
-app.use(express.json());
+app.use(express.json({ limit: '16kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Devices ─────────────────────────────────────────────────────────────────
@@ -27,7 +27,7 @@ app.get('/api/devices', async (req, res) => {
     res.json(devices);
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -38,7 +38,7 @@ app.get('/api/performance-scales', async (req, res) => {
     res.json(scales);
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -83,7 +83,7 @@ app.get('/api/shops', async (req, res) => {
     res.json(shops.filter(s => ALLOWED_SHOP_IDS.has(s.id)));
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -156,12 +156,21 @@ async function getCorrelationMap(cc, deviceIds = [], shopIds = []) {
   return gameMap;
 }
 
-// ── Rate limiter: 1 new search per 30 s per IP (pagination exempt) ────────────
+// ── Rate limiter: up to 10 requests per 10 s per IP ──────────────────────────
+// Pagination (page > 1) is exempt only if the same IP has already made a page-1
+// request within the last 5 minutes (tracked in Redis).
 const RATE_WINDOW_MS = 10 * 1000;
 const RATE_LIMIT_MAX = 10;
+const SEARCHED_TTL_MS = 5 * 60 * 1000; // how long a page-1 grant lasts
 async function gamesRateLimiter(req, res, next) {
   const page = parseInt(req.query.page) || 1;
-  if (page > 1) return next(); // pagination is free
+
+  if (page > 1) {
+    const searchedKey = `searched:games:${req.ip}`;
+    const hasSearched = await redis.exists(searchedKey);
+    if (hasSearched) return next(); // legitimate pagination, skip rate limit
+    // No prior page-1 request — fall through and consume a rate-limit token
+  }
 
   const key = `ratelimit:games:${req.ip}`;
   const count = await redis.incr(key);
@@ -173,6 +182,12 @@ async function gamesRateLimiter(req, res, next) {
       retryAfter: Math.ceil(ttl / 1000),
     });
   }
+
+  // Record that this IP has made a page-1 search
+  if (page === 1) {
+    await redis.set(`searched:games:${req.ip}`, '1', 'PX', SEARCHED_TTL_MS);
+  }
+
   next();
 }
 
@@ -315,10 +330,13 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
 
     if (maxPrice !== undefined && maxPrice !== '') {
       const mp = parseFloat(maxPrice);
+      if (isNaN(mp) || mp < 0 || mp > 10000) {
+        return res.status(400).json({ error: 'maxPrice must be between 0 and 10000' });
+      }
       filtered = filtered.filter(g => g.price <= mp);
     }
 
-    const minDisc = parseInt(minDiscount) || 0;
+    const minDisc = Math.min(100, Math.max(0, parseInt(minDiscount) || 0));
     if (minDisc > 0) {
       filtered = filtered.filter(g => g.discountPercent >= minDisc);
     }
@@ -350,19 +368,16 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
 
     // 6. Paginate
     const PAGE_SIZE = 24;
-    const pageNum = Math.max(1, parseInt(page));
+    const pageNum = Math.min(500, Math.max(1, parseInt(page) || 1));
     const total = filtered.length;
     const totalPages = Math.ceil(total / PAGE_SIZE);
     const start = (pageNum - 1) * PAGE_SIZE;
     const games = filtered.slice(start, start + PAGE_SIZE);
 
-    res.json({
-      games, total, page: pageNum, pageSize: PAGE_SIZE, totalPages,
-      _debug: { emuListings: listings.length, correlationMapSize: gameMap.size }
-    });
+    res.json({ games, total, page: pageNum, pageSize: PAGE_SIZE, totalPages });
   } catch (e) {
     console.error('[/api/games]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

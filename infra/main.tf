@@ -1,12 +1,11 @@
-# ── Variables — fill these in ─────────────────────────────────────────────────
 locals {
   app_name        = "steamuready"
   aws_region      = "us-east-1"
-  secrets_arn     = "arn:aws:secretsmanager:us-east-1:695159714435:secret:steamuready/prod-iUQYNm"
-  ecr_image_uri   = "695159714435.dkr.ecr.us-east-1.amazonaws.com/steamuready:latest"
-  certificate_arn = "arn:aws:acm:us-east-1:695159714435:certificate/23b8a8e6-99ad-4483-8404-c5f25d92aa54"
   domain_name     = "steamuready.com"
-  zone_id         = "Z0811680AQW5U3Q2D9GH"
+  secrets_arn     = var.secrets_arn
+  ecr_image_uri   = var.ecr_image_uri
+  certificate_arn = var.certificate_arn
+  zone_id         = var.zone_id
 }
 
 # ── Provider ──────────────────────────────────────────────────────────────────
@@ -15,6 +14,10 @@ terraform {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
     }
   }
 }
@@ -155,15 +158,34 @@ resource "aws_elasticache_subnet_group" "main" {
   subnet_ids = aws_subnet.private[*].id
 }
 
-resource "aws_elasticache_cluster" "redis" {
-  cluster_id           = local.app_name
-  engine               = "redis"
-  node_type            = "cache.t4g.micro"
-  num_cache_nodes      = 1
-  parameter_group_name = "default.redis7"
-  port                 = 6379
-  subnet_group_name    = aws_elasticache_subnet_group.main.name
-  security_group_ids   = [aws_security_group.redis.id]
+# Auth token: alphanumeric only (ElastiCache rejects @, /, space)
+resource "random_password" "redis_auth" {
+  length  = 32
+  special = false
+}
+
+resource "aws_secretsmanager_secret" "redis_auth" {
+  name = "${local.app_name}/redis-auth-token"
+}
+
+resource "aws_secretsmanager_secret_version" "redis_auth" {
+  secret_id     = aws_secretsmanager_secret.redis_auth.id
+  secret_string = random_password.redis_auth.result
+}
+
+resource "aws_elasticache_replication_group" "redis" {
+  replication_group_id       = local.app_name
+  description                = "${local.app_name} Redis"
+  engine                     = "redis"
+  engine_version             = "7.0"
+  node_type                  = "cache.t4g.micro"
+  num_cache_clusters         = 1
+  parameter_group_name       = "default.redis7"
+  port                       = 6379
+  subnet_group_name          = aws_elasticache_subnet_group.main.name
+  security_group_ids         = [aws_security_group.redis.id]
+  auth_token                 = random_password.redis_auth.result
+  transit_encryption_enabled = true
 }
 
 # ── IAM — task execution role (ECS agent) and task role (app itself) ──────────
@@ -204,7 +226,7 @@ resource "aws_iam_role_policy" "task_secrets" {
     Statement = [{
       Effect   = "Allow"
       Action   = ["secretsmanager:GetSecretValue"]
-      Resource = [local.secrets_arn]
+      Resource = [local.secrets_arn, aws_secretsmanager_secret.redis_auth.arn]
     }]
   })
 }
@@ -362,7 +384,8 @@ output "alb_dns_name" {
   value       = "https://${aws_lb.main.dns_name}"
 }
 
-output "redis_endpoint" {
-  description = "Paste this into the REDIS_URL secret in Step 7"
-  value       = "redis://${aws_elasticache_cluster.redis.cache_nodes[0].address}:6379"
+output "redis_url" {
+  description = "Paste this into the REDIS_URL secret in Secrets Manager (includes auth token)"
+  value       = "rediss://:${random_password.redis_auth.result}@${aws_elasticache_replication_group.redis.primary_endpoint_address}:6379"
+  sensitive   = true
 }

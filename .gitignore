@@ -4,8 +4,10 @@ node_modules/
 .env
 DEPLOY.md
 REDEPLOY.md
+AUDIT.md
 
 # Terraform
 infra/.terraform/
 infra/terraform.tfstate
 infra/terraform.tfstate.backup
+infra/terraform.tfvars
