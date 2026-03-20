@@ -620,7 +620,7 @@ async function fetchGames(resetPage = true) {
     state.totalPages = data.totalPages ?? 1;
     state.loaded     = true;
 
-    if (resetPage) startSearchCooldown(30);
+    if (resetPage) startSearchCooldown(5);
 
     renderGames();
     renderPagination();
