@@ -2,3 +2,10 @@ node_modules/
 *.log
 .DS_Store
 .env
+DEPLOY.md
+REDEPLOY.md
+
+# Terraform
+infra/.terraform/
+infra/terraform.tfstate
+infra/terraform.tfstate.backup

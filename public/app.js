@@ -55,6 +55,13 @@ const el = {
 const api = {
   async json(url) {
     const r = await fetch(url);
+    if (r.status === 429) {
+      const body = await r.json().catch(() => ({}));
+      const err = new Error(body.error || 'Rate limit exceeded');
+      err.status = 429;
+      err.retryAfter = body.retryAfter ?? 30;
+      throw err;
+    }
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return r.json();
   },
@@ -137,6 +144,7 @@ async function init() {
 }
 
 /* ── Device combobox — multi-select with chips ───────────────────────────────── */
+const MAX_DEVICES = 5;
 let _deviceFocusIdx = -1;
 const _selectedDevices = new Map(); // id → {id, name}
 
@@ -184,6 +192,7 @@ function closeDropdown() {
 
 function addDevice(d) {
   if (_selectedDevices.has(d.id)) return;
+  if (_selectedDevices.size >= MAX_DEVICES) return;
   _selectedDevices.set(d.id, d);
   el.deviceSearch.value = '';
   renderChips();
@@ -205,7 +214,12 @@ function renderChips() {
     chip.querySelector('button').addEventListener('click', () => removeDevice(d.id));
     el.deviceChips.appendChild(chip);
   });
-  el.deviceSearch.placeholder = t(_selectedDevices.size ? 'deviceAddPlaceholder' : 'deviceSearchPlaceholder');
+  const atMax = _selectedDevices.size >= MAX_DEVICES;
+  el.deviceSearch.disabled = atMax;
+  el.deviceSearch.placeholder = atMax
+    ? t('deviceMaxReached')(MAX_DEVICES)
+    : t(_selectedDevices.size ? 'deviceAddPlaceholder' : 'deviceSearchPlaceholder');
+  if (atMax) closeDropdown();
 }
 
 function clearAllDevices() {
@@ -325,7 +339,12 @@ function prefRenderChips() {
     });
     prefEl.chips.appendChild(chip);
   });
-  prefEl.search.placeholder = t(_prefSelectedDevices.size ? 'deviceAddPlaceholder' : 'deviceSearchPlaceholder');
+  const atMax = _prefSelectedDevices.size >= MAX_DEVICES;
+  prefEl.search.disabled = atMax;
+  prefEl.search.placeholder = atMax
+    ? t('deviceMaxReached')(MAX_DEVICES)
+    : t(_prefSelectedDevices.size ? 'deviceAddPlaceholder' : 'deviceSearchPlaceholder');
+  if (atMax) prefEl.dropdown.hidden = true;
 }
 
 function prefRenderDropdown(devices, q = '') {
@@ -349,6 +368,7 @@ function prefRenderDropdown(devices, q = '') {
 
 function prefAddDevice(d) {
   if (_prefSelectedDevices.has(d.id)) return;
+  if (_prefSelectedDevices.size >= MAX_DEVICES) return;
   _prefSelectedDevices.set(d.id, d);
   prefEl.search.value = '';
   prefRenderChips();
@@ -535,6 +555,28 @@ function populateCompatList(scales) {
   });
 }
 
+/* ── Search rate-limit cooldown ─────────────────────────────────────────────── */
+let _searchCoolUntil = 0;
+let _searchCoolTimer = null;
+
+function startSearchCooldown(seconds) {
+  _searchCoolUntil = Date.now() + seconds * 1000;
+  clearTimeout(_searchCoolTimer);
+  const applyText = t('applyBtn');
+  function tick() {
+    const rem = Math.ceil((_searchCoolUntil - Date.now()) / 1000);
+    if (rem <= 0) {
+      el.applyBtn.disabled = false;
+      el.applyBtn.textContent = applyText;
+      return;
+    }
+    el.applyBtn.disabled = true;
+    el.applyBtn.textContent = `⏳ ${rem}s`;
+    _searchCoolTimer = setTimeout(tick, 500);
+  }
+  tick();
+}
+
 /* ── Fetch & render games ───────────────────────────────────────────────────── */
 async function fetchGames(resetPage = true) {
   if (state.loading) return;
@@ -578,6 +620,8 @@ async function fetchGames(resetPage = true) {
     state.totalPages = data.totalPages ?? 1;
     state.loaded     = true;
 
+    if (resetPage) startSearchCooldown(30);
+
     renderGames();
     renderPagination();
     updateCount();
@@ -585,7 +629,12 @@ async function fetchGames(resetPage = true) {
     progress(100);
   } catch (e) {
     console.error(e);
-    showError(e.message);
+    if (e.status === 429) {
+      startSearchCooldown(e.retryAfter ?? 30);
+      showError(e.message);
+    } else {
+      showError(e.message);
+    }
     progress(100);
   } finally {
     state.loading = false;

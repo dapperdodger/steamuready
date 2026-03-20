@@ -13,11 +13,13 @@
   - [ ] Tune ECS health check grace period to account for cache warm-up time
   - [x] Consider a dedicated background cache-warmer task so user requests never hit cold paths - not done, decided against
   - [ ] Test ITAD API reachability from AWS datacenter IPs (no scraping risk, but worth confirming)
-- [x Dockerization
+- [x] Dockerization
+- [x] Fix where Seeing some 0% reduction
+- [x] Limit max device selection
+- [x] Rate Limiting (1 per 30 sec)
+- [ ] Konami code easter egg
 - [ ] Using GameNative as source alongside emuready
 - [ ] Filter/Sorting by reviews (will need to get data as part of cache warmer, and not get it otherwise)
-
-
 
 Moral Needs
 Contact Emuready sure im not breaking any rules

@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const helmet = require('helmet');
 const path = require('path');
 const Fuse = require('fuse.js');
 const emuready = require('./services/emuready');
@@ -7,6 +8,8 @@ const store = require('./services/store');
 const { redis, delPattern } = require('./services/cache');
 
 const app = express();
+app.set('trust proxy', 1); // honour X-Forwarded-For from ALB
+app.use(helmet());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -146,8 +149,27 @@ async function getCorrelationMap(cc, deviceIds = [], shopIds = []) {
   return gameMap;
 }
 
+// ── Rate limiter: 1 new search per 30 s per IP (pagination exempt) ────────────
+const RATE_WINDOW_MS = 30 * 1000;
+async function gamesRateLimiter(req, res, next) {
+  const page = parseInt(req.query.page) || 1;
+  if (page > 1) return next(); // pagination is free
+
+  const key = `ratelimit:games:${req.ip}`;
+  const exists = await redis.exists(key);
+  if (exists) {
+    const ttl = await redis.pttl(key);
+    return res.status(429).json({
+      error: 'Rate limit exceeded. Please wait before searching again.',
+      retryAfter: Math.ceil(ttl / 1000),
+    });
+  }
+  await redis.set(key, '1', 'PX', RATE_WINDOW_MS);
+  next();
+}
+
 // ── Main endpoint: correlated games ─────────────────────────────────────────
-app.get('/api/games', async (req, res) => {
+app.get('/api/games', gamesRateLimiter, async (req, res) => {
   try {
     const {
       deviceIds: rawDeviceIds = '',
@@ -272,8 +294,8 @@ app.get('/api/games', async (req, res) => {
       }
     }
 
-    // 4. Apply filters
-    let filtered = correlated;
+    // 4. Apply filters — drop anything with no active discount
+    let filtered = correlated.filter(g => g.discountPercent > 0);
 
     if (search && search.trim()) {
       const sf = new Fuse(filtered, {
@@ -338,6 +360,14 @@ app.get('/api/games', async (req, res) => {
 
 // ── Cache refresh ─────────────────────────────────────────────────────────────
 app.post('/api/refresh', async (req, res) => {
+  const secret = process.env.REFRESH_SECRET;
+  if (!secret) {
+    return res.status(503).json({ error: 'Refresh endpoint not configured' });
+  }
+  const auth = req.headers['authorization'] ?? '';
+  if (auth !== `Bearer ${secret}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   await Promise.all([
     emuready.clearCache(),
     store.clearCache(),
