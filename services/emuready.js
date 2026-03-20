@@ -30,8 +30,15 @@ async function getDevices() {
       ...d,
       name: [d.brand?.name, d.modelName].filter(Boolean).join(' '),
     }));
-    normalized.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    console.log(`[EmuReady] loaded ${normalized.length} devices`);
+    // Sort by listing count descending (if the API returns it), then alphabetically
+    const countOf = d => d._count?.listings ?? d.listingsCount ?? d.listingCount ?? 0;
+    normalized.sort((a, b) => {
+      const diff = countOf(b) - countOf(a);
+      if (diff !== 0) return diff;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+    const sampleCount = countOf(normalized[0]);
+    console.log(`[EmuReady] loaded ${normalized.length} devices (top device listing count: ${sampleCount})`);
     return normalized;
   }, TTL).catch(e => {
     console.error('[EmuReady] devices error:', e.message);
