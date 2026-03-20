@@ -161,7 +161,8 @@ function populateDevices(devices) {
 function onDeviceInput() {
   const q = el.deviceSearch.value.trim().toLowerCase();
   const matches = q
-    ? state.devices.filter(d => d.name.toLowerCase().includes(q) && !_selectedDevices.has(d.id)).slice(0, 60)
+    ? state.devices.filter(d => d.name.toLowerCase().includes(q) && !_selectedDevices.has(d.id))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || '')).slice(0, 60)
     : state.devices.filter(d => !_selectedDevices.has(d.id)).slice(0, 60);
   renderDropdown(matches, q);
 }
