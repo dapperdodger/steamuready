@@ -286,6 +286,16 @@ select option { background: var(--card); }
   letter-spacing: .3px;
   line-height: 1.2;
 }
+.new-deal-badge {
+  position: absolute; bottom: 8px; right: 8px;
+  background: #1a3d6b;
+  color: #79c0ff;
+  font-size: .68rem; font-weight: 700;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  letter-spacing: .3px;
+  line-height: 1.2;
+}
 .compat-badge {
   position: absolute; top: 8px; left: 8px;
   font-size: .68rem; font-weight: 700;
@@ -338,6 +348,12 @@ select option { background: var(--card); }
   color: var(--steam-blue);
 }
 .price-free { color: var(--green); }
+.deal-expiry {
+  margin-left: auto;
+  font-size: .68rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
 
 .card-footer {
   padding: 8px 12px;

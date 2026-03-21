@@ -17,6 +17,7 @@ const state = {
     maxPrice:      '',
     minDiscount:   0,
     histLow:       false,
+    newAge:        '',
     search:        '',
     sort:          'discount_desc',
     cc:            'us',
@@ -48,7 +49,8 @@ const el = {
   pagination:   $('pagination'),
   appList:      $('appList'),
   storeList:    $('storeList'),
-  histLowCheck: $('histLowCheck'),
+  histLowCheck:  $('histLowCheck'),
+  newAgeButtons: $('newAgeButtons'),
 };
 
 /* ── API ───────────────────────────────────────────────────────────────────── */
@@ -641,6 +643,7 @@ async function fetchGames(resetPage = true) {
     shops:         state.filters.shops.join(',') || '',
     apps:          state.filters.apps.join(',') || '',
     histLow:       state.filters.histLow ? '1' : '',
+    newAge:        state.filters.newAge,
     page:          state.page,
   };
 
@@ -691,6 +694,8 @@ function readFilters() {
   state.filters.shops         = [...el.storeList.querySelectorAll('input:checked')].map(i => i.value);
   state.filters.apps          = [...el.appList.querySelectorAll('input:checked')].map(i => i.value);
   state.filters.histLow       = el.histLowCheck.checked;
+  const activeAge = el.newAgeButtons.querySelector('.disc-btn.active');
+  state.filters.newAge        = activeAge ? activeAge.dataset.value : '';
 
   const activeDisc = document.querySelector('.disc-btn.active');
   state.filters.minDiscount = activeDisc ? parseInt(activeDisc.dataset.value) : 0;
@@ -721,6 +726,8 @@ function buildCard(g) {
   const cls    = compatClass(g.performanceRank);
   const label  = g.performanceLabel || (g.performanceRank ? t('rankLabel')(g.performanceRank) : '?');
   const isHistLow = g.historicalLow && g.price <= g.historicalLow.price;
+  const isNew  = isNewDeal(g.dealSince);
+  const expiry = g.dealExpiry ? formatShortDate(g.dealExpiry) : null;
 
   const div = document.createElement('div');
   div.className = 'card';
@@ -736,6 +743,7 @@ function buildCard(g) {
       <span class="discount-badge">−${g.discountPercent}%</span>
       <span class="compat-badge compat-${cls}">${escHtml(label)}</span>
       ${isHistLow ? `<span class="hist-low-badge" title="${escHtml(g.historicalLow.priceFormatted)} · ${escHtml(g.historicalLow.shop)}">${t('histLowBadge')}</span>` : ''}
+      ${isNew ? `<span class="new-deal-badge">${t('newBadge')}</span>` : ''}
     </div>
 
     <div class="card-body"${notesAttr}>
@@ -757,6 +765,7 @@ function buildCard(g) {
         <span class="price-final${g.price === 0 ? ' price-free' : ''}">
           ${escHtml(g.priceFormatted)}
         </span>
+        ${expiry ? `<span class="deal-expiry">${escHtml(t('dealEnds')(expiry))}</span>` : ''}
       </div>
     </div>
 
@@ -863,6 +872,18 @@ function showError(msg) {
     </div>`;
 }
 
+/* ── Deal date helpers ──────────────────────────────────────────────────────── */
+const NEW_DEAL_MS = 48 * 60 * 60 * 1000; // 48 h
+
+function isNewDeal(isoStr) {
+  if (!isoStr) return false;
+  return (Date.now() - new Date(isoStr).getTime()) < NEW_DEAL_MS;
+}
+
+function formatShortDate(isoStr) {
+  return new Date(isoStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 /* ── Utility ────────────────────────────────────────────────────────────────── */
 function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -885,10 +906,19 @@ el.sortSelect.addEventListener('change', () => {
 });
 
 // Discount buttons
-document.querySelectorAll('.disc-btn').forEach(btn => {
+document.querySelectorAll('#discountButtons .disc-btn, .discount-buttons:not(#newAgeButtons) .disc-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
+    btn.closest('.discount-buttons').querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+  });
+});
+
+// Deal age buttons
+el.newAgeButtons.querySelectorAll('.disc-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    el.newAgeButtons.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    fetchGames(true);
   });
 });
 
@@ -918,6 +948,10 @@ el.resetBtn.addEventListener('click', () => {
 
   // Reset historical low
   el.histLowCheck.checked = false;
+
+  // Reset deal age
+  el.newAgeButtons.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
+  el.newAgeButtons.querySelector('[data-value=""]')?.classList.add('active');
 
   fetchGames(true);
 });

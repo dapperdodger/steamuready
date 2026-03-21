@@ -200,6 +200,7 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
       maxPrice, minDiscount = 0,
       histLow,
       search, sort = 'discount_desc',
+      newAge,
       page = 1,
       cc = 'us',
       shops: rawShops = '',
@@ -301,6 +302,8 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
         storeUrl: sg.storeUrl,
         matchScore: match.matchScore,
         historicalLow: sg.historicalLow ?? null,
+        dealSince: sg.dealSince ?? null,
+        dealExpiry: sg.dealExpiry ?? null,
       };
 
       // Dedupe by Steam appId: keep best (lowest) performance rank
@@ -345,6 +348,12 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
       filtered = filtered.filter(g => g.historicalLow && g.price <= g.historicalLow.price);
     }
 
+    const newAgeHours = parseInt(newAge);
+    if (newAgeHours > 0) {
+      const cutoff = Date.now() - newAgeHours * 60 * 60 * 1000;
+      filtered = filtered.filter(g => g.dealSince && new Date(g.dealSince).getTime() >= cutoff);
+    }
+
     // 5. Sort
     switch (sort) {
       case 'discount_desc':
@@ -361,6 +370,14 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
         break;
       case 'name_asc':
         filtered.sort((a, b) => a.gameName.localeCompare(b.gameName));
+        break;
+      case 'new_desc':
+        filtered.sort((a, b) => {
+          if (!a.dealSince && !b.dealSince) return 0;
+          if (!a.dealSince) return 1;
+          if (!b.dealSince) return -1;
+          return new Date(b.dealSince) - new Date(a.dealSince);
+        });
         break;
       default:
         filtered.sort((a, b) => b.discountPercent - a.discountPercent);

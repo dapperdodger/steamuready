@@ -1,7 +1,7 @@
 const axios = require('axios');
 const cache = require('./cache');
 
-const BASE = 'https://www.emuready.com/api/trpc';
+const BASE = 'https://www.emuready.com/api/mobile/trpc';
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   'Accept': 'application/json',
@@ -27,9 +27,10 @@ async function getDevices() {
   return cache.getOrFetch(k, async () => {
     const data = await trpcGet('devices.get', { limit: 1000 });
     const list = data?.devices ?? data?.data ?? (Array.isArray(data) ? data : []);
+    if (list.length >= 1000) console.warn('[EmuReady] devices.get returned 1000 results — API limit hit, list may be truncated');
     const normalized = list.map(d => ({
       ...d,
-      name: [d.brand?.name, d.modelName].filter(Boolean).join(' '),
+      name: [d.brandName ?? d.brand?.name, d.modelName].filter(Boolean).join(' '),
     }));
     // Sort by listing count descending (if the API returns it), then alphabetically
     const countOf = d => d._count?.listings ?? d.listingsCount ?? d.listingCount ?? 0;
@@ -50,7 +51,7 @@ async function getDevices() {
 async function getPerformanceScales() {
   const k = 'emu:perf';
   return cache.getOrFetch(k, async () => {
-    const data = await trpcGet('listings.performanceScales', {});
+    const data = await trpcGet('general.performanceScales', {});
     const list = Array.isArray(data) ? data : data?.performanceScales ?? [];
     list.sort((a, b) => (a.rank ?? a.position ?? 0) - (b.rank ?? b.position ?? 0));
     return list;
@@ -72,7 +73,7 @@ async function getListings({ deviceId, performanceId, page = 1, limit = 200 } = 
 }
 
 // Fetch ALL listings across all pages for given filters.
-// EmuReady caps page size at 100, so we paginate through everything.
+// EmuReady mobile API caps page size at 50, so we paginate through everything.
 // Results cached 30 min per filter combo.
 async function getAllListings(filters, onProgress) {
   const deviceIds = (filters && filters.deviceIds) || [];
@@ -92,7 +93,7 @@ async function getAllListings(filters, onProgress) {
 
   console.log('[EmuReady] fetching all listing pages...');
   const fetchPromise = (async () => {
-    const PAGE_SIZE = 100;
+    const PAGE_SIZE = 50;
     let all = [];
     let page = 1;
     let totalPages = 1;

@@ -215,6 +215,8 @@ async function getDealsForTitles(titles, cc = 'us', shops = []) {
       priceFormatted:         price === 0 ? 'Free' : `${sym}${price.toFixed(2)}`,
       originalPriceFormatted: (current.cut ?? 0) > 0 ? `${sym}${originalPrice.toFixed(2)}` : '',
       currency:               current.price?.currency ?? cc.toUpperCase(),
+      dealSince:              current.timestamp ?? null,
+      dealExpiry:             current.expiry ?? null,
       historicalLow: lowest ? {
         price:          toNum(lowest.price?.amount),
         cut:            lowest.cut ?? 0,
