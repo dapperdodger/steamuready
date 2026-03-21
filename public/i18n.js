@@ -1,7 +1,7 @@
 /* ── Translations ────────────────────────────────────────────────────────────── */
 const translations = {
   fr: {
-    title:                  'SteamUReady — Promos Steam × Compatibilité émulation',
+    title:                  'SteamUReady — Promos de jeux × Compatibilité émulation',
     refreshTitle:           'Vider le cache et re-fetcher',
     refresh:                'Refresh',
     filters:                'Filtres',
@@ -21,7 +21,7 @@ const translations = {
     storeFilter:            'Boutiques',
     histLowFilter:          'Prix historiquement bas uniquement',
     histLowBadge:           '★ Prix le plus bas',
-    steamRegion:            'Région Steam',
+    steamRegion:            'Région',
     searchLabel:            'Rechercher',
     searchPlaceholder:      'Nom du jeu…',
     applyBtn:               '🔍 Rechercher',
@@ -36,7 +36,7 @@ const translations = {
     refreshing:             'Actualisation…',
     cacheCleared:           'Cache vidé ✓',
     noGamesTitle:           'Aucun jeu trouvé',
-    noGamesMsg:             'Essaie avec un autre appareil ou élargis les filtres.<br/>Les promos Steam changent souvent — reviens plus tard !',
+    noGamesMsg:             'Essaie avec un autre appareil ou élargis les filtres.<br/>Les promos changent souvent — reviens plus tard !',
     viewOnStore:            store => `Voir sur ${store}`,
     errorTitle:             'Erreur',
     noResults:              'Aucun résultat',
@@ -59,7 +59,7 @@ const translations = {
   },
 
   en: {
-    title:                  'SteamUReady — Steam Sales × Emulation Compatibility',
+    title:                  'SteamUReady — Game Sales × Emulation Compatibility',
     refreshTitle:           'Clear cache and re-fetch',
     refresh:                'Refresh',
     filters:                'Filters',
@@ -79,7 +79,7 @@ const translations = {
     storeFilter:            'Stores',
     histLowFilter:          'Historical low only',
     histLowBadge:           '★ Historical low',
-    steamRegion:            'Steam region',
+    steamRegion:            'Region',
     searchLabel:            'Search',
     searchPlaceholder:      'Game name…',
     applyBtn:               '🔍 Search',
@@ -94,7 +94,7 @@ const translations = {
     refreshing:             'Refreshing…',
     cacheCleared:           'Cache cleared ✓',
     noGamesTitle:           'No games found',
-    noGamesMsg:             'Try a different device or broaden your filters.<br/>Steam sales change often — check back later!',
+    noGamesMsg:             'Try a different device or broaden your filters.<br/>Game sales change often — check back later!',
     viewOnStore:            store => `View on ${store}`,
     errorTitle:             'Error',
     noResults:              'No results',
@@ -117,7 +117,7 @@ const translations = {
   },
 
   es: {
-    title:                  'SteamUReady — Ofertas Steam × Compatibilidad de emulación',
+    title:                  'SteamUReady — Ofertas de juegos × Compatibilidad de emulación',
     refreshTitle:           'Limpiar caché y recargar',
     refresh:                'Actualizar',
     filters:                'Filtros',
@@ -137,7 +137,7 @@ const translations = {
     storeFilter:            'Tiendas',
     histLowFilter:          'Solo precio mínimo histórico',
     histLowBadge:           '★ Mínimo histórico',
-    steamRegion:            'Región de Steam',
+    steamRegion:            'Región',
     searchLabel:            'Buscar',
     searchPlaceholder:      'Nombre del juego…',
     applyBtn:               '🔍 Buscar',
@@ -152,7 +152,7 @@ const translations = {
     refreshing:             'Actualizando…',
     cacheCleared:           'Caché limpiado ✓',
     noGamesTitle:           'No se encontraron juegos',
-    noGamesMsg:             'Prueba con otro dispositivo o amplía los filtros.<br/>¡Las ofertas de Steam cambian seguido — vuelve más tarde!',
+    noGamesMsg:             'Prueba con otro dispositivo o amplía los filtros.<br/>¡Las ofertas cambian seguido — vuelve más tarde!',
     viewOnStore:            store => `Ver en ${store}`,
     errorTitle:             'Error',
     noResults:              'Sin resultados',

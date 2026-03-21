@@ -19,6 +19,8 @@
 - [x] Rate Limiting (1 per 30 sec)
 - [x] Konami code easter egg
 - [x] Change default devices on click to top 20 alphabetical
+- [x] Change all direct Steam references (title, ect)
 - [ ] Using GameNative as source alongside emuready
 - [ ] Filter/Sorting by reviews (will need to get data as part of cache warmer, and not get it otherwise)
+- [ ] Migrate to EmuReady `/api/mobile/trpc` endpoint (blocked: `deviceIds` filter ignored — returns all 12k listings; revisit when API is more robust and API key is enforced)
 

@@ -1,7 +1,7 @@
 {
   "name": "steamuready",
   "version": "1.0.0",
-  "description": "Correlate EmuReady emulation compatibility with Steam sales",
+  "description": "Correlate EmuReady emulation compatibility with Game sales",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

@@ -406,7 +406,7 @@ app.get('/api/status', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
-  console.log(`\n🎮  SteamUReady  →  http://localhost:${PORT}\n`);
+  console.log(`\n🎮  SteamUReady Running`);
 });
 
 // ── Graceful shutdown (ECS/ALB task draining) ─────────────────────────────────
