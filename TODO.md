@@ -17,10 +17,8 @@
 - [x] Fix where Seeing some 0% reduction
 - [x] Limit max device selection
 - [x] Rate Limiting (1 per 30 sec)
-- [ ] Konami code easter egg
+- [x] Konami code easter egg
+- [x] Change default devices on click to top 20 alphabetical
 - [ ] Using GameNative as source alongside emuready
 - [ ] Filter/Sorting by reviews (will need to get data as part of cache warmer, and not get it otherwise)
 
-Moral Needs
-Contact Emuready sure im not breaking any rules
-Contact ITAD to make sure im not breaking their TOS

@@ -6,6 +6,7 @@ const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   'Accept': 'application/json',
   'Referer': 'https://www.emuready.com/listings',
+  ...(process.env.EMUREADY_API_KEY ? { 'x-api-key': process.env.EMUREADY_API_KEY } : {}),
 };
 
 const TTL = 30 * 60 * 1000; // 30 min

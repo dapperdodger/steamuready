@@ -160,14 +160,23 @@ function populateDevices(devices) {
 
 function onDeviceInput() {
   const q = el.deviceSearch.value.trim().toLowerCase();
-  const matches = q
-    ? state.devices.filter(d => d.name.toLowerCase().includes(q) && !_selectedDevices.has(d.id))
-        .sort((a, b) => (a.name || '').localeCompare(b.name || '')).slice(0, 60)
-    : state.devices.filter(d => !_selectedDevices.has(d.id)).slice(0, 60);
-  renderDropdown(matches, q);
+  if (q) {
+    const matches = state.devices
+      .filter(d => d.name.toLowerCase().includes(q) && !_selectedDevices.has(d.id))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+      .slice(0, 60);
+    renderDropdown(matches, q);
+  } else {
+    // Top 20 most popular, sorted alphabetically, with hint
+    const top20 = state.devices
+      .filter(d => !_selectedDevices.has(d.id))
+      .slice(0, 20)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    renderDropdown(top20, '', true);
+  }
 }
 
-function renderDropdown(devices, q = '') {
+function renderDropdown(devices, q = '', showHint = false) {
   el.deviceDropdown.innerHTML = '';
   _deviceFocusIdx = -1;
   if (!devices.length) {
@@ -182,6 +191,12 @@ function renderDropdown(devices, q = '') {
       div.addEventListener('mousedown', e => { e.preventDefault(); addDevice(d); });
       el.deviceDropdown.appendChild(div);
     });
+    if (showHint) {
+      const hint = document.createElement('div');
+      hint.className = 'device-opt-hint';
+      hint.textContent = t('deviceSearchHint');
+      el.deviceDropdown.appendChild(hint);
+    }
   }
   el.deviceDropdown.hidden = false;
 }
@@ -348,7 +363,7 @@ function prefRenderChips() {
   if (atMax) prefEl.dropdown.hidden = true;
 }
 
-function prefRenderDropdown(devices, q = '') {
+function prefRenderDropdown(devices, q = '', showHint = false) {
   prefEl.dropdown.innerHTML = '';
   _prefDeviceFocusIdx = -1;
   if (!devices.length) {
@@ -363,6 +378,12 @@ function prefRenderDropdown(devices, q = '') {
       div.addEventListener('mousedown', e => { e.preventDefault(); prefAddDevice(d); });
       prefEl.dropdown.appendChild(div);
     });
+    if (showHint) {
+      const hint = document.createElement('div');
+      hint.className = 'device-opt-hint';
+      hint.textContent = t('deviceSearchHint');
+      prefEl.dropdown.appendChild(hint);
+    }
   }
   prefEl.dropdown.hidden = false;
 }
@@ -377,21 +398,36 @@ function prefAddDevice(d) {
   _prefDeviceFocusIdx = -1;
 }
 
+function getPrefDeviceMatches(q) {
+  if (q) {
+    return {
+      matches: state.devices
+        .filter(d => d.name.toLowerCase().includes(q) && !_prefSelectedDevices.has(d.id))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        .slice(0, 60),
+      hint: false,
+    };
+  }
+  return {
+    matches: state.devices
+      .filter(d => !_prefSelectedDevices.has(d.id))
+      .slice(0, 20)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || '')),
+    hint: true,
+  };
+}
+
 function initPreferredDevicesModal() {
   prefEl.search.addEventListener('input', () => {
     const q = prefEl.search.value.trim().toLowerCase();
-    const matches = q
-      ? state.devices.filter(d => d.name.toLowerCase().includes(q) && !_prefSelectedDevices.has(d.id)).slice(0, 60)
-      : state.devices.filter(d => !_prefSelectedDevices.has(d.id)).slice(0, 60);
-    prefRenderDropdown(matches, q);
+    const { matches, hint } = getPrefDeviceMatches(q);
+    prefRenderDropdown(matches, q, hint);
   });
 
   prefEl.search.addEventListener('focus', () => {
     const q = prefEl.search.value.trim().toLowerCase();
-    const matches = q
-      ? state.devices.filter(d => d.name.toLowerCase().includes(q) && !_prefSelectedDevices.has(d.id)).slice(0, 60)
-      : state.devices.filter(d => !_prefSelectedDevices.has(d.id)).slice(0, 60);
-    prefRenderDropdown(matches, q);
+    const { matches, hint } = getPrefDeviceMatches(q);
+    prefRenderDropdown(matches, q, hint);
   });
 
   prefEl.search.addEventListener('keydown', e => {
