@@ -130,6 +130,8 @@ async function init() {
     } else {
       applyPreferredDevices();
       applyPreferredCompat();
+      applyPreferredRegion();
+      applyPreferredStores();
     }
 
     el.statusDot.className = 'status-dot ok';
@@ -268,9 +270,11 @@ function onDeviceKey(e) {
   opts[_deviceFocusIdx]?.scrollIntoView({ block: 'nearest' });
 }
 
-/* ── Preferred devices (localStorage) ──────────────────────────────────────── */
+/* ── Preferred settings (localStorage) ─────────────────────────────────────── */
 const PREF_KEY        = 'preferredDevices';
 const PREF_COMPAT_KEY = 'preferredCompat';
+const PREF_REGION_KEY = 'preferredRegion';
+const PREF_STORES_KEY = 'preferredStores';
 
 function loadPreferredDeviceIds() {
   try { return JSON.parse(localStorage.getItem(PREF_KEY)); } catch { return null; }
@@ -308,7 +312,41 @@ function applyPreferredCompat() {
   item.querySelector('input').checked = true;
 }
 
-/* ── Preferred devices modal ────────────────────────────────────────────────── */
+function loadPreferredRegion() {
+  return localStorage.getItem(PREF_REGION_KEY); // null = never set
+}
+
+function savePreferredRegion(cc) {
+  localStorage.setItem(PREF_REGION_KEY, cc ?? 'us');
+}
+
+function applyPreferredRegion() {
+  const cc = loadPreferredRegion();
+  if (!cc) return;
+  if (el.regionSelect) {
+    el.regionSelect.value = cc;
+    updateRegionNote();
+  }
+}
+
+function loadPreferredStoreIds() {
+  try { return JSON.parse(localStorage.getItem(PREF_STORES_KEY)); } catch { return null; }
+}
+
+function savePreferredStoreIds(ids) {
+  localStorage.setItem(PREF_STORES_KEY, JSON.stringify(ids));
+}
+
+function applyPreferredStores() {
+  const ids = loadPreferredStoreIds();
+  if (!ids || !ids.length) return; // null or empty = all selected (already default)
+  const idSet = new Set(ids.map(String));
+  el.storeList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.checked = idSet.has(String(cb.value));
+  });
+}
+
+/* ── Preferred settings modal ───────────────────────────────────────────────── */
 const _prefSelectedDevices = new Map(); // id → {id, name} — used only inside modal
 let _prefDeviceFocusIdx = -1;
 
@@ -317,6 +355,8 @@ const prefEl = {
   search:       document.getElementById('prefDeviceSearch'),
   dropdown:     document.getElementById('prefDeviceDropdown'),
   chips:        document.getElementById('prefDeviceChips'),
+  regionSelect: document.getElementById('prefRegionSelect'),
+  storeList:    document.getElementById('prefStoreList'),
   compatSelect: document.getElementById('prefCompatSelect'),
   skipBtn:      document.getElementById('prefDevicesSkip'),
   saveBtn:      document.getElementById('prefDevicesSave'),
@@ -336,6 +376,17 @@ function openPreferredDevicesModal() {
   // Seed compat select with saved preference
   const savedCompat = loadPreferredCompatId();
   if (savedCompat !== null) prefEl.compatSelect.value = savedCompat;
+  // Seed region select with saved preference
+  const savedRegion = loadPreferredRegion();
+  if (savedRegion && prefEl.regionSelect) prefEl.regionSelect.value = savedRegion;
+  // Seed store checkboxes with saved preference
+  const savedStoreIds = loadPreferredStoreIds();
+  if (savedStoreIds && prefEl.storeList) {
+    const idSet = new Set(savedStoreIds.map(String));
+    prefEl.storeList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.checked = idSet.has(String(cb.value));
+    });
+  }
   prefEl.modal.hidden = false;
   prefEl.search.focus();
 }
@@ -471,9 +522,32 @@ function initPreferredDevicesModal() {
     prefEl.compatSelect.appendChild(opt);
   });
 
+  // Populate modal region select from same data as sidebar
+  if (prefEl.regionSelect) {
+    prefEl.regionSelect.innerHTML = el.regionSelect.innerHTML;
+    prefEl.regionSelect.value = el.regionSelect.value;
+  }
+
+  // Populate modal store checkboxes from same data as sidebar
+  if (prefEl.storeList) {
+    prefEl.storeList.innerHTML = '';
+    state.allShops.forEach(s => {
+      const label = document.createElement('label');
+      label.className = 'store-item';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = s.id;
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(s.title));
+      prefEl.storeList.appendChild(label);
+    });
+  }
+
   prefEl.skipBtn.addEventListener('click', () => {
     savePreferredDeviceIds([]);
     savePreferredCompatId('');
+    savePreferredRegion('us');
+    savePreferredStoreIds([]);
     closePreferredDevicesModal();
   });
 
@@ -481,13 +555,29 @@ function initPreferredDevicesModal() {
     const ids = [..._prefSelectedDevices.keys()];
     savePreferredDeviceIds(ids);
     savePreferredCompatId(prefEl.compatSelect.value);
-    // Apply new preferred devices to the main selection (add any not already selected)
+    // Save + apply region
+    const selectedRegion = prefEl.regionSelect ? prefEl.regionSelect.value : el.regionSelect.value;
+    savePreferredRegion(selectedRegion);
+    if (el.regionSelect.value !== selectedRegion) {
+      el.regionSelect.value = selectedRegion;
+      updateRegionNote();
+    }
+    // Save + apply stores
+    if (prefEl.storeList) {
+      const storeIds = [...prefEl.storeList.querySelectorAll('input:checked')].map(i => i.value);
+      savePreferredStoreIds(storeIds);
+      const storeIdSet = new Set(storeIds.map(String));
+      el.storeList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.checked = storeIdSet.has(String(cb.value));
+      });
+    }
+    // Apply devices + compat to main UI
     _prefSelectedDevices.forEach(d => {
       if (!_selectedDevices.has(d.id)) addDevice(d);
     });
     applyPreferredCompat();
     closePreferredDevicesModal();
-    fetchGames(true);
+    fetchGames(true, true);
   });
 
   // Close on overlay click
@@ -515,7 +605,6 @@ function populateRegions(regions) {
 
   el.regionSelect.addEventListener('change', () => {
     updateRegionNote();
-    fetchGames(true);
   });
 }
 
@@ -550,7 +639,7 @@ function populateStores(shops) {
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.value = s.id;
-    cb.addEventListener('change', () => fetchGames(true));
+    cb.checked = true;
     label.appendChild(cb);
     label.appendChild(document.createTextNode(s.title));
     el.storeList.appendChild(label);
@@ -584,12 +673,13 @@ function populateCompatList(scales) {
     el.compatList.appendChild(lbl);
   });
 
-  // Click on row = select radio
+  // Click on row = select radio + instant re-fetch (Filters)
   el.compatList.querySelectorAll('.compat-item').forEach(item => {
     item.addEventListener('click', () => {
       el.compatList.querySelectorAll('.compat-item').forEach(i => i.classList.remove('selected'));
       item.classList.add('selected');
       item.querySelector('input').checked = true;
+      fetchGames(true);
     });
   });
 }
@@ -617,7 +707,7 @@ function startSearchCooldown(seconds) {
 }
 
 /* ── Fetch & render games ───────────────────────────────────────────────────── */
-async function fetchGames(resetPage = true) {
+async function fetchGames(resetPage = true, isSettingsChange = false) {
   if (state.loading) return;
 
   if (_selectedDevices.size === 0) {
@@ -660,7 +750,7 @@ async function fetchGames(resetPage = true) {
     state.totalPages = data.totalPages ?? 1;
     state.loaded     = true;
 
-    if (resetPage) startSearchCooldown(5);
+    if (resetPage && isSettingsChange) startSearchCooldown(5);
 
     renderGames();
     renderPagination();
@@ -691,7 +781,11 @@ function readFilters() {
   state.filters.search        = el.searchInput.value.trim();
   state.filters.sort          = el.sortSelect.value;
   state.filters.cc            = el.regionSelect?.value || 'us';
-  state.filters.shops         = [...el.storeList.querySelectorAll('input:checked')].map(i => i.value);
+  const allStores   = el.storeList.querySelectorAll('input');
+  const checkedStores = el.storeList.querySelectorAll('input:checked');
+  state.filters.shops = checkedStores.length === allStores.length
+    ? []  // all selected = send empty to hit the 'all' cache key
+    : [...checkedStores].map(i => i.value);
   state.filters.apps          = [...el.appList.querySelectorAll('input:checked')].map(i => i.value);
   state.filters.histLow       = el.histLowCheck.checked;
   const activeAge = el.newAgeButtons.querySelector('.disc-btn.active');
@@ -889,31 +983,32 @@ function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
 /* ── Event listeners ────────────────────────────────────────────────────────── */
 
-// Apply filters
-el.applyBtn.addEventListener('click', () => fetchGames(true));
+// Apply filters (Settings change — triggers cooldown)
+el.applyBtn.addEventListener('click', () => fetchGames(true, true));
 
-// Enter in search
-el.searchInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') fetchGames(true);
-});
-
-// Sort change = instant re-fetch
+// Sort change = instant re-fetch (Filters)
 el.sortSelect.addEventListener('change', () => {
   state.filters.sort = el.sortSelect.value;
   fetchGames(true);
 });
 
-// Discount buttons
-document.querySelectorAll('#discountButtons .disc-btn, .discount-buttons:not(#newAgeButtons) .disc-btn').forEach(btn => {
+// Discount buttons (instant, Filters)
+document.querySelectorAll('#discountButtons .disc-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     btn.closest('.discount-buttons').querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+    fetchGames(true);
   });
 });
 
-// Deal age buttons
+// Deal age buttons (instant, Filters)
 el.newAgeButtons.querySelectorAll('.disc-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     el.newAgeButtons.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
@@ -921,6 +1016,17 @@ el.newAgeButtons.querySelectorAll('.disc-btn').forEach(btn => {
     fetchGames(true);
   });
 });
+
+// Historical low toggle (instant, Filters)
+el.histLowCheck.addEventListener('change', () => fetchGames(true));
+
+// Price inputs — debounced (Filters)
+const _debouncedFetch = debounce(() => fetchGames(true), 400);
+el.minPrice.addEventListener('input', _debouncedFetch);
+el.maxPrice.addEventListener('input', _debouncedFetch);
+
+// Search text — debounced (Filters)
+el.searchInput.addEventListener('input', debounce(() => fetchGames(true), 400));
 
 
 // Reset
@@ -943,8 +1049,14 @@ el.resetBtn.addEventListener('click', () => {
   // Reset app filter
   el.appList.querySelectorAll('input').forEach(i => { i.checked = false; });
 
-  // Reset stores
+  // Reset stores + clear preference
   el.storeList.querySelectorAll('input').forEach(i => { i.checked = false; });
+  savePreferredStoreIds([]);
+
+  // Reset region to default + clear preference
+  el.regionSelect.value = 'us';
+  updateRegionNote();
+  savePreferredRegion('us');
 
   // Reset historical low
   el.histLowCheck.checked = false;
@@ -953,7 +1065,7 @@ el.resetBtn.addEventListener('click', () => {
   el.newAgeButtons.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
   el.newAgeButtons.querySelector('[data-value=""]')?.classList.add('active');
 
-  fetchGames(true);
+  fetchGames(true, true);
 });
 
 /* ── Re-render dynamic content on language change ───────────────────────────── */

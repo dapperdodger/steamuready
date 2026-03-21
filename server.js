@@ -197,7 +197,7 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
     const {
       deviceIds: rawDeviceIds = '',
       performanceId,
-      maxPrice, minDiscount = 0,
+      maxPrice, minPrice, minDiscount = 0,
       histLow,
       search, sort = 'discount_desc',
       newAge,
@@ -329,6 +329,14 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
         threshold: 0.35,
       });
       filtered = sf.search(search.trim()).map(r => r.item);
+    }
+
+    if (minPrice !== undefined && minPrice !== '') {
+      const mp = parseFloat(minPrice);
+      if (isNaN(mp) || mp < 0 || mp > 10000) {
+        return res.status(400).json({ error: 'minPrice must be between 0 and 10000' });
+      }
+      filtered = filtered.filter(g => g.price >= mp);
     }
 
     if (maxPrice !== undefined && maxPrice !== '') {
