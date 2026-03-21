@@ -118,6 +118,39 @@ body {
   width: auto; margin: 0; accent-color: var(--accent);
 }
 
+/* Toggle switch */
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 2px 0;
+}
+.toggle-switch {
+  position: relative; display: inline-flex;
+  cursor: pointer; flex-shrink: 0;
+}
+.toggle-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.toggle-track {
+  width: 34px; height: 18px;
+  background: var(--border-light);
+  border-radius: 9px;
+  transition: background var(--transition);
+  display: flex; align-items: center;
+  padding: 2px;
+}
+.toggle-thumb {
+  width: 14px; height: 14px;
+  background: var(--muted);
+  border-radius: 50%;
+  transition: transform var(--transition), background var(--transition);
+}
+.toggle-switch input:checked + .toggle-track {
+  background: var(--accent-dim);
+}
+.toggle-switch input:checked + .toggle-track .toggle-thumb {
+  transform: translateX(16px);
+  background: white;
+}
+.toggle-switch:hover .toggle-track { border: 1px solid var(--border-light); }
+
 /* Selects */
 select, input[type="text"], input[type="number"] {
   background: var(--card);
