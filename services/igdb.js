@@ -54,7 +54,7 @@ async function fetchRatingsForSteamApps(steamAppIds) {
   const igdbIdBySteam = new Map(); // steamAppId → igdbGameId
 
   for (let i = 0; i < steamAppIds.length; i += 500) {
-    const batch = steamAppIds.slice(i, i + 500);
+    const batch = steamAppIds.slice(i, i + 500).map(id => String(id).replace(/\D/g, '')).filter(Boolean);
     const uidList = batch.map(id => `"${id}"`).join(',');
     try {
       const data = await igdbPost(
