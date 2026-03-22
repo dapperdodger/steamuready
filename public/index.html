@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>SteamUReady — Game Sales × Emulation Compatibility</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -58,6 +58,11 @@
 <!-- Header -->
 <header class="header">
   <div class="header-inner">
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle filters">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 6h18M7 12h10M11 18h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
     <h1 class="logo">
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" fill="currentColor" opacity=".3"/>
@@ -79,11 +84,19 @@
   </div>
 </header>
 
+<!-- Sidebar overlay (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
 <!-- Layout -->
 <div class="layout">
 
   <!-- Sidebar / Filters -->
   <aside class="sidebar">
+    <button class="sidebar-close" id="sidebarClose" aria-label="Close filters">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
 
     <!-- ── Filters section (applied post-cache, all instant) ── -->
     <div class="sidebar-section">

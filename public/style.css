@@ -719,3 +719,136 @@ select option { background: var(--card); }
   overflow: hidden;
   line-height: 1.4;
 }
+
+/* ── Sidebar close button (inside drawer, mobile only) ──────────────────────── */
+.sidebar-close {
+  display: none;
+  align-items: center; justify-content: center;
+  position: absolute; top: 12px; right: 12px;
+  background: none;
+  border: 1px solid var(--border-light);
+  color: var(--muted);
+  border-radius: var(--radius-sm);
+  padding: 5px 7px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition);
+}
+.sidebar-close:hover { color: var(--text); border-color: var(--text); }
+.sidebar-close svg { display: block; width: 16px; height: 16px; }
+
+/* ── Mobile sidebar toggle button ───────────────────────────────────────────── */
+.sidebar-toggle {
+  display: none;
+  align-items: center; justify-content: center;
+  background: none;
+  border: 1px solid var(--border-light);
+  color: var(--muted);
+  border-radius: var(--radius-sm);
+  padding: 5px 7px;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: all var(--transition);
+}
+.sidebar-toggle:hover { color: var(--text); border-color: var(--text); }
+.sidebar-toggle svg { display: block; width: 16px; height: 16px; }
+
+/* ── Sidebar overlay (mobile) ────────────────────────────────────────────────── */
+.sidebar-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 105;
+}
+.sidebar-overlay.open { display: block; }
+
+/* ── Mobile ──────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Prevent horizontal scroll */
+  html, body { overflow-x: hidden; }
+
+  /* Slightly larger base font for readability */
+  html { font-size: 15px; }
+
+  /* Show hamburger + sidebar X, hide tagline & cache label */
+  .sidebar-toggle { display: flex; }
+  .sidebar-close  { display: flex; }
+  .tagline { display: none; }
+  .cache-label { display: none; }
+
+  /* Header: remove fixed height so it can breathe if needed */
+  .header { height: auto; }
+  .header-inner { padding: 10px 12px; }
+
+  /* Progress bar sticks to very top on mobile */
+  .progress-bar { top: 0; }
+
+  /* Single-column layout */
+  .layout { grid-template-columns: 1fr; }
+
+  /* Sidebar: fixed slide-in drawer — above header (z-index 100) */
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    width: 300px; height: 100vh;
+    z-index: 110;
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+    /* extra top padding to clear the close button */
+    padding-top: 44px;
+    /* iOS safe area for bottom home bar */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .sidebar.open { transform: translateX(0); }
+
+  /* Main area — respect iOS side safe areas */
+  .main {
+    padding: 12px;
+    padding-left:  max(12px, env(safe-area-inset-left,  0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+  }
+
+  /* Sort bar: count on its own row, search + sort side-by-side below */
+  .sort-bar { flex-wrap: wrap; gap: 8px; }
+  .results-count { width: 100%; flex: none; }
+  .sort-bar-search { flex: 1; max-width: none; min-width: 0; }
+  .sort-bar select { min-width: 0; width: auto; flex: 1; }
+
+  /* Game grid: 2 columns minimum */
+  .games-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+  }
+
+  /* Remove inner scroll on store/app lists — sidebar itself scrolls */
+  .store-list { max-height: none; overflow-y: visible; }
+
+  /* Disable sticky hover lift on touch */
+  .card:hover { transform: none; box-shadow: none; }
+  .card:hover .card-img { transform: none; }
+
+  /* Larger tap targets */
+  .disc-btn { padding: 7px 12px; font-size: .82rem; }
+  .store-item { padding: 6px 8px; }
+  .compat-item { padding: 6px 8px; }
+  .btn-apply, .btn-reset { padding: 10px 0; }
+
+  /* Pagination: bigger tap targets */
+  .page-btn { min-width: 40px; height: 40px; }
+
+  /* Modal: cap height and make body scrollable */
+  .modal {
+    max-height: 90vh;
+    display: flex; flex-direction: column;
+  }
+  .modal-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Footer: add safe area bottom padding */
+  .attribution {
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+  }
+}

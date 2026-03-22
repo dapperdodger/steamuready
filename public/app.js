@@ -1137,5 +1137,26 @@ document.addEventListener('languagechange', () => {
   }
 })();
 
+/* ── Mobile sidebar toggle ──────────────────────────────────────────────────── */
+(function () {
+  const toggle   = document.getElementById('sidebarToggle');
+  const closeBtn = document.getElementById('sidebarClose');
+  const sidebar  = document.querySelector('.sidebar');
+  const overlay  = document.getElementById('sidebarOverlay');
+  const applyBtn = document.getElementById('applyBtn');
+  if (!toggle || !sidebar || !overlay) return;
+
+  function isMobile() { return window.innerWidth <= 768; }
+  function open()  { sidebar.classList.add('open');    overlay.classList.add('open');    document.body.style.overflow = 'hidden'; }
+  function close() { sidebar.classList.remove('open'); overlay.classList.remove('open'); document.body.style.overflow = ''; }
+
+  toggle.addEventListener('click',   () => sidebar.classList.contains('open') ? close() : open());
+  overlay.addEventListener('click',  close);
+  closeBtn?.addEventListener('click', close);
+
+  // Auto-close sidebar on mobile after tapping Apply/Save
+  applyBtn?.addEventListener('click', () => { if (isMobile()) close(); });
+})();
+
 /* ── Boot ───────────────────────────────────────────────────────────────────── */
 init();
