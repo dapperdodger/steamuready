@@ -861,7 +861,6 @@ function buildCard(g) {
         ${g.igdbRating?.igdbRating != null ? `<span class="tag tag-rating" title="IGDB Rating">⭐ ${Math.round(g.igdbRating.igdbRating)}</span>` : ''}
         ${g.device  ? `<span class="tag" title="${escHtml(g.device)}">${escHtml(g.device)}</span>` : ''}
         ${g.emulator ? `<span class="tag" title="${escHtml(g.emulator)}">${escHtml(g.emulator)}</span>` : ''}
-        ${g.system  ? `<span class="tag" title="${escHtml(g.system)}">${escHtml(g.system)}</span>` : ''}
       </div>
 
       ${g.notes ? `<div class="card-notes">${escHtml(g.notes)}</div>` : ''}
