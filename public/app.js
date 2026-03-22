@@ -158,6 +158,7 @@ function populateDevices(devices) {
   state.devices = devices;
   el.deviceSearch.addEventListener('input', onDeviceInput);
   el.deviceSearch.addEventListener('focus', onDeviceInput);
+  el.deviceSearch.addEventListener('click', onDeviceInput);
   el.deviceSearch.addEventListener('keydown', onDeviceKey);
   document.addEventListener('click', e => {
     if (!e.target.closest('#deviceCombo')) closeDropdown();
@@ -480,6 +481,12 @@ function initPreferredDevicesModal() {
   });
 
   prefEl.search.addEventListener('focus', () => {
+    const q = prefEl.search.value.trim().toLowerCase();
+    const { matches, hint } = getPrefDeviceMatches(q);
+    prefRenderDropdown(matches, q, hint);
+  });
+
+  prefEl.search.addEventListener('click', () => {
     const q = prefEl.search.value.trim().toLowerCase();
     const { matches, hint } = getPrefDeviceMatches(q);
     prefRenderDropdown(matches, q, hint);

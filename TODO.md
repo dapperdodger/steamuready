@@ -10,9 +10,9 @@
   - [x] Replace in-memory cache with Redis/ElastiCache (required for multi-task cache sharing)
   - [x] Add in-flight request deduplication to prevent cache stampede
   - [x] Add graceful shutdown handler (SIGTERM) for ALB task draining
-  - [ ] Tune ECS health check grace period to account for cache warm-up time
+  - [x] Tune ECS health check grace period to account for cache warm-up time
   - [x] Consider a dedicated background cache-warmer task so user requests never hit cold paths - not done, decided against
-  - [ ] Test ITAD API reachability from AWS datacenter IPs (no scraping risk, but worth confirming)
+  - [x] Test ITAD API reachability from AWS datacenter IPs (no scraping risk, but worth confirming)
 - [x] Dockerization
 - [x] Fix where Seeing some 0% reduction
 - [x] Limit max device selection
@@ -21,4 +21,4 @@
 - [x] Change default devices on click to top 20 alphabetical
 - [x] Change all direct Steam references (title, ect)
 - [ ] Using GameNative as source alongside emuready
-- [ ] Filter/Sorting by reviews (will need to get data as part of cache warmer, and not get it otherwise)
+- [x] Filter/Sorting by reviews (will need to get data as part of cache warmer, and not get it otherwise)
