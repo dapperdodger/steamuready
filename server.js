@@ -92,7 +92,7 @@ app.get('/api/shops', async (req, res) => {
 // then subsequent requests use instant Map lookups.
 // Stored in Redis as a JSON array of [key, entry] pairs (Map serialization).
 // ═══════════════════════════════════════════════════════════════════════════════
-const CORR_TTL = 15 * 60 * 1000;
+const CORR_TTL = 60 * 60 * 1000; //  1 h
 
 // Returns Map(gameNameLower → { gameName, sg, matchScore })
 // deviceIds: optional array — when provided, only correlate listings for those devices.

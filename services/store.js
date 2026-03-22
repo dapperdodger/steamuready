@@ -18,8 +18,7 @@ const REGIONS = {
 };
 
 const TITLE_TTL    = 24 * 60 * 60 * 1000; // 24 h
-const OVERVIEW_TTL = 15 * 60 * 1000;      // 15 m
-const SHOPS_TTL    =      60 * 60 * 1000; //  1 h
+const OVERVIEW_TTL =      60 * 60 * 1000; //  1 h
 
 // ── Phase 1: Batch title → ITAD ID resolution + Steam appId lookup ────────────
 // Returns { [titleLower]: cacheEntry } for all resolved titles.
@@ -233,22 +232,23 @@ async function getDealsForTitles(titles, cc = 'us', shops = []) {
   return result;
 }
 
-// ── Shops list ────────────────────────────────────────────────────────────────
+// ── Shops list (in-memory, process lifetime) ──────────────────────────────────
+const _shopsCache = new Map(); // cc → shops array
+
 async function getShops(cc = 'us') {
-  const k = `store:shops:${cc}`;
-  const raw = await redis.get(k);
-  if (raw) return JSON.parse(raw);
+  if (_shopsCache.has(cc)) return _shopsCache.get(cc);
 
   const res = await axios.get(`${ITAD_BASE}/service/shops/v1`, {
     params: { country: cc.toUpperCase() },
     timeout: 10000,
   });
   const data = res.data ?? [];
-  await redis.set(k, JSON.stringify(data), 'PX', SHOPS_TTL);
+  _shopsCache.set(cc, data);
   return data;
 }
 
 async function clearCache() {
+  _shopsCache.clear();
   await delPattern('store:*');
 }
 

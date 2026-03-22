@@ -9,7 +9,8 @@ const HEADERS = {
   ...(process.env.EMUREADY_API_KEY ? { 'x-api-key': process.env.EMUREADY_API_KEY } : {}),
 };
 
-const TTL = 30 * 60 * 1000; // 30 min
+const DEVICES_TTL  = 24 * 60 * 60 * 1000; // 24 h
+const LISTINGS_TTL =  4 * 60 * 60 * 1000; //  4 h
 
 async function trpcGet(procedure, input = {}) {
   const inputEnc = encodeURIComponent(JSON.stringify({ json: input }));
@@ -42,23 +43,26 @@ async function getDevices() {
     const sampleCount = countOf(normalized[0]);
     console.log(`[EmuReady] loaded ${normalized.length} devices (top device listing count: ${sampleCount})`);
     return normalized;
-  }, TTL).catch(e => {
+  }, DEVICES_TTL).catch(e => {
     console.error('[EmuReady] devices error:', e.message);
     return [];
   });
 }
 
+let _perfScales = null;
+
 async function getPerformanceScales() {
-  const k = 'emu:perf';
-  return cache.getOrFetch(k, async () => {
+  if (_perfScales) return _perfScales;
+  try {
     const data = await trpcGet('general.performanceScales', {});
     const list = Array.isArray(data) ? data : data?.performanceScales ?? [];
     list.sort((a, b) => (a.rank ?? a.position ?? 0) - (b.rank ?? b.position ?? 0));
+    _perfScales = list;
     return list;
-  }, TTL).catch(e => {
+  } catch (e) {
     console.error('[EmuReady] performanceScales error:', e.message);
     return [];
-  });
+  }
 }
 
 async function getListings({ deviceId, performanceId, page = 1, limit = 200 } = {}) {
@@ -66,7 +70,7 @@ async function getListings({ deviceId, performanceId, page = 1, limit = 200 } = 
   const input = { page, limit };
   if (deviceId) input.deviceIds = [deviceId];
   if (performanceId) input.performanceIds = [performanceId];
-  return cache.getOrFetch(k, () => trpcGet('listings.get', input), TTL).catch(e => {
+  return cache.getOrFetch(k, () => trpcGet('listings.get', input), LISTINGS_TTL).catch(e => {
     console.error('[EmuReady] listings error:', e.message);
     return { data: [], total: 0 };
   });
@@ -74,7 +78,7 @@ async function getListings({ deviceId, performanceId, page = 1, limit = 200 } = 
 
 // Fetch ALL listings across all pages for given filters.
 // EmuReady mobile API caps page size at 50, so we paginate through everything.
-// Results cached 30 min per filter combo.
+// Results cached 4 h per filter combo.
 async function getAllListings(filters, onProgress) {
   const deviceIds = (filters && filters.deviceIds) || [];
   const performanceIds = (filters && filters.performanceIds) || [];
@@ -128,7 +132,7 @@ async function getAllListings(filters, onProgress) {
       }
     }
     console.log('[EmuReady] done: ' + all.length + ' listings');
-    await cache.set(k, all, TTL);
+    await cache.set(k, all, LISTINGS_TTL);
     return all;
   })().finally(() => cache.inflight.delete(k));
 
@@ -137,6 +141,7 @@ async function getAllListings(filters, onProgress) {
 }
 
 async function clearCache() {
+  _perfScales = null;
   await cache.delPattern('emu:*');
 }
 
