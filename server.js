@@ -304,6 +304,7 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
         historicalLow: sg.historicalLow ?? null,
         dealSince: sg.dealSince ?? null,
         dealExpiry: sg.dealExpiry ?? null,
+        igdbRating: sg.igdbRating ?? null,
       };
 
       // Dedupe by Steam appId: keep best (lowest) performance rank
@@ -356,6 +357,11 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
       filtered = filtered.filter(g => g.historicalLow && g.price <= g.historicalLow.price);
     }
 
+    const minRating = parseFloat(req.query.minRating) || 0;
+    if (minRating > 0) {
+      filtered = filtered.filter(g => g.igdbRating?.igdbRating != null && g.igdbRating.igdbRating >= minRating);
+    }
+
     const newAgeHours = parseInt(newAge);
     if (newAgeHours > 0) {
       const cutoff = Date.now() - newAgeHours * 60 * 60 * 1000;
@@ -385,6 +391,13 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
           if (!a.dealSince) return 1;
           if (!b.dealSince) return -1;
           return new Date(b.dealSince) - new Date(a.dealSince);
+        });
+        break;
+      case 'rating_desc':
+        filtered.sort((a, b) => {
+          const ra = a.igdbRating?.igdbRating ?? -1;
+          const rb = b.igdbRating?.igdbRating ?? -1;
+          return rb - ra;
         });
         break;
       default:

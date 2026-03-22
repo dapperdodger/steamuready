@@ -16,6 +16,7 @@ const state = {
     minPrice:      '',
     maxPrice:      '',
     minDiscount:   0,
+    minRating:     0,
     histLow:       false,
     newAge:        '',
     search:        '',
@@ -51,6 +52,7 @@ const el = {
   storeList:    $('storeList'),
   histLowCheck:  $('histLowCheck'),
   newAgeButtons: $('newAgeButtons'),
+  ratingButtons: $('ratingButtons'),
 };
 
 /* ── API ───────────────────────────────────────────────────────────────────── */
@@ -727,6 +729,7 @@ async function fetchGames(resetPage = true, isSettingsChange = false) {
     minPrice:      state.filters.minPrice,
     maxPrice:      state.filters.maxPrice,
     minDiscount:   state.filters.minDiscount || '',
+    minRating:     state.filters.minRating   || '',
     search:        state.filters.search,
     sort:          state.filters.sort,
     cc:            state.filters.cc,
@@ -791,8 +794,11 @@ function readFilters() {
   const activeAge = el.newAgeButtons.querySelector('.disc-btn.active');
   state.filters.newAge        = activeAge ? activeAge.dataset.value : '';
 
-  const activeDisc = document.querySelector('.disc-btn.active');
+  const activeDisc   = document.querySelector('#discountButtons .disc-btn.active');
   state.filters.minDiscount = activeDisc ? parseInt(activeDisc.dataset.value) : 0;
+
+  const activeRating = el.ratingButtons.querySelector('.disc-btn.active');
+  state.filters.minRating = activeRating ? parseInt(activeRating.dataset.value) : 0;
 }
 
 /* ── Render game cards ──────────────────────────────────────────────────────── */
@@ -845,6 +851,7 @@ function buildCard(g) {
 
       <div class="card-meta">
         ${g.storeName ? `<span class="tag tag-store">${escHtml(g.storeName)}</span>` : ''}
+        ${g.igdbRating?.igdbRating != null ? `<span class="tag tag-rating" title="IGDB Rating">⭐ ${Math.round(g.igdbRating.igdbRating)}</span>` : ''}
         ${g.device  ? `<span class="tag" title="${escHtml(g.device)}">${escHtml(g.device)}</span>` : ''}
         ${g.emulator ? `<span class="tag" title="${escHtml(g.emulator)}">${escHtml(g.emulator)}</span>` : ''}
         ${g.system  ? `<span class="tag" title="${escHtml(g.system)}">${escHtml(g.system)}</span>` : ''}
@@ -1017,6 +1024,15 @@ el.newAgeButtons.querySelectorAll('.disc-btn').forEach(btn => {
   });
 });
 
+// Rating filter buttons (instant, Filters)
+el.ratingButtons.querySelectorAll('.disc-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    el.ratingButtons.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    fetchGames(true);
+  });
+});
+
 // Historical low toggle (instant, Filters)
 el.histLowCheck.addEventListener('change', () => fetchGames(true));
 
@@ -1064,6 +1080,10 @@ el.resetBtn.addEventListener('click', () => {
   // Reset deal age
   el.newAgeButtons.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
   el.newAgeButtons.querySelector('[data-value=""]')?.classList.add('active');
+
+  // Reset rating filter
+  el.ratingButtons.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
+  el.ratingButtons.querySelector('[data-value="0"]')?.classList.add('active');
 
   fetchGames(true, true);
 });

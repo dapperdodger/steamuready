@@ -442,6 +442,11 @@ select option { background: var(--card); }
   border-color: rgba(56,139,253,.3);
   color: var(--accent);
 }
+.tag-rating {
+  background: rgba(245,200,66,.15);
+  border-color: rgba(245,200,66,.35);
+  color: #f5c842;
+}
 
 /* ── Region note ─────────────────────────────────────────────────────────────── */
 .region-note {

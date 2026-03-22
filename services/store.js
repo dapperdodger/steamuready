@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { redis, delPattern } = require('./cache');
+const igdb = require('./igdb');
 
 const ITAD_BASE = 'https://api.isthereanydeal.com';
 const STEAM_SHOP_ID = 61;
@@ -225,7 +226,21 @@ async function getDealsForTitles(titles, cc = 'us', shops = []) {
           ? 'Free'
           : `${sym}${toNum(lowest.price?.amount).toFixed(2)}`,
       } : null,
+      igdbRating: null, // filled in below
     });
+  }
+
+  // ── Phase 6: enrich with IGDB ratings (cached 24 h per ITAD ID) ───────────
+  const itadSteamPairs = [];
+  for (const entry of result.values()) {
+    const steamMatch = entry.imageUrl.match(/\/apps\/(\d+)\//);
+    itadSteamPairs.push({ itadId: entry.appId, steamAppId: steamMatch?.[1] ?? null });
+  }
+
+  const igdbRatings = await igdb.getRatings(itadSteamPairs);
+  for (const entry of result.values()) {
+    const r = igdbRatings.get(entry.appId);
+    if (r) entry.igdbRating = r;
   }
 
   console.log(`[Store/${cc}/${shopsKey}] done: ${result.size}/${titles.length} matched in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
@@ -249,7 +264,7 @@ async function getShops(cc = 'us') {
 
 async function clearCache() {
   _shopsCache.clear();
-  await delPattern('store:*');
+  await Promise.all([delPattern('store:*'), igdb.clearCache()]);
 }
 
 module.exports = { getDealsForTitles, getShops, clearCache, REGIONS, STEAM_SHOP_ID };
