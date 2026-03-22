@@ -402,13 +402,14 @@ select option { background: var(--card); }
 .card-footer {
   padding: 8px 12px;
   border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 6px;
 }
-.btn-steam {
+@media (max-width: 768px) {
+  .card-footer { flex-direction: row; }
+}
+.btn-steam, .btn-emu {
   display: flex; align-items: center; justify-content: center; gap: 6px;
-  width: 100%;
-  background: var(--steam);
-  border: 1px solid #2a475e;
-  color: var(--steam-blue);
+  flex: 1;
   border-radius: var(--radius-sm);
   padding: 6px 0;
   font-size: .78rem; font-weight: 600;
@@ -416,8 +417,19 @@ select option { background: var(--card); }
   transition: background var(--transition);
   text-decoration: none;
 }
+.btn-steam {
+  background: var(--steam);
+  border: 1px solid #2a475e;
+  color: var(--steam-blue);
+}
 .btn-steam:hover { background: #2a3f5a; }
-.btn-steam svg { width: 14px; height: 14px; flex-shrink: 0; }
+.btn-emu {
+  background: #1a2e1a;
+  border: 1px solid #2d4a2d;
+  color: #6fbf6f;
+}
+.btn-emu:hover { background: #233323; }
+.btn-steam svg, .btn-emu svg { width: 14px; height: 14px; flex-shrink: 0; }
 
 /* ── Store filter list ───────────────────────────────────────────────────────── */
 .store-list {

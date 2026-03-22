@@ -884,6 +884,12 @@ function buildCard(g) {
         </svg>
         ${t('viewOnStore')(escHtml(g.storeName || 'Store'))}
       </a>
+      <a href="https://www.emuready.com/listings/${encodeURIComponent(g.id)}" target="_blank" rel="noopener" class="btn-emu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01M8 12h.01M16 12h.01"/><path d="M6 10v4"/>
+        </svg>
+        ${t('viewOnEmuReady')}
+      </a>
     </div>`;
 
   return div;
