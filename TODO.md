@@ -22,3 +22,7 @@
 - [x] Change all direct Steam references (title, ect)
 - [ ] Using GameNative as source alongside emuready
 - [x] Filter/Sorting by reviews (will need to get data as part of cache warmer, and not get it otherwise)
+- [ ] Max Compatibility Setting
+- [ ] Filter by chipset instead of device
+- [ ] Filter by controller compat
+- [ ] Link to Steamuready Discord

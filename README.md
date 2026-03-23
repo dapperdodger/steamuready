@@ -2,7 +2,7 @@
 
 Cross-reference [EmuReady](https://www.emuready.com) emulation compatibility data with current deals from Steam, Epic Game Store, and GOG. Find discounted games that run well on your Android handheld.
 
-![SteamUReady](screenshot.png)
+![SteamUReady](public/screenshot.png)
 
 ## Features
 
