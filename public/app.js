@@ -174,10 +174,20 @@ function onDeviceInput() {
       .slice(0, 60);
     renderDropdown(matches, q);
   } else {
-    // Top 20 most popular, sorted alphabetically, with hint
-    const top20 = state.devices
-      .filter(d => !_selectedDevices.has(d.id))
-      .slice(0, 20)
+    // Most popular (top 20 by listing count) + Steam Deck variants, sorted alphabetically, with hint
+    const FEATURED_IDS = new Set([
+      'ab0d9b65-f36c-4179-9ec4-6faf82c17375', // Valve Steam Deck
+      '03d78bab-ebb9-452f-ba3c-cd063d2b52c3',  // Valve Steam Deck OLED
+      'e4394fe4-cad7-44e1-8ab9-4fb9ec904f8e',  // AYN Thor Max
+      '9342c1d2-8239-454f-95ec-55bff5e00783',  // AYN Thor Pro
+      '8ad7aae7-d8f8-4577-92a1-49b72f101001',  // AYN Thor Base
+      'a9cc55c6-8d5b-4ab7-bbff-b830ed03698a',  // AYN Thor Lite
+    ]);
+    const available = state.devices.filter(d => !_selectedDevices.has(d.id));
+    const topByCount = available.slice(0, 20);
+    const topIds = new Set(topByCount.map(d => d.id));
+    const steamDeckExtras = available.filter(d => FEATURED_IDS.has(d.id) && !topIds.has(d.id));
+    const top20 = [...topByCount, ...steamDeckExtras]
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     renderDropdown(top20, '', true);
   }
