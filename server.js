@@ -13,12 +13,13 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-      'img-src': ["'self'", 'data:', 'https://cdn.akamai.steamstatic.com'],
+      'img-src': ["'self'", 'data:', 'https://cdn.akamai.steamstatic.com', 'https://storage.ko-fi.com'],
     },
   },
 }));
 app.use(express.json({ limit: '16kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
 // ── Devices ─────────────────────────────────────────────────────────────────
 app.get('/api/devices', async (req, res) => {

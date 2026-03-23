@@ -751,8 +751,16 @@ async function fetchGames(resetPage = true, isSettingsChange = false) {
   if (!state.loaded) showSkeletons();
   progress(30);
 
+  const slowLoadTimer = setTimeout(() => {
+    if (state.loading) {
+      el.resultsCount.innerHTML =
+        `${t('loading')} <span class="slow-load-msg">${t('slowLoadMsg')}</span>`;
+    }
+  }, 3000);
+
   try {
     const data = await api.games(params);
+    clearTimeout(slowLoadTimer);
     progress(90);
 
     state.games      = data.games    ?? [];
@@ -768,6 +776,7 @@ async function fetchGames(resetPage = true, isSettingsChange = false) {
 
     progress(100);
   } catch (e) {
+    clearTimeout(slowLoadTimer);
     console.error(e);
     if (e.status === 429) {
       startSearchCooldown(e.retryAfter ?? 30);
@@ -844,8 +853,7 @@ function buildCard(g) {
 
   div.innerHTML = `
     <div class="card-img-wrap">
-      <img class="card-img" src="${escHtml(g.imageUrl)}" alt="${escHtml(g.gameName)}"
-           onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+      <img class="card-img" src="${escHtml(g.imageUrl)}" alt="${escHtml(g.gameName)}" />
       <div class="card-img-placeholder" style="display:none">🎮</div>
       <span class="discount-badge">−${g.discountPercent}%</span>
       <span class="compat-badge compat-${cls}">${escHtml(label)}</span>
@@ -890,6 +898,12 @@ function buildCard(g) {
         ${t('viewOnEmuReady')}
       </a>
     </div>`;
+
+  const img = div.querySelector('.card-img');
+  img.addEventListener('error', () => {
+    img.style.display = 'none';
+    img.nextElementSibling.style.display = 'flex';
+  });
 
   return div;
 }
@@ -1075,7 +1089,7 @@ el.resetBtn.addEventListener('click', () => {
   document.querySelector('.disc-btn[data-value="0"]')?.classList.add('active');
 
   // Reset app filter
-  el.appList.querySelectorAll('input').forEach(i => { i.checked = false; });
+  el.appList.querySelectorAll('input').forEach(i => { i.checked = true; });
 
   // Reset stores + clear preference
   el.storeList.querySelectorAll('input').forEach(i => { i.checked = false; });

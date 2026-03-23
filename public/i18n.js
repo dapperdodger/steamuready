@@ -39,6 +39,7 @@ const translations = {
     sortCompat:             'Compatibilité (↓)',
     sortName:               'Nom (A→Z)',
     loading:                'Chargement…',
+    slowLoadMsg:            'Les données sont mises en cache une fois par jour — si tu es le premier à utiliser cette combinaison appareil/région/boutique, le premier chargement peut être lent.',
     apiError:               'Erreur API',
     refreshing:             'Actualisation…',
     cacheCleared:           'Cache vidé ✓',
@@ -113,6 +114,7 @@ const translations = {
     ratingFilter:           'Minimum IGDB rating',
     ratingAll:              'All',
     loading:                'Loading…',
+    slowLoadMsg:            'Results are cached daily — if you\'re the first to use this device/region/store combination, the initial fetch may take a moment.',
     apiError:               'API Error',
     refreshing:             'Refreshing…',
     cacheCleared:           'Cache cleared ✓',
@@ -187,6 +189,7 @@ const translations = {
     sortCompat:             'Compatibilidad (↓)',
     sortName:               'Nombre (A→Z)',
     loading:                'Cargando…',
+    slowLoadMsg:            'Los resultados se almacenan en caché una vez al día — si eres el primero en usar esta combinación de dispositivo/región/tienda, la carga inicial puede tardar un momento.',
     apiError:               'Error de API',
     refreshing:             'Actualizando…',
     cacheCleared:           'Caché limpiado ✓',
@@ -264,3 +267,7 @@ function setLang(lang) {
 }
 
 applyTranslations();
+
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => setLang(btn.dataset.lang));
+});
