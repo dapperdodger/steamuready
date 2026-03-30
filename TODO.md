@@ -24,6 +24,6 @@
 - [x] Filter/Sorting by reviews (will need to get data as part of cache warmer, and not get it otherwise)
 - [x] Max Compatibility Setting
 - [ ] Filter by chipset instead of device
-- [ ] Filter by controller compat
+- [ ] Filter by controller compat — Steam (full/partial/none) and GOG (yes/no) have data; Epic has no public API so coverage would be incomplete
 - [ ] Link to Steamuready Discord
 - [x] German Language Support

@@ -5,6 +5,7 @@ const path = require('path');
 const Fuse = require('fuse.js');
 const emuready = require('./services/emuready');
 const store = require('./services/store');
+const epic = require('./services/epic');
 const { redis, delPattern } = require('./services/cache');
 
 const app = express();
@@ -13,7 +14,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-      'img-src': ["'self'", 'data:', 'https://cdn.akamai.steamstatic.com', 'https://storage.ko-fi.com'],
+      'img-src': ["'self'", 'data:', 'https://cdn.akamai.steamstatic.com', 'https://storage.ko-fi.com', 'https://cdn1.epicgames.com', 'https://cdn2.epicgames.com'],
     },
   },
 }));
@@ -137,6 +138,12 @@ async function getCorrelationMap(cc, deviceIds = [], shopIds = []) {
 
   // Ask the store module to resolve titles → deals (handles all ITAD calls + caching)
   const dealMap = await store.getDealsForTitles([...uniqueNames.values()], cc, shopIds);
+
+  // Merge Epic weekly free games — title-matched, always wins (price 0 beats any deal)
+  const epicFreeMap = await epic.getEpicFreeGames();
+  for (const key of uniqueNames.keys()) {
+    if (epicFreeMap.has(key)) dealMap.set(key, epicFreeMap.get(key));
+  }
 
   const gameMap = new Map();
   const seenAppId = new Set();
@@ -428,6 +435,7 @@ app.post('/api/refresh', async (req, res) => {
   await Promise.all([
     emuready.clearCache(),
     store.clearCache(),
+    epic.clearCache(),
     delPattern('corr:*'),
   ]);
   res.json({ ok: true, message: 'Cache cleared. Next request will re-fetch.' });
