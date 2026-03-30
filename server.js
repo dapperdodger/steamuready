@@ -32,6 +32,31 @@ app.get('/api/devices', async (req, res) => {
   }
 });
 
+// ── SoCs (chipsets) ──────────────────────────────────────────────────────────
+// Enrich SoCs with listing counts derived from device data (both 24h cached — no extra API calls).
+app.get('/api/socs', async (req, res) => {
+  try {
+    const [socs, devices] = await Promise.all([
+      emuready.getSocs(),
+      emuready.getDevices(),
+    ]);
+    // Sum device listing counts per SoC — join by name since mobile API returns socName not socId
+    const socCounts = new Map();
+    for (const device of devices) {
+      const socName = device.socName;
+      if (!socName) continue;
+      const n = device.listingsCount ?? device._count?.listings ?? 0;
+      socCounts.set(socName, (socCounts.get(socName) || 0) + n);
+    }
+    const enriched = socs.map(s => ({ ...s, listingCount: socCounts.get(s.name) || 0 }));
+    enriched.sort((a, b) => b.listingCount - a.listingCount || (a.name || '').localeCompare(b.name || ''));
+    res.json(enriched);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ── Performance scales ───────────────────────────────────────────────────────
 app.get('/api/performance-scales', async (req, res) => {
   try {
@@ -96,13 +121,18 @@ app.get('/api/shops', async (req, res) => {
 const CORR_TTL = 60 * 60 * 1000; //  1 h
 
 // Returns Map(gameNameLower → { gameName, sg, matchScore })
-// deviceIds: optional array — when provided, only correlate listings for those devices.
+// filterIds: { deviceIds?, socIds? } — scope listings to devices or chipset.
 // shopIds:   optional array of ITAD shop IDs — when empty, all shops are included.
-async function getCorrelationMap(cc, deviceIds = [], shopIds = []) {
+async function getCorrelationMap(cc, { deviceIds = [], socIds = [] } = {}, shopIds = []) {
   const shopsKey = shopIds.length ? shopIds.slice().sort().join(',') : 'all';
-  const cacheKey = deviceIds.length
-    ? `corr:${cc}:${shopsKey}:${[...deviceIds].sort().join(',')}`
-    : `corr:${cc}:${shopsKey}`;
+  let cacheKey;
+  if (socIds.length) {
+    cacheKey = `corr:${cc}:${shopsKey}:soc:${[...socIds].sort().join(',')}`;
+  } else if (deviceIds.length) {
+    cacheKey = `corr:${cc}:${shopsKey}:${[...deviceIds].sort().join(',')}`;
+  } else {
+    cacheKey = `corr:${cc}:${shopsKey}`;
+  }
 
   const cached = await redis.get(cacheKey);
   if (cached) {
@@ -111,12 +141,16 @@ async function getCorrelationMap(cc, deviceIds = [], shopIds = []) {
     return gameMap;
   }
 
-  const label = deviceIds.length ? `${cc}/${shopsKey} (${deviceIds.length} device(s))` : `${cc}/${shopsKey}`;
+  const label = socIds.length
+    ? `${cc}/${shopsKey} (${socIds.length} soc(s))`
+    : deviceIds.length ? `${cc}/${shopsKey} (${deviceIds.length} device(s))` : `${cc}/${shopsKey}`;
   console.log(`[Corr/${label}] building correlation map…`);
   const t0 = Date.now();
 
-  // Fetch EmuReady listings (scoped to devices when provided)
-  const listingFilter = deviceIds.length ? { deviceIds } : {};
+  // Fetch EmuReady listings (scoped to devices or SoC when provided)
+  const listingFilter = {};
+  if (deviceIds.length) listingFilter.deviceIds = deviceIds;
+  if (socIds.length) listingFilter.socIds = socIds;
   const allListings = (await emuready.getAllListings(listingFilter)).filter(isAllowedEmulator);
 
   if (!allListings.length) {
@@ -203,6 +237,7 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
   try {
     const {
       deviceIds: rawDeviceIds = '',
+      socIds: rawSocIds = '',
       compatRankMin, compatRankMax,
       maxPrice, minPrice, minDiscount = 0,
       histLow,
@@ -215,10 +250,10 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
     } = req.query;
 
     const deviceIdList = rawDeviceIds ? rawDeviceIds.split(',').filter(Boolean) : [];
-    if (!deviceIdList.length) {
-      return res.status(400).json({ error: 'deviceIds is required' });
+    const socIdList = rawSocIds ? rawSocIds.split(',').filter(Boolean) : [];
+    if (!deviceIdList.length && !socIdList.length) {
+      return res.status(400).json({ error: 'deviceIds or socIds is required' });
     }
-    const hasDeviceFilter = true;
     const shopIds = rawShops ? rawShops.split(',').map(Number).filter(Boolean) : [...ALLOWED_SHOP_IDS];
     const appSlugs = rawApps ? new Set(rawApps.split(',').filter(Boolean)) : null;
 
@@ -233,15 +268,17 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
         .map(s => String(s.id));
     }
 
-    // 1. Build correlation map scoped to selected devices/shops — cache hit after first build
-    const gameMap = await getCorrelationMap(cc, deviceIdList, shopIds);
+    // 1. Build correlation map scoped to selected devices/SoC/shops — cache hit after first build
+    const gameMap = await getCorrelationMap(cc, { deviceIds: deviceIdList, socIds: socIdList }, shopIds);
 
     if (!gameMap.size) {
       return res.json({ games: [], total: 0, page: 1, pageSize: 24, totalPages: 0, warn: 'No correlations found' });
     }
 
     // 2. Get EmuReady listings — reuses the same cache entry populated in step 1
-    const listingFilter = hasDeviceFilter ? { deviceIds: deviceIdList } : {};
+    const listingFilter = {};
+    if (deviceIdList.length) listingFilter.deviceIds = deviceIdList;
+    if (socIdList.length) listingFilter.socIds = socIdList;
     let listings = (await emuready.getAllListings(listingFilter)).filter(isAllowedEmulator);
 
     // Filter by app (emulator)

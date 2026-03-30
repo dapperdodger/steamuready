@@ -10,6 +10,7 @@ const HEADERS = {
 };
 
 const DEVICES_TTL  = 24 * 60 * 60 * 1000; // 24 h
+const SOCS_TTL     = 24 * 60 * 60 * 1000; // 24 h
 const LISTINGS_TTL =  4 * 60 * 60 * 1000; //  4 h
 
 async function trpcGet(procedure, input = {}) {
@@ -49,6 +50,21 @@ async function getDevices() {
   });
 }
 
+async function getSocs() {
+  const k = 'emu:socs';
+  return cache.getOrFetch(k, async () => {
+    const data = await trpcGet('socs.get', { limit: 1000 });
+    const list = data?.socs ?? data?.data ?? (Array.isArray(data) ? data : []);
+    if (list.length >= 1000) console.warn('[EmuReady] socs.get returned 1000 results — API limit hit, list may be truncated');
+    const normalized = list.map(s => ({ ...s, name: s.name ?? '' }));
+    console.log(`[EmuReady] loaded ${normalized.length} SoCs`);
+    return normalized;
+  }, SOCS_TTL).catch(e => {
+    console.error('[EmuReady] socs error:', e.message);
+    return [];
+  });
+}
+
 let _perfScales = null;
 
 async function getPerformanceScales() {
@@ -81,8 +97,9 @@ async function getListings({ deviceId, performanceId, page = 1, limit = 200 } = 
 // Results cached 4 h per filter combo.
 async function getAllListings(filters, onProgress) {
   const deviceIds = (filters && filters.deviceIds) || [];
+  const socIds = (filters && filters.socIds) || [];
   const performanceIds = (filters && filters.performanceIds) || [];
-  const k = `emu:all_listings:${deviceIds.join(',')}:${performanceIds.join(',')}`;
+  const k = `emu:all_listings:${deviceIds.join(',')}:soc:${socIds.join(',')}:${performanceIds.join(',')}`;
 
   const cached = await cache.get(k);
   if (cached) {
@@ -105,6 +122,7 @@ async function getAllListings(filters, onProgress) {
       try {
         const input = { page, limit: PAGE_SIZE };
         if (deviceIds.length) input.deviceIds = deviceIds;
+        if (socIds.length) input.socIds = socIds;
         if (performanceIds.length) input.performanceIds = performanceIds;
         const data = await trpcGet('listings.get', input);
         const items = (data && data.listings) || (data && data.data) || [];
@@ -124,6 +142,7 @@ async function getAllListings(filters, onProgress) {
         try {
           const input2 = { page, limit: PAGE_SIZE };
           if (deviceIds.length) input2.deviceIds = deviceIds;
+          if (socIds.length) input2.socIds = socIds;
           if (performanceIds.length) input2.performanceIds = performanceIds;
           const data2 = await trpcGet('listings.get', input2);
           all = all.concat((data2 && data2.listings) || (data2 && data2.data) || []);
@@ -145,4 +164,4 @@ async function clearCache() {
   await cache.delPattern('emu:*');
 }
 
-module.exports = { getDevices, getPerformanceScales, getListings, getAllListings, clearCache };
+module.exports = { getDevices, getSocs, getPerformanceScales, getListings, getAllListings, clearCache };

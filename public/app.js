@@ -1,6 +1,7 @@
 /* ── State ─────────────────────────────────────────────────────────────────── */
 const state = {
   devices:   [],
+  socs:      [],
   perfScales: [],
   allShops:  [],
   games:     [],
@@ -12,6 +13,7 @@ const state = {
 
   filters: {
     deviceIds:     [],
+    socIds:        [],
     compatRankMin: '',
     compatRankMax: '',
     minPrice:      '',
@@ -37,6 +39,11 @@ const el = {
   deviceSearch:       $('deviceSearch'),       // text input for filtering
   deviceDropdown:     $('deviceDropdown'),     // dropdown list
   deviceChips:        $('deviceChips'),        // selected device chips container
+  deviceSection:      $('deviceSection'),      // wrapper shown in device mode
+  socSection:         $('socSection'),         // wrapper shown in chipset mode
+  socSearch:          $('socSearch'),
+  socDropdown:        $('socDropdown'),
+  socChip:            $('socChip'),
   compatRangeMin:  $('compatRangeMin'),
   compatRangeMax:  $('compatRangeMax'),
   compatRangeFill: $('compatRangeFill'),
@@ -75,6 +82,7 @@ const api = {
     return r.json();
   },
   devices()       { return api.json('/api/devices'); },
+  socs()          { return api.json('/api/socs'); },
   perfScales()    { return api.json('/api/performance-scales'); },
   regions()       { return api.json('/api/regions'); },
   shops(cc)       { return api.json(`/api/shops?cc=${cc || 'us'}`); },
@@ -112,30 +120,40 @@ async function init() {
   showSkeletons();
 
   try {
-    // Devices + perf scales + regions + shops in parallel
-    const [devices, scales, regions, shops] = await Promise.all([
+    // Devices + SoCs + perf scales + regions + shops in parallel
+    const [devices, socs, scales, regions, shops] = await Promise.all([
       api.devices().catch(() => []),
+      api.socs().catch(() => []),
       api.perfScales().catch(() => []),
       api.regions().catch(() => ({})),
       api.shops('us').catch(() => []),
     ]);
 
     state.devices    = devices;
+    state.socs       = socs;
     state.perfScales = scales;
     state.allShops   = shops;
 
     populateDevices(devices);
+    populateSocs(socs);
     populateCompatList(scales);
     populateRegions(regions);
     populateStores(shops);
     initAppFilter();
+    initFilterModeToggle();
     initPreferredDevicesModal();
 
     const isFirstVisit = loadPreferredDeviceIds() === null;
     if (isFirstVisit) {
       openPreferredDevicesModal();
     } else {
-      applyPreferredDevices();
+      const filterMode = loadFilterMode();
+      applyFilterMode(filterMode);
+      if (filterMode === 'chipset') {
+        applyPreferredSoc();
+      } else {
+        applyPreferredDevices();
+      }
       applyPreferredCompat();
       applyPreferredRegion();
       applyPreferredStores();
@@ -288,6 +306,163 @@ function onDeviceKey(e) {
   opts[_deviceFocusIdx]?.scrollIntoView({ block: 'nearest' });
 }
 
+/* ── SoC (chipset) combobox — single-select ─────────────────────────────────── */
+const MAX_SOCS = 5;
+let _socFocusIdx = -1;
+const _selectedSocs = new Map(); // id → { id, name }
+
+function populateSocs(socs) {
+  state.socs = socs;
+  el.socSearch.addEventListener('input', onSocInput);
+  el.socSearch.addEventListener('focus', onSocInput);
+  el.socSearch.addEventListener('click', onSocInput);
+  el.socSearch.addEventListener('keydown', onSocKey);
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#socCombo')) closeSocDropdown();
+  });
+}
+
+function onSocInput() {
+  const q = el.socSearch.value.trim().toLowerCase();
+  let matches;
+  if (q) {
+    matches = state.socs
+      .filter(s => s.name.toLowerCase().includes(q) && !_selectedSocs.has(s.id))
+      .slice(0, 60);
+  } else {
+    matches = state.socs
+      .filter(s => !_selectedSocs.has(s.id))
+      .slice(0, 20)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }
+  renderSocDropdown(matches, q, !q);
+}
+
+function renderSocDropdown(socs, q = '', showHint = false) {
+  el.socDropdown.innerHTML = '';
+  _socFocusIdx = -1;
+  if (!socs.length) {
+    el.socDropdown.innerHTML = `<div class="device-opt-empty">${t('deviceNoResults')}</div>`;
+  } else {
+    socs.forEach(s => {
+      const div = document.createElement('div');
+      div.className = 'device-opt';
+      div.dataset.id = s.id;
+      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      div.innerHTML = q ? s.name.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>') : escHtml(s.name);
+      div.addEventListener('mousedown', e => { e.preventDefault(); selectSoc(s); });
+      el.socDropdown.appendChild(div);
+    });
+    if (showHint) {
+      const hint = document.createElement('div');
+      hint.className = 'device-opt-hint';
+      hint.textContent = t('deviceSearchHint');
+      el.socDropdown.appendChild(hint);
+    }
+  }
+  el.socDropdown.hidden = false;
+}
+
+function closeSocDropdown() {
+  el.socDropdown.hidden = true;
+  _socFocusIdx = -1;
+}
+
+function selectSoc(s) {
+  if (_selectedSocs.has(s.id) || _selectedSocs.size >= MAX_SOCS) return;
+  _selectedSocs.set(s.id, s);
+  el.socSearch.value = '';
+  renderSocChips();
+  closeSocDropdown();
+}
+
+function removeSoc(id) {
+  _selectedSocs.delete(id);
+  renderSocChips();
+}
+
+function clearSoc() {
+  _selectedSocs.clear();
+  renderSocChips();
+}
+
+function renderSocChips() {
+  el.socChip.innerHTML = '';
+  _selectedSocs.forEach(s => {
+    const chip = document.createElement('div');
+    chip.className = 'device-chip';
+    chip.dataset.id = s.id;
+    chip.innerHTML = `<span title="${escHtml(s.name)}">${escHtml(s.name)}</span><button type="button" title="${t('deviceRemove')}">×</button>`;
+    chip.querySelector('button').addEventListener('click', () => removeSoc(s.id));
+    el.socChip.appendChild(chip);
+  });
+  const atMax = _selectedSocs.size >= MAX_SOCS;
+  el.socSearch.disabled = atMax;
+  el.socSearch.placeholder = atMax
+    ? t('deviceMaxReached')(MAX_SOCS)
+    : t(_selectedSocs.size ? 'deviceAddPlaceholder' : 'chipsetSearchPlaceholder');
+}
+
+function onSocKey(e) {
+  const opts = [...el.socDropdown.querySelectorAll('.device-opt')];
+  if (e.key === 'Escape') { closeSocDropdown(); return; }
+  if (!opts.length) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    _socFocusIdx = Math.min(_socFocusIdx + 1, opts.length - 1);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    _socFocusIdx = Math.max(_socFocusIdx - 1, 0);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (_socFocusIdx >= 0) {
+      const id = opts[_socFocusIdx].dataset.id;
+      const s = state.socs.find(x => x.id === id);
+      if (s) selectSoc(s);
+    }
+    return;
+  } else { return; }
+  opts.forEach((o, i) => o.classList.toggle('focused', i === _socFocusIdx));
+  opts[_socFocusIdx]?.scrollIntoView({ block: 'nearest' });
+}
+
+/* ── Filter mode toggle (Device vs Chipset) ─────────────────────────────────── */
+const PREF_FILTER_MODE_KEY = 'filterMode';
+
+function loadFilterMode() {
+  return localStorage.getItem(PREF_FILTER_MODE_KEY) || 'device';
+}
+
+function saveFilterMode(mode) {
+  localStorage.setItem(PREF_FILTER_MODE_KEY, mode);
+}
+
+function applyFilterMode(mode) {
+  const isChipset = mode === 'chipset';
+  el.deviceSection.hidden = isChipset;
+  el.socSection.hidden = !isChipset;
+  const prefDevSec = document.getElementById('prefDeviceSection');
+  const prefSocSec = document.getElementById('prefSocSection');
+  if (prefDevSec) prefDevSec.hidden = isChipset;
+  if (prefSocSec) prefSocSec.hidden = !isChipset;
+  document.querySelectorAll('.disc-btn[data-mode]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+}
+
+function initFilterModeToggle() {
+  document.querySelectorAll('.disc-btn[data-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const newMode = btn.dataset.mode;
+      if (newMode === loadFilterMode()) return;
+      saveFilterMode(newMode);
+      applyFilterMode(newMode);
+      if (newMode === 'chipset') clearAllDevices();
+      else clearSoc();
+    });
+  });
+}
+
 /* ── Preferred settings (localStorage) ─────────────────────────────────────── */
 const PREF_KEY        = 'preferredDevices';
 const PREF_COMPAT_KEY = 'preferredCompat';
@@ -363,23 +538,58 @@ function applyPreferredStores() {
   });
 }
 
+const PREF_SOC_KEY = 'preferredSocs';
+
+function loadPreferredSocIds() {
+  try { return JSON.parse(localStorage.getItem(PREF_SOC_KEY)); } catch { return null; }
+}
+
+function savePreferredSocIds(ids) {
+  localStorage.setItem(PREF_SOC_KEY, JSON.stringify(ids));
+}
+
+function applyPreferredSoc() {
+  const ids = loadPreferredSocIds();
+  if (!ids || !ids.length) return;
+  ids.forEach(id => {
+    const s = state.socs.find(x => x.id === id);
+    if (s && !_selectedSocs.has(s.id)) selectSoc(s);
+  });
+}
+
 /* ── Preferred settings modal ───────────────────────────────────────────────── */
 const _prefSelectedDevices = new Map(); // id → {id, name} — used only inside modal
 let _prefDeviceFocusIdx = -1;
 
 const prefEl = {
-  modal:        document.getElementById('prefDevicesModal'),
-  search:       document.getElementById('prefDeviceSearch'),
-  dropdown:     document.getElementById('prefDeviceDropdown'),
-  chips:        document.getElementById('prefDeviceChips'),
-  regionSelect: document.getElementById('prefRegionSelect'),
-  storeList:    document.getElementById('prefStoreList'),
-  compatSelect: document.getElementById('prefCompatSelect'),
-  skipBtn:      document.getElementById('prefDevicesSkip'),
-  saveBtn:      document.getElementById('prefDevicesSave'),
+  modal:           document.getElementById('prefDevicesModal'),
+  search:          document.getElementById('prefDeviceSearch'),
+  dropdown:        document.getElementById('prefDeviceDropdown'),
+  chips:           document.getElementById('prefDeviceChips'),
+  socSearch:       document.getElementById('prefSocSearch'),
+  socDropdown:     document.getElementById('prefSocDropdown'),
+  socChip:         document.getElementById('prefSocChip'),
+  filterModeBtns:  document.getElementById('prefFilterModeBtns'),
+  regionSelect:    document.getElementById('prefRegionSelect'),
+  storeList:       document.getElementById('prefStoreList'),
+  compatSelect:    document.getElementById('prefCompatSelect'),
+  skipBtn:         document.getElementById('prefDevicesSkip'),
+  saveBtn:         document.getElementById('prefDevicesSave'),
 };
 
+// local modal state for SoC (separate from sidebar _selectedSocs)
+const _prefSelectedSocs = new Map(); // id → { id, name }
+let _prefSocFocusIdx = -1;
+
 function openPreferredDevicesModal() {
+  // Seed filter mode toggle
+  const savedMode = loadFilterMode();
+  prefEl.filterModeBtns.querySelectorAll('.disc-btn[data-mode]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === savedMode);
+  });
+  document.getElementById('prefDeviceSection').hidden = savedMode === 'chipset';
+  document.getElementById('prefSocSection').hidden = savedMode !== 'chipset';
+
   // Seed modal with current preferred device ids
   _prefSelectedDevices.clear();
   const savedIds = loadPreferredDeviceIds() || [];
@@ -390,6 +600,18 @@ function openPreferredDevicesModal() {
   prefRenderChips();
   prefEl.search.value = '';
   prefEl.dropdown.hidden = true;
+
+  // Seed modal with current preferred SoCs
+  _prefSelectedSocs.clear();
+  const savedSocIds = loadPreferredSocIds() || [];
+  savedSocIds.forEach(id => {
+    const s = state.socs.find(x => x.id === id);
+    if (s) _prefSelectedSocs.set(s.id, s);
+  });
+  prefRenderSocChips();
+  prefEl.socSearch.value = '';
+  prefEl.socDropdown.hidden = true;
+
   // Seed compat select with saved preference
   const savedCompat = loadPreferredCompatId();
   if (savedCompat !== null) prefEl.compatSelect.value = savedCompat;
@@ -405,7 +627,8 @@ function openPreferredDevicesModal() {
     });
   }
   prefEl.modal.hidden = false;
-  prefEl.search.focus();
+  if (savedMode === 'chipset') prefEl.socSearch.focus();
+  else prefEl.search.focus();
 }
 
 function closePreferredDevicesModal() {
@@ -458,6 +681,40 @@ function prefRenderDropdown(devices, q = '', showHint = false) {
   prefEl.dropdown.hidden = false;
 }
 
+function prefRenderSocDropdown(socs, q = '', showHint = false) {
+  prefEl.socDropdown.innerHTML = '';
+  _prefSocFocusIdx = -1;
+  if (!socs.length) {
+    prefEl.socDropdown.innerHTML = `<div class="device-opt-empty">${t('deviceNoResults')}</div>`;
+  } else {
+    socs.forEach(s => {
+      const div = document.createElement('div');
+      div.className = 'device-opt';
+      div.dataset.id = s.id;
+      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      div.innerHTML = q ? s.name.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>') : escHtml(s.name);
+      div.addEventListener('mousedown', e => { e.preventDefault(); prefSelectSoc(s); });
+      prefEl.socDropdown.appendChild(div);
+    });
+    if (showHint) {
+      const hint = document.createElement('div');
+      hint.className = 'device-opt-hint';
+      hint.textContent = t('deviceSearchHint');
+      prefEl.socDropdown.appendChild(hint);
+    }
+  }
+  prefEl.socDropdown.hidden = false;
+}
+
+function prefSelectSoc(s) {
+  if (_prefSelectedSocs.has(s.id) || _prefSelectedSocs.size >= MAX_SOCS) return;
+  _prefSelectedSocs.set(s.id, s);
+  prefEl.socSearch.value = '';
+  prefRenderSocChips();
+  prefEl.socDropdown.hidden = true;
+  _prefSocFocusIdx = -1;
+}
+
 function prefAddDevice(d) {
   if (_prefSelectedDevices.has(d.id)) return;
   if (_prefSelectedDevices.size >= MAX_DEVICES) return;
@@ -466,6 +723,26 @@ function prefAddDevice(d) {
   prefRenderChips();
   prefEl.dropdown.hidden = true;
   _prefDeviceFocusIdx = -1;
+}
+
+function prefRenderSocChips() {
+  prefEl.socChip.innerHTML = '';
+  _prefSelectedSocs.forEach(s => {
+    const chip = document.createElement('div');
+    chip.className = 'device-chip';
+    chip.dataset.id = s.id;
+    chip.innerHTML = `<span title="${escHtml(s.name)}">${escHtml(s.name)}</span><button type="button" title="${t('deviceRemove')}">×</button>`;
+    chip.querySelector('button').addEventListener('click', () => {
+      _prefSelectedSocs.delete(s.id);
+      prefRenderSocChips();
+    });
+    prefEl.socChip.appendChild(chip);
+  });
+  const atMax = _prefSelectedSocs.size >= MAX_SOCS;
+  prefEl.socSearch.disabled = atMax;
+  prefEl.socSearch.placeholder = atMax
+    ? t('deviceMaxReached')(MAX_SOCS)
+    : t(_prefSelectedSocs.size ? 'deviceAddPlaceholder' : 'chipsetSearchPlaceholder');
 }
 
 function getPrefDeviceMatches(q) {
@@ -566,6 +843,65 @@ function initPreferredDevicesModal() {
     });
   }
 
+  // Wire up modal filter mode toggle
+  prefEl.filterModeBtns.querySelectorAll('.disc-btn[data-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const newMode = btn.dataset.mode;
+      prefEl.filterModeBtns.querySelectorAll('.disc-btn[data-mode]').forEach(b => {
+        b.classList.toggle('active', b.dataset.mode === newMode);
+      });
+      document.getElementById('prefDeviceSection').hidden = newMode === 'chipset';
+      document.getElementById('prefSocSection').hidden = newMode !== 'chipset';
+    });
+  });
+
+  // Wire up modal SoC combobox
+  function getPrefSocMatches(q) {
+    if (q) {
+      return state.socs
+        .filter(s => s.name.toLowerCase().includes(q) && !_prefSelectedSocs.has(s.id))
+        .slice(0, 60);
+    }
+    return state.socs
+      .filter(s => !_prefSelectedSocs.has(s.id))
+      .slice(0, 20)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }
+
+  prefEl.socSearch.addEventListener('input', () => {
+    const q = prefEl.socSearch.value.trim().toLowerCase();
+    prefRenderSocDropdown(getPrefSocMatches(q), q, !q);
+  });
+  prefEl.socSearch.addEventListener('focus', () => {
+    const q = prefEl.socSearch.value.trim().toLowerCase();
+    prefRenderSocDropdown(getPrefSocMatches(q), q, !q);
+  });
+  prefEl.socSearch.addEventListener('keydown', e => {
+    const opts = [...prefEl.socDropdown.querySelectorAll('.device-opt')];
+    if (e.key === 'Escape') { prefEl.socDropdown.hidden = true; return; }
+    if (!opts.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _prefSocFocusIdx = Math.min(_prefSocFocusIdx + 1, opts.length - 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      _prefSocFocusIdx = Math.max(_prefSocFocusIdx - 1, 0);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (_prefSocFocusIdx >= 0) {
+        const id = opts[_prefSocFocusIdx].dataset.id;
+        const s = state.socs.find(x => x.id === id);
+        if (s) prefSelectSoc(s);
+      }
+      return;
+    } else { return; }
+    opts.forEach((o, i) => o.classList.toggle('focused', i === _prefSocFocusIdx));
+    opts[_prefSocFocusIdx]?.scrollIntoView({ block: 'nearest' });
+  });
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#prefSocCombo')) prefEl.socDropdown.hidden = true;
+  });
+
   prefEl.skipBtn.addEventListener('click', () => {
     savePreferredDeviceIds([]);
     savePreferredCompatId('');
@@ -575,8 +911,26 @@ function initPreferredDevicesModal() {
   });
 
   prefEl.saveBtn.addEventListener('click', () => {
-    const ids = [..._prefSelectedDevices.keys()];
-    savePreferredDeviceIds(ids);
+    // Save + apply filter mode
+    const activeMode = prefEl.filterModeBtns.querySelector('.disc-btn[data-mode].active')?.dataset.mode || 'device';
+    saveFilterMode(activeMode);
+    applyFilterMode(activeMode);
+
+    if (activeMode === 'chipset') {
+      // Save + apply SoCs
+      savePreferredSocIds([..._prefSelectedSocs.keys()]);
+      clearAllDevices();
+      clearSoc();
+      _prefSelectedSocs.forEach(s => selectSoc(s));
+    } else {
+      // Save + apply devices
+      const ids = [..._prefSelectedDevices.keys()];
+      savePreferredDeviceIds(ids);
+      clearSoc();
+      clearAllDevices();
+      _prefSelectedDevices.forEach(d => addDevice(d));
+    }
+
     savePreferredCompatId(prefEl.compatSelect.value);
     // Save + apply region
     const selectedRegion = prefEl.regionSelect ? prefEl.regionSelect.value : el.regionSelect.value;
@@ -594,10 +948,6 @@ function initPreferredDevicesModal() {
         cb.checked = storeIdSet.has(String(cb.value));
       });
     }
-    // Apply devices + compat to main UI
-    _prefSelectedDevices.forEach(d => {
-      if (!_selectedDevices.has(d.id)) addDevice(d);
-    });
     applyPreferredCompat();
     closePreferredDevicesModal();
     fetchGames(true, true);
@@ -742,7 +1092,9 @@ function startSearchCooldown(seconds) {
 async function fetchGames(resetPage = true, isSettingsChange = false) {
   if (state.loading) return;
 
-  if (_selectedDevices.size === 0) {
+  const _isChipsetMode = loadFilterMode() === 'chipset';
+  const _hasFilter = _isChipsetMode ? _selectedSocs.size > 0 : _selectedDevices.size > 0;
+  if (!_hasFilter) {
     showDevicePrompt();
     return;
   }
@@ -755,6 +1107,7 @@ async function fetchGames(resetPage = true, isSettingsChange = false) {
 
   const params = {
     deviceIds:     state.filters.deviceIds.join(',') || '',
+    socIds:        state.filters.socIds.join(',') || '',
     compatRankMin: state.filters.compatRankMin,
     compatRankMax: state.filters.compatRankMax,
     minPrice:      state.filters.minPrice,
@@ -816,8 +1169,14 @@ async function fetchGames(resetPage = true, isSettingsChange = false) {
 
 /* ── Read current filter values from DOM ────────────────────────────────────── */
 function readFilters() {
-  // deviceIds: array of selected device IDs (multi-select)
-  state.filters.deviceIds    = [...document.querySelectorAll('.device-chip')].map(c => c.dataset.id);
+  const isChipsetMode = loadFilterMode() === 'chipset';
+  if (isChipsetMode) {
+    state.filters.deviceIds = [];
+    state.filters.socIds    = [..._selectedSocs.keys()];
+  } else {
+    state.filters.deviceIds = [...document.querySelectorAll('#deviceChips .device-chip')].map(c => c.dataset.id);
+    state.filters.socIds    = [];
+  }
   const minIdx = parseInt(el.compatRangeMin.value);
   const maxIdx = parseInt(el.compatRangeMax.value);
   const maxPossible = _compatScalesSorted.length - 1;
@@ -1013,11 +1372,12 @@ function showSkeletons(n = 12) {
 }
 
 function showDevicePrompt() {
+  const isChipset = loadFilterMode() === 'chipset';
   el.gamesGrid.innerHTML = `
     <div class="state-box">
       <div class="icon">🎮</div>
-      <h3>${t('devicePromptTitle')}</h3>
-      <p>${t('devicePromptMsg')}</p>
+      <h3>${t(isChipset ? 'devicePromptTitleChipset' : 'devicePromptTitle')}</h3>
+      <p>${t(isChipset ? 'devicePromptMsgChipset' : 'devicePromptMsg')}</p>
     </div>`;
   el.pagination.innerHTML = '';
   el.resultsCount.innerHTML = '';
@@ -1107,6 +1467,7 @@ el.searchInput.addEventListener('input', debounce(() => fetchGames(true), 400));
 // Reset
 el.resetBtn.addEventListener('click', () => {
   clearAllDevices();
+  clearSoc();
   el.minPrice.value       = '';
   el.maxPrice.value       = '';
   el.searchInput.value    = '';
@@ -1151,7 +1512,10 @@ el.resetBtn.addEventListener('click', () => {
 document.addEventListener('languagechange', () => {
   updateRegionNote();
   renderChips();
-  if (_selectedDevices.size === 0) {
+  renderSocChips();
+  const isChipset = loadFilterMode() === 'chipset';
+  const hasFilter = isChipset ? _selectedSocs.size > 0 : _selectedDevices.size > 0;
+  if (!hasFilter) {
     showDevicePrompt();
   } else if (state.loaded) {
     renderGames();

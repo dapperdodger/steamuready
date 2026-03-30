@@ -73,6 +73,11 @@ const translations = {
     settingsTitle:          'Paramètres',
     filtersTitle:           'Filtres',
     priceRange:             'Plage de prix',
+    chipset:                'Chipset',
+    filterModeLabel:        'Filtrer par',
+    chipsetSearchPlaceholder:'Rechercher un chipset…',
+    devicePromptTitleChipset:'Sélectionne un chipset pour commencer',
+    devicePromptMsgChipset: 'Choisis un chipset dans la section Paramètres, puis clique sur Enregistrer pour voir les jeux en promo compatibles.',
   },
 
   en: {
@@ -148,6 +153,11 @@ const translations = {
     settingsTitle:          'Settings',
     filtersTitle:           'Filters',
     priceRange:             'Price range',
+    chipset:                'Chipset',
+    filterModeLabel:        'Filter by',
+    chipsetSearchPlaceholder:'Search for a chipset…',
+    devicePromptTitleChipset:'Select a chipset to get started',
+    devicePromptMsgChipset: 'Choose a chipset from the Settings section, then click Save to see compatible games on sale.',
   },
 
   de: {
@@ -223,6 +233,11 @@ const translations = {
     settingsTitle:          'Einstellungen',
     filtersTitle:           'Filter',
     priceRange:             'Preisbereich',
+    chipset:                'Chipsatz',
+    filterModeLabel:        'Filtern nach',
+    chipsetSearchPlaceholder:'Chipsatz suchen…',
+    devicePromptTitleChipset:'Chipsatz auswählen',
+    devicePromptMsgChipset: 'Wähle einen Chipsatz im Einstellungsbereich aus und klicke auf Speichern, um kompatible Spiele im Angebot zu sehen.',
   },
 
   es: {
@@ -298,6 +313,11 @@ const translations = {
     settingsTitle:          'Configuración',
     filtersTitle:           'Filtros',
     priceRange:             'Rango de precio',
+    chipset:                'Chipset',
+    filterModeLabel:        'Filtrar por',
+    chipsetSearchPlaceholder:'Buscar un chipset…',
+    devicePromptTitleChipset:'Selecciona un chipset para empezar',
+    devicePromptMsgChipset: 'Elige un chipset en la sección Configuración y haz clic en Guardar para ver los juegos en oferta compatibles.',
   },
 };
 

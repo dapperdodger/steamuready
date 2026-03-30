@@ -49,11 +49,30 @@
     <div class="modal-body">
       <p data-i18n="preferredSettingsMsg">Configure your preferences to pre-filter results and maximise cache hits. You can skip this and change it anytime.</p>
 
-      <label class="filter-label" data-i18n="device" style="margin-top:.75rem;display:block">Device</label>
-      <div class="device-combo" id="prefDeviceCombo" style="margin-top:.35rem">
-        <input type="text" id="prefDeviceSearch" data-i18n-placeholder="deviceSearchPlaceholder" placeholder="Search for a device…" autocomplete="off" />
-        <div class="device-dropdown" id="prefDeviceDropdown" hidden></div>
-        <div class="device-chips" id="prefDeviceChips"></div>
+      <div style="margin-top:.75rem">
+        <label class="filter-label" data-i18n="filterModeLabel">Filter by</label>
+        <div class="discount-buttons" id="prefFilterModeBtns" style="margin-top:.35rem">
+          <button class="disc-btn active" data-mode="device" data-i18n="device">Device</button>
+          <button class="disc-btn" data-mode="chipset" data-i18n="chipset">Chipset</button>
+        </div>
+      </div>
+
+      <div id="prefDeviceSection" style="margin-top:.75rem">
+        <label class="filter-label" data-i18n="device">Device</label>
+        <div class="device-combo" id="prefDeviceCombo" style="margin-top:.35rem">
+          <input type="text" id="prefDeviceSearch" data-i18n-placeholder="deviceSearchPlaceholder" placeholder="Search for a device…" autocomplete="off" />
+          <div class="device-dropdown" id="prefDeviceDropdown" hidden></div>
+          <div class="device-chips" id="prefDeviceChips"></div>
+        </div>
+      </div>
+
+      <div id="prefSocSection" style="margin-top:.75rem" hidden>
+        <label class="filter-label" data-i18n="chipset">Chipset</label>
+        <div class="device-combo" id="prefSocCombo" style="margin-top:.35rem">
+          <input type="text" id="prefSocSearch" data-i18n-placeholder="chipsetSearchPlaceholder" placeholder="Search for a chipset…" autocomplete="off" />
+          <div class="device-dropdown" id="prefSocDropdown" hidden></div>
+          <div class="device-chips" id="prefSocChip"></div>
+        </div>
       </div>
 
       <div style="margin-top:1rem">
@@ -224,13 +243,28 @@
     <div class="sidebar-section">
       <div class="sidebar-title" data-i18n="settingsTitle">Settings</div>
 
-      <!-- Device -->
+      <!-- Device / Chipset -->
       <div class="filter-group">
-        <label class="filter-label" data-i18n="device">Device</label>
-        <div class="device-combo" id="deviceCombo">
-          <input type="text" id="deviceSearch" data-i18n-placeholder="deviceSearchPlaceholder" placeholder="Search for a device…" autocomplete="off" />
-          <div class="device-dropdown" id="deviceDropdown" hidden></div>
-          <div class="device-chips" id="deviceChips"></div>
+        <div class="toggle-row" style="margin-bottom:.6rem">
+          <span class="filter-label" data-i18n="filterModeLabel">Filter by</span>
+          <div class="discount-buttons">
+            <button class="disc-btn active" data-mode="device" id="filterModeDeviceBtn" data-i18n="device">Device</button>
+            <button class="disc-btn" data-mode="chipset" id="filterModeChipsetBtn" data-i18n="chipset">Chipset</button>
+          </div>
+        </div>
+        <div id="deviceSection">
+          <div class="device-combo" id="deviceCombo">
+            <input type="text" id="deviceSearch" data-i18n-placeholder="deviceSearchPlaceholder" placeholder="Search for a device…" autocomplete="off" />
+            <div class="device-dropdown" id="deviceDropdown" hidden></div>
+            <div class="device-chips" id="deviceChips"></div>
+          </div>
+        </div>
+        <div id="socSection" hidden>
+          <div class="device-combo" id="socCombo">
+            <input type="text" id="socSearch" data-i18n-placeholder="chipsetSearchPlaceholder" placeholder="Search for a chipset…" autocomplete="off" />
+            <div class="device-dropdown" id="socDropdown" hidden></div>
+            <div class="device-chips" id="socChip"></div>
+          </div>
         </div>
         <button class="link-btn" id="managePreferredBtn" data-i18n="preferredSettingsManage">Manage preferred settings</button>
       </div>
