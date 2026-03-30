@@ -12,7 +12,8 @@ const state = {
 
   filters: {
     deviceIds:     [],
-    performanceId: '',
+    compatRankMin: '',
+    compatRankMax: '',
     minPrice:      '',
     maxPrice:      '',
     minDiscount:   0,
@@ -36,7 +37,11 @@ const el = {
   deviceSearch:       $('deviceSearch'),       // text input for filtering
   deviceDropdown:     $('deviceDropdown'),     // dropdown list
   deviceChips:        $('deviceChips'),        // selected device chips container
-  compatList:   $('compatList'),
+  compatRangeMin:  $('compatRangeMin'),
+  compatRangeMax:  $('compatRangeMax'),
+  compatRangeFill: $('compatRangeFill'),
+  compatLabelMin:  $('compatLabelMin'),
+  compatLabelMax:  $('compatLabelMax'),
   minPrice:     $('minPrice'),
   maxPrice:     $('maxPrice'),
   searchInput:  $('searchInput'),
@@ -316,13 +321,12 @@ function savePreferredCompatId(id) {
 
 function applyPreferredCompat() {
   const id = loadPreferredCompatId();
-  if (id === null) return;
-  const selector = id === '' ? '[data-value=""]' : `[data-value="${CSS.escape(id)}"]`;
-  const item = el.compatList.querySelector(`.compat-item${selector}`);
-  if (!item) return;
-  el.compatList.querySelectorAll('.compat-item').forEach(i => i.classList.remove('selected'));
-  item.classList.add('selected');
-  item.querySelector('input').checked = true;
+  if (id === null || id === '') return;
+  const idx = _compatScalesSorted.findIndex(s => String(s.id) === String(id));
+  if (idx === -1) return;
+  el.compatRangeMin.value = 0;    // always start from best (Perfect, far left)
+  el.compatRangeMax.value = idx;  // preferred minimum = worst acceptable = right bound
+  _updateCompatSlider();
 }
 
 function loadPreferredRegion() {
@@ -665,42 +669,51 @@ function populateStores(shops) {
   });
 }
 
-/* ── Populate compat radio list ─────────────────────────────────────────────── */
-function populateCompatList(scales) {
-  el.compatList.innerHTML = `
-    <label class="compat-item selected" data-value="">
-      <input type="radio" name="compat" value="" checked />
-      <span class="compat-dot dot-0"></span>
-      <span class="compat-label-text" data-i18n="compatAll">${t('compatAll')}</span>
-    </label>`;
+/* ── Compat range slider ─────────────────────────────────────────────────────── */
+let _compatScalesSorted = [];
 
-  // Sort by rank ascending: rank 1 (Perfect) first
-  const sorted = [...scales].sort((a, b) =>
+function _compatSliderLabel(idx) {
+  const s = _compatScalesSorted[idx];
+  if (!s) return '';
+  const rank = s.rank ?? s.position ?? 0;
+  const cls  = compatClass(rank);
+  const name = s.label ?? s.description ?? `Rank ${rank}`;
+  return `<span class="compat-dot dot-${cls}"></span>${escHtml(name)}`;
+}
+
+function _updateCompatSlider() {
+  const minIdx = parseInt(el.compatRangeMin.value);
+  const maxIdx = parseInt(el.compatRangeMax.value);
+  const total  = _compatScalesSorted.length - 1 || 1;
+  el.compatLabelMin.innerHTML = _compatSliderLabel(minIdx);
+  el.compatLabelMax.innerHTML = _compatSliderLabel(maxIdx);
+  el.compatRangeFill.style.left  = (minIdx / total * 100) + '%';
+  el.compatRangeFill.style.right = ((total - maxIdx) / total * 100) + '%';
+}
+
+function populateCompatList(scales) {
+  _compatScalesSorted = [...scales].sort((a, b) =>
     (a.rank ?? a.position ?? 99) - (b.rank ?? b.position ?? 99)
   );
+  const last = _compatScalesSorted.length - 1;
+  el.compatRangeMin.max = last;
+  el.compatRangeMax.max = last;
+  el.compatRangeMin.value = 0;
+  el.compatRangeMax.value = last;
+  _updateCompatSlider();
 
-  sorted.forEach(s => {
-    const rank = s.rank ?? s.position ?? 0;
-    const cls  = compatClass(rank);
-    const lbl  = document.createElement('label');
-    lbl.className = 'compat-item';
-    lbl.dataset.value = s.id;
-    lbl.innerHTML = `
-      <input type="radio" name="compat" value="${s.id}" />
-      <span class="compat-dot dot-${cls}"></span>
-      <span class="compat-label-text">${s.label ?? s.description ?? `Rank ${rank}`}</span>`;
-    el.compatList.appendChild(lbl);
-  });
-
-  // Click on row = select radio + instant re-fetch (Filters)
-  el.compatList.querySelectorAll('.compat-item').forEach(item => {
-    item.addEventListener('click', () => {
-      el.compatList.querySelectorAll('.compat-item').forEach(i => i.classList.remove('selected'));
-      item.classList.add('selected');
-      item.querySelector('input').checked = true;
-      fetchGames(true);
-    });
-  });
+  function clampAndUpdate() {
+    if (parseInt(el.compatRangeMin.value) > parseInt(el.compatRangeMax.value))
+      el.compatRangeMin.value = el.compatRangeMax.value;
+    if (parseInt(el.compatRangeMax.value) < parseInt(el.compatRangeMin.value))
+      el.compatRangeMax.value = el.compatRangeMin.value;
+    _updateCompatSlider();
+  }
+  // input = live visual update while dragging; change = fetch only on release
+  el.compatRangeMin.addEventListener('input',  clampAndUpdate);
+  el.compatRangeMax.addEventListener('input',  clampAndUpdate);
+  el.compatRangeMin.addEventListener('change', () => fetchGames(true));
+  el.compatRangeMax.addEventListener('change', () => fetchGames(true));
 }
 
 /* ── Search rate-limit cooldown ─────────────────────────────────────────────── */
@@ -742,7 +755,8 @@ async function fetchGames(resetPage = true, isSettingsChange = false) {
 
   const params = {
     deviceIds:     state.filters.deviceIds.join(',') || '',
-    performanceId: state.filters.performanceId,
+    compatRankMin: state.filters.compatRankMin,
+    compatRankMax: state.filters.compatRankMax,
     minPrice:      state.filters.minPrice,
     maxPrice:      state.filters.maxPrice,
     minDiscount:   state.filters.minDiscount || '',
@@ -804,7 +818,16 @@ async function fetchGames(resetPage = true, isSettingsChange = false) {
 function readFilters() {
   // deviceIds: array of selected device IDs (multi-select)
   state.filters.deviceIds    = [...document.querySelectorAll('.device-chip')].map(c => c.dataset.id);
-  state.filters.performanceId = el.compatList.querySelector('input:checked')?.value ?? '';
+  const minIdx = parseInt(el.compatRangeMin.value);
+  const maxIdx = parseInt(el.compatRangeMax.value);
+  const maxPossible = _compatScalesSorted.length - 1;
+  if (minIdx === 0 && maxIdx === maxPossible) {
+    state.filters.compatRankMin = '';
+    state.filters.compatRankMax = '';
+  } else {
+    state.filters.compatRankMin = _compatScalesSorted[minIdx]?.rank ?? '';
+    state.filters.compatRankMax = _compatScalesSorted[maxIdx]?.rank ?? '';
+  }
   state.filters.minPrice      = el.minPrice.value;
   state.filters.maxPrice      = el.maxPrice.value;
   state.filters.search        = el.searchInput.value.trim();
@@ -1090,9 +1113,9 @@ el.resetBtn.addEventListener('click', () => {
   el.sortSelect.value     = 'discount_desc';
 
   // Reset compat
-  el.compatList.querySelectorAll('.compat-item').forEach(i => i.classList.remove('selected'));
-  el.compatList.querySelector('[data-value=""]')?.classList.add('selected');
-  el.compatList.querySelector('input[value=""]').checked = true;
+  el.compatRangeMin.value = 0;
+  el.compatRangeMax.value = el.compatRangeMax.max;
+  _updateCompatSlider();
 
   // Reset discount
   document.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));

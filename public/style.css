@@ -176,24 +176,54 @@ select:focus, input:focus {
 }
 select option { background: var(--card); }
 
-/* Compat radio list */
-.compat-list { display: flex; flex-direction: column; gap: 4px; }
-.compat-item {
-  display: flex; align-items: center; gap: 8px;
-  cursor: pointer; padding: 4px 6px;
-  border-radius: var(--radius-sm);
-  transition: background var(--transition);
+/* Compat range slider */
+.compat-range-container { padding: 4px 0 2px; }
+.compat-range-labels {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px; gap: 4px;
 }
-.compat-item:hover { background: var(--card); }
-.compat-item input[type="radio"] { display: none; }
-.compat-item.selected { background: var(--card-hover); }
+.compat-range-label {
+  display: flex; align-items: center; gap: 5px;
+  font-size: .78rem; color: var(--text); min-width: 0;
+}
+.compat-range-label .compat-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+}
+.compat-range-track {
+  position: relative; height: 4px;
+  background: var(--border-light); border-radius: 2px;
+  margin: 10px 0;
+}
+.compat-range-fill {
+  position: absolute; height: 100%;
+  background: var(--accent); border-radius: 2px;
+  pointer-events: none;
+}
+.compat-range-input {
+  position: absolute; width: 100%; top: 50%;
+  transform: translateY(-50%);
+  -webkit-appearance: none; appearance: none;
+  background: transparent; margin: 0; padding: 0;
+  pointer-events: none;
+}
+.compat-range-input::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 16px; height: 16px;
+  background: var(--text); border-radius: 50%;
+  cursor: pointer; pointer-events: all;
+  box-shadow: 0 0 0 2px var(--bg);
+  transition: transform .1s;
+}
+.compat-range-input::-webkit-slider-thumb:hover { transform: scale(1.2); }
+.compat-range-input::-moz-range-thumb {
+  width: 16px; height: 16px;
+  background: var(--text); border-radius: 50%;
+  cursor: pointer; pointer-events: all; border: none;
+  box-shadow: 0 0 0 2px var(--bg);
+}
 .compat-dot {
-  width: 10px; height: 10px; border-radius: 50%;
-  flex-shrink: 0; border: 2px solid transparent;
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
 }
-.compat-item.selected .compat-dot { border-color: white; }
-.compat-label-text { font-size: .82rem; }
-.compat-rank { font-size: .7rem; color: var(--muted); margin-left: auto; }
 
 /* Discount buttons */
 .discount-buttons { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -850,7 +880,7 @@ select option { background: var(--card); }
   /* Larger tap targets */
   .disc-btn { padding: 7px 12px; font-size: .82rem; }
   .store-item { padding: 6px 8px; }
-  .compat-item { padding: 6px 8px; }
+
   .btn-apply, .btn-reset { padding: 10px 0; }
 
   /* Pagination: bigger tap targets */

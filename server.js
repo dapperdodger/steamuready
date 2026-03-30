@@ -196,7 +196,7 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
   try {
     const {
       deviceIds: rawDeviceIds = '',
-      performanceId,
+      compatRankMin, compatRankMax,
       maxPrice, minPrice, minDiscount = 0,
       histLow,
       search, sort = 'discount_desc',
@@ -215,19 +215,15 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
     const shopIds = rawShops ? rawShops.split(',').map(Number).filter(Boolean) : [...ALLOWED_SHOP_IDS];
     const appSlugs = rawApps ? new Set(rawApps.split(',').filter(Boolean)) : null;
 
-    // Resolve performanceId → all scales with rank ≤ selected
+    // Resolve compatRankMin/Max → matching scale IDs
     let perfIds = null;
-    if (performanceId) {
+    if (compatRankMin || compatRankMax) {
       const allScales = await emuready.getPerformanceScales();
-      const selected = allScales.find(s => String(s.id) === String(performanceId));
-      if (selected) {
-        const maxRank = selected.rank ?? 99;
-        perfIds = allScales
-          .filter(s => (s.rank ?? 99) <= maxRank)
-          .map(s => String(s.id));
-      } else {
-        perfIds = [performanceId];
-      }
+      const minRank = compatRankMin ? Number(compatRankMin) : 1;
+      const maxRank = compatRankMax ? Number(compatRankMax) : 999;
+      perfIds = allScales
+        .filter(s => { const r = s.rank ?? 99; return r >= minRank && r <= maxRank; })
+        .map(s => String(s.id));
     }
 
     // 1. Build correlation map scoped to selected devices/shops — cache hit after first build
