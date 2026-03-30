@@ -26,3 +26,4 @@
 - [ ] Filter by chipset instead of device
 - [ ] Filter by controller compat
 - [ ] Link to Steamuready Discord
+- [x] German Language Support

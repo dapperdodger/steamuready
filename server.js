@@ -19,7 +19,6 @@ app.use(helmet({
 }));
 app.use(express.json({ limit: '16kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
 // ── Devices ─────────────────────────────────────────────────────────────────
 app.get('/api/devices', async (req, res) => {
