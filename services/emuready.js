@@ -13,6 +13,32 @@ const DEVICES_TTL  = 24 * 60 * 60 * 1000; // 24 h
 const SOCS_TTL     = 24 * 60 * 60 * 1000; // 24 h
 const LISTINGS_TTL =  4 * 60 * 60 * 1000; //  4 h
 
+// Emulators SteamUReady cares about — resolved by name at first call, then cached in-process.
+// Search terms are intentionally broad so we catch all variants (e.g. GameHub Lite).
+const ALLOWED_EMULATOR_SEARCHES = ['gamenative', 'gamehub', 'winlator'];
+let _allowedEmulatorIds = null;
+
+async function getAllowedEmulatorIds() {
+  if (_allowedEmulatorIds) return _allowedEmulatorIds;
+  try {
+    const seen = new Set();
+    const ids = [];
+    for (const term of ALLOWED_EMULATOR_SEARCHES) {
+      const data = await trpcGet('emulators.get', { search: term, limit: 10 });
+      const list = Array.isArray(data) ? data : [];
+      for (const e of list) {
+        if (!seen.has(e.id)) { seen.add(e.id); ids.push(e.id); }
+      }
+    }
+    console.log(`[EmuReady] resolved ${ids.length} allowed emulator IDs`);
+    _allowedEmulatorIds = ids;
+    return ids;
+  } catch (e) {
+    console.error('[EmuReady] emulatorIds error:', e.message);
+    return [];
+  }
+}
+
 async function trpcGet(procedure, input = {}) {
   const inputEnc = encodeURIComponent(JSON.stringify({ json: input }));
   const url = `${BASE}/${procedure}?input=${inputEnc}`;
@@ -115,6 +141,7 @@ async function getAllListings(filters, onProgress) {
   console.log('[EmuReady] fetching all listing pages...');
   const fetchPromise = (async () => {
     const PAGE_SIZE = 50;
+    const emulatorIds = await getAllowedEmulatorIds();
     let all = [];
     let page = 1;
     let totalPages = 1;
@@ -124,6 +151,7 @@ async function getAllListings(filters, onProgress) {
         if (deviceIds.length) input.deviceIds = deviceIds;
         if (socIds.length) input.socIds = socIds;
         if (performanceIds.length) input.performanceIds = performanceIds;
+        if (emulatorIds.length) input.emulatorIds = emulatorIds;
         const data = await trpcGet('listings.get', input);
         const items = (data && data.listings) || (data && data.data) || [];
         all = all.concat(items);
@@ -144,6 +172,7 @@ async function getAllListings(filters, onProgress) {
           if (deviceIds.length) input2.deviceIds = deviceIds;
           if (socIds.length) input2.socIds = socIds;
           if (performanceIds.length) input2.performanceIds = performanceIds;
+          if (emulatorIds.length) input2.emulatorIds = emulatorIds;
           const data2 = await trpcGet('listings.get', input2);
           all = all.concat((data2 && data2.listings) || (data2 && data2.data) || []);
         } catch (e2) { /* skip */ }
@@ -161,6 +190,7 @@ async function getAllListings(filters, onProgress) {
 
 async function clearCache() {
   _perfScales = null;
+  _allowedEmulatorIds = null;
   await cache.delPattern('emu:*');
 }
 
