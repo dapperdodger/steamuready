@@ -21,7 +21,8 @@ const state = {
     minDiscount:   0,
     minRating:     0,
     histLow:       false,
-    newAge:        '',
+    newAge:           '',
+    controllerSupport: '',
     search:        '',
     sort:          'discount_desc',
     cc:            'us',
@@ -64,7 +65,9 @@ const el = {
   storeList:    $('storeList'),
   histLowCheck:  $('histLowCheck'),
   newAgeButtons: $('newAgeButtons'),
-  ratingButtons: $('ratingButtons'),
+  ratingButtons:     $('ratingButtons'),
+  controllerButtons:     $('controllerButtons'),
+  controllerFilterGroup: $('controllerFilterGroup'),
 };
 
 /* ── API ───────────────────────────────────────────────────────────────────── */
@@ -92,6 +95,7 @@ const api = {
     return api.json(`/api/games?${q}`);
   },
   refresh()       { return fetch('/api/refresh', { method: 'POST' }).then(r => r.json()); },
+  status()        { return api.json('/api/status'); },
 };
 
 /* ── Progress ──────────────────────────────────────────────────────────────── */
@@ -1119,9 +1123,10 @@ async function fetchGames(resetPage = true, isSettingsChange = false) {
     cc:            state.filters.cc,
     shops:         state.filters.shops.join(',') || '',
     apps:          state.filters.apps.join(',') || '',
-    histLow:       state.filters.histLow ? '1' : '',
-    newAge:        state.filters.newAge,
-    page:          state.page,
+    histLow:           state.filters.histLow ? '1' : '',
+    newAge:            state.filters.newAge,
+    controllerSupport: state.filters.controllerSupport,
+    page:              state.page,
   };
 
   // UX: show skeletons while loading
@@ -1207,6 +1212,9 @@ function readFilters() {
 
   const activeRating = el.ratingButtons.querySelector('.disc-btn.active');
   state.filters.minRating = activeRating ? parseInt(activeRating.dataset.value) : 0;
+
+  const activeCtrl = el.controllerButtons.querySelector('.disc-btn.active');
+  state.filters.controllerSupport = activeCtrl ? activeCtrl.dataset.value : '';
 }
 
 /* ── Render game cards ──────────────────────────────────────────────────────── */
@@ -1452,6 +1460,15 @@ el.ratingButtons.querySelectorAll('.disc-btn').forEach(btn => {
   });
 });
 
+// Controller support filter (instant, Filters)
+el.controllerButtons.querySelectorAll('.disc-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    el.controllerButtons.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    fetchGames(true);
+  });
+});
+
 // Historical low toggle (instant, Filters)
 el.histLowCheck.addEventListener('change', () => fetchGames(true));
 
@@ -1504,6 +1521,10 @@ el.resetBtn.addEventListener('click', () => {
   // Reset rating filter
   el.ratingButtons.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
   el.ratingButtons.querySelector('[data-value="0"]')?.classList.add('active');
+
+  // Reset controller support filter
+  el.controllerButtons.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
+  el.controllerButtons.querySelector('[data-value=""]')?.classList.add('active');
 
   fetchGames(true, true);
 });
@@ -1579,6 +1600,21 @@ document.addEventListener('languagechange', () => {
 
   // Auto-close sidebar on mobile after tapping Apply/Save
   applyBtn?.addEventListener('click', () => { if (isMobile()) close(); });
+})();
+
+/* ── Controller filter visibility — shown only once cache is warmed ─────────── */
+(function pollCtrlCache() {
+  function show() { el.controllerFilterGroup.removeAttribute('hidden'); }
+
+  api.status().then(s => {
+    if (s.ctrlCacheReady) { show(); return; }
+    const id = setInterval(async () => {
+      try {
+        const s2 = await api.status();
+        if (s2.ctrlCacheReady) { show(); clearInterval(id); }
+      } catch { /* ignore transient errors */ }
+    }, 30_000);
+  }).catch(() => { /* server not ready yet, filter stays hidden */ });
 })();
 
 /* ── Boot ───────────────────────────────────────────────────────────────────── */

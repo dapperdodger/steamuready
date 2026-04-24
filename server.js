@@ -6,9 +6,12 @@ const Fuse = require('fuse.js');
 const emuready = require('./services/emuready');
 const store = require('./services/store');
 const epic = require('./services/epic');
+const steamcontroller = require('./services/steamcontroller');
 const { redis, delPattern } = require('./services/cache');
+const db = require('./services/db');
 
 const app = express();
+let ctrlCacheReady = false;
 app.set('trust proxy', 1); // honour X-Forwarded-For from ALB
 app.use(helmet({
   contentSecurityPolicy: {
@@ -247,6 +250,7 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
       cc = 'us',
       shops: rawShops = '',
       apps: rawApps = '',
+      controllerSupport: rawCtrl = '',
     } = req.query;
 
     const deviceIdList = rawDeviceIds ? rawDeviceIds.split(',').filter(Boolean) : [];
@@ -345,6 +349,7 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
         dealSince: sg.dealSince ?? null,
         dealExpiry: sg.dealExpiry ?? null,
         igdbRating: sg.igdbRating ?? null,
+        controllerSupport: sg.controllerSupport ?? null,
       };
 
       // Dedupe by Steam appId: keep best (lowest) performance rank
@@ -400,6 +405,13 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
     const minRating = parseFloat(req.query.minRating) || 0;
     if (minRating > 0) {
       filtered = filtered.filter(g => g.igdbRating?.igdbRating != null && g.igdbRating.igdbRating >= minRating);
+    }
+
+    if (rawCtrl) {
+      const ctrlValues = rawCtrl.split(',').filter(v => ['full', 'partial', 'none'].includes(v));
+      if (ctrlValues.length) {
+        filtered = filtered.filter(g => ctrlValues.includes(g.controllerSupport));
+      }
     }
 
     const newAgeHours = parseInt(newAge);
@@ -480,19 +492,55 @@ app.post('/api/refresh', async (req, res) => {
 
 // ── Status ────────────────────────────────────────────────────────────────────
 app.get('/api/status', (req, res) => {
-  res.json({ status: 'ok', time: new Date().toISOString() });
+  res.json({ status: 'ok', time: new Date().toISOString(), ctrlCacheReady });
 });
+
+// ── Background cache warm-up ──────────────────────────────────────────────────
+// Runs after the server starts listening so it never blocks requests.
+// Resolves EmuReady titles into game_titles DB (skips already-known entries),
+// then fills any controller_support gaps via warmMissing().
+async function warmCaches() {
+  try {
+    console.log('[warm] starting background cache warm…');
+
+    const listings = (await emuready.getAllListings({})).filter(isAllowedEmulator);
+    const titleMap = new Map();
+    for (const l of listings) {
+      const title = l.game?.title ?? l.game?.name ?? '';
+      if (title) titleMap.set(title.toLowerCase(), title);
+    }
+
+    console.log(`[warm] resolving ${titleMap.size} titles…`);
+    await store.getDealsForTitles([...titleMap.values()], 'us', []);
+
+    if (process.env.SKIP_CTRL_WARM === 'true') {
+      console.log('[warm] SKIP_CTRL_WARM set — skipping controller support warm-up');
+    } else {
+      await steamcontroller.warmMissing();
+    }
+    ctrlCacheReady = true;
+    console.log('[warm] all cache warming complete — server ready');
+  } catch (e) {
+    console.warn('[warm] failed:', e.message);
+  }
+}
 
 const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, () => {
-  console.log(`\n🎮  SteamUReady Running`);
-});
-
-// ── Graceful shutdown (ECS/ALB task draining) ─────────────────────────────────
-process.on('SIGTERM', () => {
-  console.log('[shutdown] SIGTERM received — draining connections…');
-  server.close(() => {
-    console.log('[shutdown] all connections closed, exiting');
-    process.exit(0);
+db.init().then(() => {
+  const server = app.listen(PORT, () => {
+    console.log(`\n🎮  SteamUReady Running`);
+    warmCaches();
   });
+
+  // ── Graceful shutdown (ECS/ALB task draining) ───────────────────────────────
+  process.on('SIGTERM', () => {
+    console.log('[shutdown] SIGTERM received — draining connections…');
+    server.close(() => {
+      console.log('[shutdown] all connections closed, exiting');
+      process.exit(0);
+    });
+  });
+}).catch(e => {
+  console.error('[DB] init failed:', e.message);
+  process.exit(1);
 });

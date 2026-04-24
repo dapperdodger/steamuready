@@ -1,8 +1,8 @@
 const axios = require('axios');
-const { redis, delPattern } = require('./cache');
+const { pool } = require('./db');
 
-const IGDB_BASE = 'https://api.igdb.com/v4';
-const RATING_TTL = 24 * 60 * 60 * 1000; // 24 h
+const IGDB_BASE          = 'https://api.igdb.com/v4';
+const RATING_MAX_AGE_DAYS = 7;
 
 // ── Twitch OAuth2 token (in-memory; tokens last ~60 days) ─────────────────────
 let _tokenCache = null; // { token, expiresAt }
@@ -22,7 +22,7 @@ async function getAccessToken() {
   const { access_token, expires_in } = res.data;
   _tokenCache = {
     token:     access_token,
-    expiresAt: Date.now() + expires_in * 1000 - 60_000, // refresh 1 min early
+    expiresAt: Date.now() + expires_in * 1000 - 60_000,
   };
   console.log('[IGDB] obtained new access token');
   return access_token;
@@ -41,17 +41,9 @@ async function igdbPost(endpoint, body) {
   return res.data;
 }
 
-// ── Core fetch: { steamAppId → igdbRating } ───────────────────────────────────
-// steamAppIds: string[] of Steam app IDs (e.g. "123456")
-async function fetchRatingsForSteamApps(steamAppIds) {
-  const ratings = new Map(); // steamAppId → rating object
-
-  if (!steamAppIds.length) return ratings;
-
-  // Step 1: Steam AppIDs → IGDB game IDs via /external_games
-  // external_game_source = 1 is Steam (confirmed via /external_game_sources).
-  // The old `category` field was also 1 for Steam but is now deprecated.
-  const igdbIdBySteam = new Map(); // steamAppId → igdbGameId
+// ── Fetch steamAppId → igdbGameId mappings not yet in DB ─────────────────────
+async function fetchMappings(steamAppIds) {
+  const newMappings = new Map(); // steamAppId → igdbGameId|null
 
   for (let i = 0; i < steamAppIds.length; i += 500) {
     const batch = steamAppIds.slice(i, i + 500).map(id => String(id).replace(/\D/g, '')).filter(Boolean);
@@ -62,18 +54,36 @@ async function fetchRatingsForSteamApps(steamAppIds) {
         `fields game,uid; where external_game_source = 1 & uid = (${uidList}); limit 500;`
       );
       for (const item of data ?? []) {
-        if (item.game && item.uid) igdbIdBySteam.set(item.uid, item.game);
+        if (item.game && item.uid) newMappings.set(item.uid, item.game);
       }
     } catch (e) {
       console.warn(`[IGDB] external_games lookup failed (offset ${i}):`, e.message);
     }
+    // Mark steamAppIds with no IGDB match as null so we don't re-fetch them
+    for (const id of batch) {
+      if (!newMappings.has(id)) newMappings.set(id, null);
+    }
   }
 
-  if (!igdbIdBySteam.size) return ratings;
+  // Bulk upsert into igdb_mappings
+  if (newMappings.size) {
+    const vals = [...newMappings.entries()];
+    const placeholders = vals.map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2})`).join(', ');
+    const params = vals.flatMap(([steam, igdb]) => [steam, igdb]);
+    await pool.query(
+      `INSERT INTO igdb_mappings (steam_app_id, igdb_game_id)
+       VALUES ${placeholders}
+       ON CONFLICT (steam_app_id) DO NOTHING`,
+      params
+    );
+  }
 
-  // Step 2: IGDB game IDs → ratings via /games
-  const igdbIds = [...new Set(igdbIdBySteam.values())];
-  const ratingsByIgdbId = new Map(); // igdbGameId → rating object
+  return newMappings;
+}
+
+// ── Fetch ratings for a list of IGDB game IDs ────────────────────────────────
+async function fetchRatingsForIgdbIds(igdbIds) {
+  const ratings = new Map(); // igdbGameId → rating object
 
   for (let i = 0; i < igdbIds.length; i += 500) {
     const batch = igdbIds.slice(i, i + 500);
@@ -83,8 +93,8 @@ async function fetchRatingsForSteamApps(steamAppIds) {
         `fields total_rating,total_rating_count,rating,aggregated_rating; where id = (${batch.join(',')}); limit 500;`
       );
       for (const game of data ?? []) {
-        ratingsByIgdbId.set(game.id, {
-          igdbRating:      game.total_rating      ?? null,
+        ratings.set(game.id, {
+          igdbRating:      game.total_rating       ?? null,
           igdbRatingCount: game.total_rating_count ?? 0,
           userRating:      game.rating             ?? null,
           criticRating:    game.aggregated_rating  ?? null,
@@ -93,12 +103,6 @@ async function fetchRatingsForSteamApps(steamAppIds) {
     } catch (e) {
       console.warn(`[IGDB] games ratings lookup failed (offset ${i}):`, e.message);
     }
-  }
-
-  // Step 3: map back to steamAppId
-  for (const [steamAppId, igdbGameId] of igdbIdBySteam) {
-    const r = ratingsByIgdbId.get(igdbGameId);
-    if (r) ratings.set(steamAppId, r);
   }
 
   return ratings;
@@ -111,61 +115,88 @@ async function getRatings(itadSteamPairs) {
   if (!process.env.IGDB_CLIENT_ID || !process.env.IGDB_CLIENT_SECRET) return new Map();
   if (!itadSteamPairs.length) return new Map();
 
-  // ── Cache read ─────────────────────────────────────────────────────────────
-  const pipeline = redis.pipeline();
-  for (const { itadId } of itadSteamPairs) {
-    pipeline.get(`igdb:rating:${itadId}`);
-  }
-  const pipeResults = await pipeline.exec();
+  // ── 1. Read fresh ratings from DB ─────────────────────────────────────────
+  const itadIds = itadSteamPairs.map(p => p.itadId);
+  const { rows: ratingRows } = await pool.query(
+    `SELECT itad_id, igdb_rating, igdb_rating_count, user_rating, critic_rating
+     FROM   igdb_ratings
+     WHERE  itad_id = ANY($1)
+       AND  updated_at > NOW() - INTERVAL '${RATING_MAX_AGE_DAYS} days'`,
+    [itadIds]
+  );
 
   const result = new Map();
-  const needsFetch = []; // { itadId, steamAppId }
+  const cachedIds = new Set();
 
-  for (let i = 0; i < itadSteamPairs.length; i++) {
-    const raw = pipeResults[i][1];
-    if (raw !== null) {
-      const parsed = JSON.parse(raw);
-      if (parsed) result.set(itadSteamPairs[i].itadId, parsed);
-    } else {
-      needsFetch.push(itadSteamPairs[i]);
+  for (const row of ratingRows) {
+    cachedIds.add(row.itad_id);
+    if (row.igdb_rating !== null) {
+      result.set(row.itad_id, {
+        igdbRating:      row.igdb_rating,
+        igdbRatingCount: row.igdb_rating_count,
+        userRating:      row.user_rating,
+        criticRating:    row.critic_rating,
+      });
     }
   }
 
+  const needsFetch = itadSteamPairs.filter(p => !cachedIds.has(p.itadId));
   if (!needsFetch.length) return result;
 
-  // ── Fetch uncached ─────────────────────────────────────────────────────────
   console.log(`[IGDB] fetching ratings for ${needsFetch.length} uncached games…`);
 
-  // Group by steamAppId (some may be null / missing)
-  const steamToItadIds = new Map(); // steamAppId → itadId[]
-  const noSteam = [];
-  for (const { itadId, steamAppId } of needsFetch) {
-    if (!steamAppId) { noSteam.push(itadId); continue; }
-    if (!steamToItadIds.has(steamAppId)) steamToItadIds.set(steamAppId, []);
-    steamToItadIds.get(steamAppId).push(itadId);
+  // ── 2. Resolve steamAppId → igdbGameId via DB (fetch missing from IGDB API) ─
+  const steamAppIds = [...new Set(needsFetch.map(p => p.steamAppId).filter(Boolean))];
+
+  let igdbIdBySteam = new Map(); // steamAppId → igdbGameId
+
+  if (steamAppIds.length) {
+    const { rows: mappingRows } = await pool.query(
+      'SELECT steam_app_id, igdb_game_id FROM igdb_mappings WHERE steam_app_id = ANY($1)',
+      [steamAppIds]
+    );
+    for (const row of mappingRows) igdbIdBySteam.set(row.steam_app_id, row.igdb_game_id);
+
+    const unmapped = steamAppIds.filter(id => !igdbIdBySteam.has(id));
+    if (unmapped.length) {
+      const fetched = await fetchMappings(unmapped);
+      for (const [k, v] of fetched) igdbIdBySteam.set(k, v);
+    }
   }
 
-  const steamAppIds = [...steamToItadIds.keys()];
-  const fetched = await fetchRatingsForSteamApps(steamAppIds); // steamAppId → ratings
+  // ── 3. Fetch ratings from IGDB for resolved game IDs ─────────────────────
+  const igdbGameIds = [...new Set([...igdbIdBySteam.values()].filter(Boolean))];
+  const ratingsByIgdbId = igdbGameIds.length ? await fetchRatingsForIgdbIds(igdbGameIds) : new Map();
 
-  // ── Cache write ────────────────────────────────────────────────────────────
-  const writePipeline = redis.pipeline();
-
+  // ── 4. Write results to DB + build return map ─────────────────────────────
   for (const { itadId, steamAppId } of needsFetch) {
-    const rating = steamAppId ? (fetched.get(steamAppId) ?? null) : null;
-    writePipeline.set(`igdb:rating:${itadId}`, JSON.stringify(rating), 'PX', RATING_TTL);
+    const igdbGameId = steamAppId ? (igdbIdBySteam.get(steamAppId) ?? null) : null;
+    const rating     = igdbGameId ? (ratingsByIgdbId.get(igdbGameId) ?? null) : null;
+
+    await pool.query(
+      `INSERT INTO igdb_ratings (itad_id, igdb_rating, igdb_rating_count, user_rating, critic_rating)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (itad_id) DO UPDATE SET
+         igdb_rating       = EXCLUDED.igdb_rating,
+         igdb_rating_count = EXCLUDED.igdb_rating_count,
+         user_rating       = EXCLUDED.user_rating,
+         critic_rating     = EXCLUDED.critic_rating,
+         updated_at        = NOW()`,
+      [itadId, rating?.igdbRating ?? null, rating?.igdbRatingCount ?? null,
+       rating?.userRating ?? null, rating?.criticRating ?? null]
+    );
+
     if (rating) result.set(itadId, rating);
   }
 
-  await writePipeline.exec();
-  console.log(`[IGDB] cached ratings for ${needsFetch.length} games (${fetched.size} matched)`);
-
+  console.log(`[IGDB] cached ratings for ${needsFetch.length} games (${result.size} matched)`);
   return result;
 }
 
 async function clearCache() {
   _tokenCache = null;
-  await delPattern('igdb:*');
+  // Ratings refresh naturally via updated_at; call this only to force a full re-fetch
+  await pool.query(`DELETE FROM igdb_ratings`);
 }
 
 module.exports = { getRatings, clearCache };

@@ -374,6 +374,52 @@ resource "aws_route53_record" "app" {
   }
 }
 
+# ── RDS PostgreSQL ────────────────────────────────────────────────────────────
+resource "aws_security_group" "rds" {
+  name   = "${local.app_name}-rds"
+  vpc_id = aws_vpc.main.id
+
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.app.id]
+  }
+}
+
+resource "aws_db_subnet_group" "main" {
+  name       = local.app_name
+  subnet_ids = aws_subnet.private[*].id
+}
+
+resource "random_password" "db_password" {
+  length  = 32
+  special = false
+}
+
+resource "aws_db_instance" "main" {
+  identifier             = local.app_name
+  engine                 = "postgres"
+  engine_version         = "16"
+  instance_class         = "db.t4g.micro"
+  allocated_storage      = 20
+  storage_type           = "gp2"
+  storage_encrypted      = true
+
+  db_name  = "steamuready"
+  username = "steamuready"
+  password = random_password.db_password.result
+
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  vpc_security_group_ids = [aws_security_group.rds.id]
+
+  backup_retention_period = 7
+  skip_final_snapshot     = true
+  deletion_protection     = false
+
+  tags = { Name = local.app_name }
+}
+
 # ── Outputs ───────────────────────────────────────────────────────────────────
 output "app_url" {
   value = "https://${local.domain_name}"
@@ -387,5 +433,11 @@ output "alb_dns_name" {
 output "redis_url" {
   description = "Paste this into the REDIS_URL secret in Secrets Manager (includes auth token)"
   value       = "rediss://:${random_password.redis_auth.result}@${aws_elasticache_replication_group.redis.primary_endpoint_address}:6379"
+  sensitive   = true
+}
+
+output "database_url" {
+  description = "Paste this into the DATABASE_URL secret in Secrets Manager"
+  value       = "postgresql://steamuready:${random_password.db_password.result}@${aws_db_instance.main.address}:5432/steamuready"
   sensitive   = true
 }

@@ -1,6 +1,8 @@
 const axios = require('axios');
 const { redis, delPattern } = require('./cache');
+const { pool } = require('./db');
 const igdb = require('./igdb');
+const steamcontroller = require('./steamcontroller');
 
 const ITAD_BASE = 'https://api.isthereanydeal.com';
 const STEAM_SHOP_ID = 61;
@@ -18,8 +20,7 @@ const REGIONS = {
   pl: { label: '🇵🇱 PLN',  sym: 'zł'  },
 };
 
-const TITLE_TTL    = 24 * 60 * 60 * 1000; // 24 h
-const OVERVIEW_TTL =      60 * 60 * 1000; //  1 h
+const OVERVIEW_TTL = 60 * 60 * 1000; // 1 h
 
 // ── Phase 1: Batch title → ITAD ID resolution + Steam appId lookup ────────────
 // Returns { [titleLower]: cacheEntry } for all resolved titles.
@@ -47,7 +48,7 @@ async function resolveTitlesBatch(titles) {
     const entries = {};
     for (const [title, id] of Object.entries(lookupResult)) {
       entries[title.toLowerCase()] = id
-        ? { id, matchTitle: title, imageUrl: '' }
+        ? { id, matchTitle: title, imageUrl: '', steamAppId: null }
         : { id: null };
     }
 
@@ -70,6 +71,7 @@ async function resolveTitlesBatch(titles) {
             const steamAppId = appEntry.replace('app/', '');
             const key = title.toLowerCase();
             if (entries[key]) {
+              entries[key].steamAppId = steamAppId;
               entries[key].imageUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${steamAppId}/header.jpg`;
             }
           }
@@ -79,12 +81,24 @@ async function resolveTitlesBatch(titles) {
       }
     }
 
-    // Write all entries to Redis and collect results
-    const pipeline = redis.pipeline();
-    for (const [key, entry] of Object.entries(entries)) {
-      pipeline.set(`store:title:${key}`, JSON.stringify(entry), 'PX', TITLE_TTL);
+    // Bulk upsert into game_titles
+    const vals = Object.entries(entries);
+    if (vals.length) {
+      const placeholders = vals.map((_, j) => `($${j*5+1}, $${j*5+2}, $${j*5+3}, $${j*5+4}, $${j*5+5})`).join(', ');
+      const params = vals.flatMap(([key, e]) => [key, e.id ?? null, e.matchTitle ?? null, e.steamAppId ?? null, e.imageUrl ?? null]);
+      await pool.query(
+        `INSERT INTO game_titles (title_lower, itad_id, match_title, steam_app_id, image_url)
+         VALUES ${placeholders}
+         ON CONFLICT (title_lower) DO UPDATE SET
+           itad_id      = EXCLUDED.itad_id,
+           match_title  = EXCLUDED.match_title,
+           steam_app_id = EXCLUDED.steam_app_id,
+           image_url    = EXCLUDED.image_url,
+           updated_at   = NOW()`,
+        params
+      );
     }
-    await pipeline.exec();
+
     Object.assign(resolved, entries);
   }
 
@@ -125,21 +139,21 @@ async function getDealsForTitles(titles, cc = 'us', shops = []) {
   const shopsKey = shops.length ? shops.slice().sort().join(',') : 'all';
   const t0 = Date.now();
 
-  // ── Phase 1: pipeline-read all title cache entries ─────────────────────────
-  const pipeline = redis.pipeline();
-  for (const t of titles) pipeline.get(`store:title:${t.toLowerCase()}`);
-  const pipeResults = await pipeline.exec();
+  // ── Phase 1: read title cache from DB ─────────────────────────────────────
+  const titleLowers = titles.map(t => t.toLowerCase());
+  const { rows: dbRows } = await pool.query(
+    'SELECT title_lower, itad_id, match_title, steam_app_id, image_url FROM game_titles WHERE title_lower = ANY($1)',
+    [titleLowers]
+  );
 
   const titleCache = {};
-  const needsLookup = [];
-  for (let i = 0; i < titles.length; i++) {
-    const raw = pipeResults[i][1]; // [err, value]
-    if (raw) {
-      titleCache[titles[i].toLowerCase()] = JSON.parse(raw);
-    } else {
-      needsLookup.push(titles[i]);
-    }
+  for (const row of dbRows) {
+    titleCache[row.title_lower] = row.itad_id
+      ? { id: row.itad_id, matchTitle: row.match_title, imageUrl: row.image_url ?? '', steamAppId: row.steam_app_id ?? null }
+      : { id: null };
   }
+
+  const needsLookup = titles.filter(t => !titleCache[t.toLowerCase()]);
 
   // ── Phase 2: batch-resolve uncached titles ─────────────────────────────────
   if (needsLookup.length) {
@@ -206,6 +220,7 @@ async function getDealsForTitles(titles, cc = 'us', shops = []) {
     result.set(title.toLowerCase(), {
       appId:                  titleEntry.id,
       name:                   titleEntry.matchTitle,
+      steamAppId:             titleEntry.steamAppId ?? null,
       storeName:              current.shop?.name ?? 'Store',
       imageUrl:               titleEntry.imageUrl ?? '',
       storeUrl:               current.url,
@@ -226,21 +241,26 @@ async function getDealsForTitles(titles, cc = 'us', shops = []) {
           ? 'Free'
           : `${sym}${toNum(lowest.price?.amount).toFixed(2)}`,
       } : null,
-      igdbRating: null, // filled in below
+      igdbRating:        null, // filled in below
+      controllerSupport: null, // filled in below
     });
   }
 
-  // ── Phase 6: enrich with IGDB ratings (cached 24 h per ITAD ID) ───────────
+  // ── Phase 6: enrich with IGDB ratings + controller support ──────────────
   const itadSteamPairs = [];
   for (const entry of result.values()) {
-    const steamMatch = entry.imageUrl.match(/\/apps\/(\d+)\//);
-    itadSteamPairs.push({ itadId: entry.appId, steamAppId: steamMatch?.[1] ?? null });
+    itadSteamPairs.push({ itadId: entry.appId, steamAppId: entry.steamAppId });
   }
 
-  const igdbRatings = await igdb.getRatings(itadSteamPairs);
+  const [igdbRatings, controllerMap] = await Promise.all([
+    igdb.getRatings(itadSteamPairs),
+    steamcontroller.getControllerSupport(itadSteamPairs),
+  ]);
   for (const entry of result.values()) {
     const r = igdbRatings.get(entry.appId);
     if (r) entry.igdbRating = r;
+    const c = controllerMap.get(entry.appId);
+    if (c) entry.controllerSupport = c;
   }
 
   console.log(`[Store/${cc}/${shopsKey}] done: ${result.size}/${titles.length} matched in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
@@ -264,7 +284,7 @@ async function getShops(cc = 'us') {
 
 async function clearCache() {
   _shopsCache.clear();
-  await Promise.all([delPattern('store:*'), igdb.clearCache()]);
+  await Promise.all([delPattern('store:overview:*'), igdb.clearCache()]);
 }
 
 module.exports = { getDealsForTitles, getShops, clearCache, REGIONS, STEAM_SHOP_ID };

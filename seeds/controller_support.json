@@ -1,0 +1,6146 @@
+[
+  {
+    "steam_app_id": "1000410",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1003590",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1004640",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "10090",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1010670",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1011990",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1012880",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "10150",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1015550",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1016960",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "10170",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "10180",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "102500",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1025960",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "102600",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1026680",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "102840",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1029210",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1030300",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1030830",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1030840",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1034530",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1040740",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1042550",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1043340",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1043810",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1044340",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1045720",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1046400",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1049320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1055430",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1055540",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "105600",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1057090",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1058450",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1062090",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1062520",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1065310",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1067850",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "10680",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1069530",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1069740",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "107100",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "107300",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "107310",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1076110",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "107800",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1082710",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1084160",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1084600",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1086940",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "108710",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1087760",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1089350",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1091500",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1091980",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1096530",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1097130",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1099640",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1101790",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "11020",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1102190",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1104340",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1105500",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1105670",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1106340",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "110800",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1108590",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1113000",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1113560",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1116580",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1117970",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1117990",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1118010",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1121560",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1123770",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "113200",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1133500",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1133760",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1139900",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1139980",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1140170",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1144770",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "11450",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1145350",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1145360",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1147860",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1148590",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1150440",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1150690",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "115100",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1151340",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1151450",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1152320",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "115320",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1157740",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "115800",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1158850",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1160220",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1161580",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1167450",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1167630",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1169040",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1172380",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1173770",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1173780",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1173790",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1173800",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1173810",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1173820",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1174180",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1177980",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1179080",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1181340",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1184370",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1186400",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1189630",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1194610",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1195710",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1196630",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1198970",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1200580",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1201230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1203630",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1203710",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1205900",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1206560",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1208740",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "12120",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "12130",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1215390",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1216060",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1216230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1217060",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1218210",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1220150",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "12210",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1222040",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1222140",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1222670",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1229240",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1229460",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1229490",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1231880",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1232460",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1233070",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1233570",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1233880",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1235140",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1237320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1237950",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1238060",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1238820",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1244090",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1245620",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1250",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1253920",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1256670",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1257360",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1257940",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1259420",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1260320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1262350",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1262560",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1262600",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1263240",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1265580",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1265920",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1269640",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1271700",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1274600",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "12750",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1275890",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1277400",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1279700",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "12800",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1280300",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1280930",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1281040",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1282690",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1283410",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1284210",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1285670",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1286350",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1286710",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1289310",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1289810",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1292020",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1293170",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1294420",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1295510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1296610",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1299360",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1304680",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1305390",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1306630",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1307580",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1313140",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1321440",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "13230",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1327120",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1328660",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1332010",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1337010",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1337520",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1337760",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1340140",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1345860",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1351630",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "13520",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1352930",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1353230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1355090",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "13560",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1356280",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "13570",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "13600",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1361210",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1361510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1361840",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1364100",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1368430",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1369630",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1371980",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1372110",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1372810",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1373090",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1374840",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1375400",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1378990",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1382070",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1383960",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1384160",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1388880",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1390350",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1392820",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1392860",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1393370",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1393500",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1393940",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1395030",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1401590",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1411910",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1413870",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1416050",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1420290",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1426300",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1432050",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1432320",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1432860",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1437400",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1442820",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1444650",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1445790",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1449200",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1449560",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1449690",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1451080",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1451090",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1451940",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1456470",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1458100",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1458140",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1462040",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1466060",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1477940",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1479140",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1484720",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1489590",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1490590",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1494810",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1497440",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1501750",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1502970",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1507120",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1509960",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "15100",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1515950",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1522870",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1530160",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1534180",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1535610",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1549970",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1554600",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1554840",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1561340",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1561380",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1562430",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1562700",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1566200",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1569580",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1575470",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1578650",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1580240",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1584090",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1585180",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1588550",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "15900",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1590760",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1590910",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1592360",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1593500",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1595640",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1598780",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1599020",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1599330",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1599600",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1599660",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1599780",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1604030",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1608070",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1608230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1608290",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1617400",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1620540",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1621690",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1622710",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1622910",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1623730",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1627570",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1627720",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1631980",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1634150",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1637320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1637730",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1639080",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1642620",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1649950",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1657630",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1658280",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1659420",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1663850",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1668510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1668690",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1671210",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1672810",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1672970",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1675830",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1677310",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1678430",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1679210",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1681600",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1682970",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1684930",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1685260",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1686940",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1687000",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1687950",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1689080",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1691420",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1693980",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1701330",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1701520",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1708010",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1708110",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1711530",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1711540",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1715130",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1715590",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1716740",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1718160",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1718460",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1718570",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1721470",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1722620",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1724770",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1726760",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "17300",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1732060",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1732180",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "17330",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1733240",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "17410",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1745510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "17460",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1747760",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1755910",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1755970",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1761390",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1777620",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1782120",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1782460",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1790600",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1794680",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1796220",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1796470",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1796580",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1796930",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1797680",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1798780",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1799930",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1804010",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "18049",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1806840",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1809540",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1810820",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1812370",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1813150",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1817070",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1817230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1817500",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1817800",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1820000",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1830040",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1836730",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1839430",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1840510",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1843470",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1844120",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1850510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1850570",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1856900",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1859470",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1859910",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1866130",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1868140",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1875830",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1876590",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1876890",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1880610",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1887400",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1888160",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1891090",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1895880",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1896880",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1897650",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "19000",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1901370",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1904480",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1911610",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1920430",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1921980",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1927720",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1927740",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1928690",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1931770",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1932640",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1934030",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1934980",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1940340",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1942010",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1942280",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1944430",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1944570",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1949960",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1954200",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1955230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1958220",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1960800",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1961950",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1967430",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "19680",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "1968840",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1970580",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1971650",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1972440",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1973530",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1981610",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1983260",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1984270",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1985810",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "1989270",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "19900",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "1996010",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "19980",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2001120",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "200260",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2005010",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2008980",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "200940",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2011780",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "201330",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "201420",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2015270",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "201700",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "201870",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2019300",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "202310",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "202530",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2026820",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "202750",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2028782",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "202970",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "203160",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "203650",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "204030",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "204100",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "204120",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "204360",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "204450",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2050650",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2052410",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2056220",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2057760",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2058180",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "205950",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2059570",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2062430",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "206420",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "206440",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "207040",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "207210",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2073250",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "207350",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "207490",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2076580",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2083210",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2084000",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2085540",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "208650",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2088570",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2089600",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "20900",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "209000",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "20920",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2096800",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2097230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2097570",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "21000",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2102520",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2103140",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "210410",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2105620",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2106840",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "210770",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2112750",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "21130",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2113850",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "211420",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "211820",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2118370",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2121980",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2124120",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2124490",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2129530",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "213120",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2131680",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2132850",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "213330",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2134320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "213610",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "213670",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2137760",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2138610",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2138710",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2140650",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "214250",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2142790",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "214340",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "214490",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "214510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "214560",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "214830",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2159270",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2161700",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "21690",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "216910",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "217270",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "217490",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2174900",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2175540",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2178330",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "217980",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "218060",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2183650",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2184490",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2187220",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "219150",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "219680",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "219740",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2199330",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "219990",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "220",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2201320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "220200",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "220240",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "220440",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "220740",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "221430",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2214880",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2215430",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "221640",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2218750",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2218970",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "221910",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "222480",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2230650",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2231450",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "22330",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "223470",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2235020",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "22370",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "223810",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "223830",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2238900",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2239150",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "224060",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2240620",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2243200",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2244030",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "224480",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "224760",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "224820",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2248430",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "22490",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2252570",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "225260",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2262610",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2263360",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "227300",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2273430",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2276930",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2280",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2280430",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "228300",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "228380",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "228400",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2288470",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "228880",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2290190",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2292260",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2295970",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2298010",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "229890",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2300320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "230410",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2305840",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2308630",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2310",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2313020",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2313700",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "232010",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "232090",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2321470",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2321780",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2324650",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2325920",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "232750",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "23310",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2331020",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "233150",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "233270",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2334170",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "233470",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2334730",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "233610",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "233980",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "234080",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "234140",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "234710",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2350790",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "235460",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "235600",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2356560",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2356780",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2359170",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2361770",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "236390",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "236430",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "236450",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2366970",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "236870",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2370000",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "237110",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2374190",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "237630",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "237740",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2378900",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "237930",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2379780",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "237990",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "238320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2383820",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "238460",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2386310",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "238960",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "239030",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "239120",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "239140",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "239250",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "239350",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2393920",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2395210",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2396980",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2399730",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2400430",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2400510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2401970",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2407270",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "241600",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2418520",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "241930",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2420110",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "242050",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2420510",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "242640",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "242680",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "242760",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "242820",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "242920",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "243120",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "243470",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2436940",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "243780",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2439780",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2440510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2444750",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2446550",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "245170",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "245280",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2453360",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2455780",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2457890",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "247080",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "247430",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2477090",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2477340",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2478970",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "24790",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2479650",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "248310",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2485750",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2486820",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2490990",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "249130",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2492040",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "24960",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "250760",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2508780",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "250900",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2510960",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "251130",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "251150",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "251270",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "251290",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2514640",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "251470",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "251570",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2521380",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "252350",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2523720",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "252410",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2525380",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "252610",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2527500",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "252950",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2529790",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2531310",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "253230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "253350",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "253430",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "253750",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2542120",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2543030",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2543760",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2544110",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2545710",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "255070",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "255220",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2552430",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2552440",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "256290",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2563790",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2564520",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "256460",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2575900",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "257850",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2585890",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2600",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2602230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "260230",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "261570",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "261640",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "262060",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2622500",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2630",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "263280",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "263300",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2634890",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2634950",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2640950",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2644470",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "264710",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2647820",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2649480",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2653940",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "265550",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2658450",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2658720",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2661300",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2663530",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2667120",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2668510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2670370",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2670630",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2671230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2674700",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "267530",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2679460",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2680010",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "268050",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "268910",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2689470",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "269110",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "269190",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "269650",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "269770",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2700",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2701440",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2701660",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2706170",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "270880",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "271240",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2717880",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2720950",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2725260",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "27300",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2731870",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2737300",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2738630",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "274170",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2741820",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "274190",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "274250",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2742830",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2743460",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "274500",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "274520",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "275390",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2753970",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2756920",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "275850",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2763670",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2768430",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2771670",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2773870",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2784470",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2794770",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "280160",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "28050",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "281690",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2818150",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "282070",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2820820",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2824490",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2824660",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2825180",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "282530",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2825880",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "282900",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "283160",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2835570",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "284160",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2844850",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "285160",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "285440",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2854740",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "286040",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2863640",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2863680",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2864560",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "286690",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2870350",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2870530",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2873080",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "287340",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "287390",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "287450",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "287700",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2877170",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2878960",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "288470",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2893570",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "290300",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2912430",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2914150",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "2915460",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "292030",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "292120",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "292140",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "292500",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "293520",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2947280",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2949320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2957720",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2968420",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2969380",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "297120",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "297130",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2971610",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "29720",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2972990",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "298110",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2983140",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2985610",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2986450",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2989180",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2990",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2993780",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "2995650",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "2996040",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3001330",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "300380",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3008740",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "301280",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "301640",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3021100",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "302510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "302610",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3030720",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "3032830",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3035570",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "3044100",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "305620",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3061810",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3064060",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3070070",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "307690",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3081840",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3084370",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "3094010",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "3099000",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "310790",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3108510",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "310950",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3109580",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "311210",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3112100",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3112260",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "311240",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "311340",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "311690",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "312060",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "312200",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "312520",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "312540",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "313690",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "315840",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3159120",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "3164500",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "316610",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3167020",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "3172700",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3177890",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "3177920",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3180070",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "318130",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3183970",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3191030",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "319910",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3200060",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "320040",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "320140",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3216340",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3218630",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "322110",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "322170",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "322210",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "322330",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3228590",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "323580",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "32360",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "32380",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "3238950",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3239650",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "324160",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "3241660",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "32420",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "32430",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "3243190",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "32440",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3244220",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "32469",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "32500",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "32510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3255380",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3259600",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3265060",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "327060",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3274300",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "3286930",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3288210",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "329050",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3293010",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "329440",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "330020",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3301820",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "330830",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3314790",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "331870",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "33220",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "332200",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "33230",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "332310",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3324320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "33440",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "33460",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "334940",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "335300",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3361470",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "3370870",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "337320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3373660",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "3373670",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "3375780",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "337940",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "338930",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "339040",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "339200",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3392510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "339340",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "339790",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "3405340",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "34190",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3430340",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "343100",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3442880",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "3444020",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "345350",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "345820",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3467710",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "346830",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "347160",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "347800",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3480",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "3483740",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "348550",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "34870",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3489700",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "349040",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "35000",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "3500390",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "35130",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "35140",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "351970",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "352520",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3527290",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "353270",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3541130",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "355050",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "355790",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3561230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "356650",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "357190",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3575980",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "3590",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "359220",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "3592510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "359310",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "359870",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "3599690",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "360740",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "361040",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "361420",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "362003",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "3631290",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "363930",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3639650",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3651950",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3654560",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "365660",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "365900",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "367500",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "367520",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3681010",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "368230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "368340",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "368390",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "368500",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "3689520",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3698680",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "37010",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "371140",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3717330",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3717340",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "371970",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3721180",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "372360",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "373180",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "373420",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3738910",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3741860",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "374190",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "374320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3747730",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "375480",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3755860",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "3756010",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "377160",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3773590",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "377840",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "377870",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3784030",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "378540",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "378860",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "379430",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "379720",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "3830",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "3831350",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3832030",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "383270",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "383870",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "383980",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "385760",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "388410",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3884520",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "389730",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3897800",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "39140",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "391540",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "39160",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "3941820",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "394310",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "394690",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "3949040",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "396750",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "399810",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "400",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "4000",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "400170",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "400450",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "400910",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "401920",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "40300",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "4035270",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "403640",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "405820",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "405830",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "406110",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "40700",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "40800",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "409710",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "409720",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "40990",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "410320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "41070",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "411370",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "4122860",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "412830",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "413150",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "413410",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "414340",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "414700",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "416600",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "4173110",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "418530",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "418620",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "423230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "423950",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "4244590",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "424840",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "4249150",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "425220",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "42640",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "42650",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "42700",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "427190",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "427290",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "427680",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "427700",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "427880",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "427920",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "428550",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "429660",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "4300",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "43110",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "432940",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "433340",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "433950",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "434050",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "435100",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "435150",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "435970",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "436670",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "439490",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "441380",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "441830",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "442780",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "44320",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "44350",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "44360",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "444090",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "445980",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "447150",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "447530",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "448510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "4492570",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "449550",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "449610",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "450950",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "451780",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "45740",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "45760",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "45770",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "460120",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "460790",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "460910",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "460920",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "460950",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "462770",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "462780",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "464060",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "46500",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "470220",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "4720",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "4730",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "473770",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "474750",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "475150",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "47780",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "47810",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "47870",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "4790",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "48000",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "480490",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "481510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "48190",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "48240",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "482400",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "48700",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "488730",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "488790",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "489830",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "490110",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "491040",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "493540",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "499180",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "499890",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "500",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "501590",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "502280",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "50300",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "50409",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "504230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "505390",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "50650",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "508440",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "512900",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "5152",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "515960",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "516110",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "519860",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "520950",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "522530",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "524220",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "525480",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "526870",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "528230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "529520",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "532790",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "534550",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "535120",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "537800",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "538680",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "541310",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "541450",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "544750",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "548430",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "5488",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "550",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "550320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "55150",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "553420",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "557340",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "560170",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "569860",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "570940",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "571310",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "574090",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "577690",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "577940",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "578330",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "579180",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "579840",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "583470",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "584400",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "585420",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "587110",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "587260",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "587620",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "588650",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "589360",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "589590",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "590380",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "593280",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "595140",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "595500",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "597170",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "597220",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "597760",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "598550",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "598980",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "599140",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "599610",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "6000",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "601100",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "601150",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "601840",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "6020",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "602960",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "6030",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "603960",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "606150",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "606280",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "606730",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "607050",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "607080",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "609110",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "609150",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "609320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "609490",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "611790",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "6129",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "613830",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "614570",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "619820",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "621060",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "6220",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "622650",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "622720",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "628670",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "628800",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "630310",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "631510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "632360",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "632470",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "635260",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "635940",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "636450",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "63710",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "637100",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "637650",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "637670",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "638230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "638510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "638970",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "639170",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "641990",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "643880",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "644540",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "645390",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "646570",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "648580",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "648640",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "648800",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "650500",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "650700",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "651670",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "6520",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "653530",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "65540",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "65800",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "658260",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "659",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "65930",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "667600",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "667720",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "668550",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "668580",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "669230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "673130",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "674520",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "680360",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "683320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "6850",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "6860",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "686060",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "686720",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "690040",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "690640",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "690790",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "692850",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "692890",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "696170",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "699170",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "699920",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "70",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "7000",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "700330",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "702670",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "70300",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "70400",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "710470",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "710920",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "71340",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "71390",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "714120",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "719040",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "7200",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "725480",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "72850",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "728880",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "729040",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "731490",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "732430",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "736260",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "739630",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "742300",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "743450",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "748490",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "750610",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "750920",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "7510",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "751780",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "751820",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "753640",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "757310",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "757320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "758330",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "758870",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "761830",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "764790",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "7670",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "771420",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "774171",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "774181",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "774361",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "774801",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "774861",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "775500",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "7800",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "78000",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "784080",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "785740",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "787480",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "787850",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "788100",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "789760",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "7940",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "795420",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "798460",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "799960",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "8000",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "803330",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "803600",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "804010",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "805550",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "809890",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "811320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "812140",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "813230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "813780",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "8140",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "814370",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "814380",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "81489",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "816020",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "8190",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "825630",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "832320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "837470",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "838310",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "8400",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "844590",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "846770",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "848450",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "851100",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "851670",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "855860",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "858210",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "858710",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "860490",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "860510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "860890",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "860950",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "861250",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "862740",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "866570",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "867210",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "870780",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "871200",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "874260",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "8790",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "881100",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "883710",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "8850",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "885150",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "8870",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "887060",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "889510",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "892970",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "893180",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "893680",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "894020",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "897450",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "898750",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "9010",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "901566",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "911400",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "913740",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "914710",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "916730",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "91800",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "920210",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "920320",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "921570",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "921590",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "924980",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "928390",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "930910",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "936790",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "938560",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "940150",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "941460",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "9480",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "948650",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "948740",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "949230",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "952060",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "953490",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "953690",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "959940",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "960690",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "960910",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "964800",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "967390",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "971030",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "973760",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "976310",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "976730",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "977880",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "977950",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "979120",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "981750",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "983970",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "985890",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "9860",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "990080",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "990630",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "9930",
+    "support": "none"
+  },
+  {
+    "steam_app_id": "99300",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "994500",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "996580",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "99830",
+    "support": "partial"
+  },
+  {
+    "steam_app_id": "998740",
+    "support": "full"
+  },
+  {
+    "steam_app_id": "999020",
+    "support": "full"
+  }
+]

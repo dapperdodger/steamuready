@@ -24,6 +24,8 @@
 - [x] Filter/Sorting by reviews (will need to get data as part of cache warmer, and not get it otherwise)
 - [x] Max Compatibility Setting
 - [x] Filter by chipset instead of device
-- [ ] Filter by controller compat — Steam (full/partial/none) and GOG (yes/no) have data; Epic has no public API so coverage would be incomplete
-- [ ] Link to Steamuready Discord
+- [x] Filter by controller compat — Steam (full/partial/none) and GOG (yes/no) have data; Epic has no public API so coverage would be incomplete
+- [x] Link to Steamuready Discord - https://discord.gg/XAt8awGUMM
 - [x] German Language Support
+- [ ] Optional Account to make wishlist and mark owned games?
+- [x] swtich to DB for longer lived thing slike controller support (investiagte what all could use it)
