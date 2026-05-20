@@ -27,5 +27,10 @@
 - [x] Filter by controller compat — Steam (full/partial/none) and GOG (yes/no) have data; Epic has no public API so coverage would be incomplete
 - [x] Link to Steamuready Discord - https://discord.gg/XAt8awGUMM
 - [x] German Language Support
-- [ ] Optional Account to make wishlist and mark owned games?
-- [x] swtich to DB for longer lived thing slike controller support (investiagte what all could use it)
+- [x] swtich to DB for longer lived things like controller support (investiagte what all could use it)
+- [ ] Optional Account for the following
+  - [ ] Wishlist
+  - [ ] Set desired price for game with alert when it goes below threshold
+  - [ ] Mark owned games
+  - [ ] Hide Games
+      
