@@ -19,6 +19,7 @@
 - Environment is Windows/PowerShell — no bash-specific command syntax.
 - Local dev requires Redis + Postgres running (`docker compose up -d`) before running any test in this plan.
 - Automated tests cover pure logic only (response parsing, entry assembly); live EmuReady/ITAD network calls are verified manually — consistent with this codebase's existing pattern (`services/store.js`'s `fetchOverviewAPI`, `services/steamcontroller.js` have no automated tests for their network calls either).
+- **Verified gotcha, applies to any test file added later:** `require('../services/store')` or `require('../services/emuready')` transitively requires `./cache`, which opens a live Redis connection eagerly at module load (`services/cache.js`'s `lazyConnect: false`) — this hangs the test process indefinitely once assertions finish, confirmed directly (with `--test-timeout` set, the file itself fails as `testTimeoutFailure` after exactly that timeout; without it, `npm test` just hangs). Any test file requiring either module needs `const { redis } = require('../services/cache'); t.after(() => redis.disconnect());` once per file (already applied in Tasks 2 and 4). Do not fix this by changing `services/cache.js` itself — out of scope, affects the whole already-deployed app.
 
 ---
 
@@ -135,6 +136,8 @@ git commit -m "Add node:test tooling and game_titles.resolved_via column"
 
 Response shape verified live (2026-07-22) against the real endpoint, not assumed: a hit returns `{success:true, appId:"367520", query:"...", found:true}`; a miss (tested with both a gibberish title and a real EmuReady title known not to resolve) returns `{success:true, appId:null, query:"...", found:false}` — never a thrown error or a missing `found` key for a clean miss.
 
+**A second gotcha, verified directly:** `services/emuready.js` requires `./cache` at its top, and `services/cache.js` opens a live Redis connection eagerly at module load (`lazyConnect: false`). So merely `require('../services/emuready')` — even just to reach the pure `parseBestSteamAppIdResponse` function — opens a socket that keeps the test process alive indefinitely once assertions finish (confirmed: with `node --test --test-timeout=5000`, all named tests pass in under 1ms each, but the file itself then fails as `testTimeoutFailure` at exactly 5000ms; without that flag, the process just hangs). The test below includes the required `t.after(() => redis.disconnect())` teardown to fix this — do not omit it, and do not touch `services/cache.js` itself (out of scope, affects the whole already-deployed app).
+
 - [ ] **Step 1: Write the failing tests**
 
 Create `test/emuready-steamAppId.test.js`:
@@ -144,8 +147,10 @@ require('dotenv').config();
 const test = require('node:test');
 const assert = require('node:assert');
 const { parseBestSteamAppIdResponse } = require('../services/emuready');
+const { redis } = require('../services/cache');
 
-test('parseBestSteamAppIdResponse extracts a found appId as a string', () => {
+test('parseBestSteamAppIdResponse extracts a found appId as a string', (t) => {
+  t.after(() => redis.disconnect()); // one teardown covers the whole file — node:test runs same-file tests in one process
   const data = { success: true, appId: '367520', query: 'Hollow Knight', found: true };
   assert.deepStrictEqual(parseBestSteamAppIdResponse(data), { found: true, appId: '367520' });
 });
@@ -291,6 +296,8 @@ git commit -m "Add resolveSteamAppIdsToItadIds (exact Steam App ID -> itad_id)"
 **Interfaces:**
 - Produces: `buildExactEntry(title, steamAppId, itadId): entry` and `buildFallbackEntry(title, itadId): entry` (both pure, exported for testing) — consumed by `resolveTitlesBatch` in Task 5. `entry` shape: `{id, matchTitle, steamAppId, imageUrl, resolvedVia}` (or `{id: null, resolvedVia: 'title'}` for an unresolved fallback).
 
+Same gotcha as Task 2, verified directly against this exact file: `services/store.js` requires `./cache` at its top, and `services/cache.js` opens a live Redis connection eagerly at module load (`lazyConnect: false`). So `require('../services/store')` — even just to reach the two pure functions below — hangs the test process indefinitely once assertions finish, unless torn down. The test below includes the required `t.after(() => redis.disconnect())` — do not omit it.
+
 - [ ] **Step 1: Write the failing tests**
 
 Create `test/store-resolution.test.js`:
@@ -300,8 +307,10 @@ require('dotenv').config();
 const test = require('node:test');
 const assert = require('node:assert');
 const { buildExactEntry, buildFallbackEntry } = require('../services/store');
+const { redis } = require('../services/cache');
 
-test('buildExactEntry assembles a steam-resolved-and-verified entry with a Steam header image', () => {
+test('buildExactEntry assembles a steam-resolved-and-verified entry with a Steam header image', (t) => {
+  t.after(() => redis.disconnect()); // one teardown covers the whole file — node:test runs same-file tests in one process
   const entry = buildExactEntry('Hollow Knight', '367520', '018d937f-1ae9-734c-ba47-bd357cf07edd');
   assert.deepStrictEqual(entry, {
     id: '018d937f-1ae9-734c-ba47-bd357cf07edd',
