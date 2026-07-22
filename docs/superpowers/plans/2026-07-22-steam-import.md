@@ -4,7 +4,7 @@
 
 **Goal:** Let a logged-in SteamUReady user link their Steam account (via OpenID) and import their Steam-owned games and wishlist into the existing `owned_games`/`wishlist_items` tables, keeping later imports in sync via a full resync of Steam-sourced rows.
 
-**Architecture:** A new `services/steamAuth.js` wraps the raw `openid` npm package for the OpenID handshake (link only, not login — the user must already have an active email/password session). `services/steamApi.js` wraps Steam's official Web API (`GetOwnedGames`, `GetWishlist`, `GetPlayerSummaries`). `services/steamImport.js` resolves Steam appids to `itad_id`s via ITAD's `/lookup/id/shop/61/v1` and runs the resync/cross-removal logic against Postgres. `routes/steam.js` ties it together behind `requireAuth`. This plan depends on the accounts plan (`docs/superpowers/plans/2026-07-22-accounts-wishlist-owned.md`) already being implemented — it reuses `users`, `owned_games`, `wishlist_items`, `middleware/session.js`, and `services/wishlist.js`.
+**Architecture:** A new `services/steamAuth.js` wraps the raw `openid` npm package for the OpenID handshake (link only, not login — the user must already have an active email/password session). `services/steamApi.js` wraps Steam's official Web API (`GetOwnedGames`, `GetWishlist`, `GetPlayerSummaries`). `services/steamImport.js` resolves Steam appids to `itad_id`s (reusing `services/store.js`'s `resolveSteamAppIdsToItadIds`, added by the exact-correlation plan — same ITAD `/lookup/id/shop/61/v1` call, not reimplemented here) and runs the resync/cross-removal logic against Postgres. `routes/steam.js` ties it together behind `requireAuth`. This plan depends on the accounts plan (`docs/superpowers/plans/2026-07-22-accounts-wishlist-owned.md`) already being implemented — it reuses `users`, `owned_games`, `wishlist_items`, `middleware/session.js`, and `services/wishlist.js` — and on the exact-correlation plan (`docs/superpowers/plans/2026-07-22-exact-correlation.md`) for `services/store.js`'s `resolveSteamAppIdsToItadIds`.
 
 **Tech Stack:** `openid` (npm), `axios` (already a dependency), PostgreSQL, `node:test`.
 
@@ -424,10 +424,10 @@ Requires a real `STEAM_API_KEY` in `.env` and a real steamid64 with Public game-
 - Create: `test/steamImport.test.js`
 
 **Interfaces:**
-- Consumes: `pool` (`services/db.js`), `services/steamApi.js` (Task 4).
-- Produces: `resolveAppIdsToItadIds(appIds): Promise<Map<appId, itadId>>`, `resyncOwnedFromSteam(userId, itadIds): Promise<void>`, `resyncWishlistFromSteam(userId, itadIds, ownedItadIds): Promise<void>`, `runImport(userId, steamId): Promise<{ownedCount, wishlistCount}>` — consumed by `routes/steam.js` in Task 6.
+- Consumes: `pool` (`services/db.js`), `services/steamApi.js` (Task 4), `services/store.js`'s `resolveSteamAppIdsToItadIds` (from the exact-correlation plan — see below).
+- Produces: `resolveAppIdsToItadIds(appIds): Promise<Map<appId, itadId>>` (a thin alias, not a reimplementation), `resyncOwnedFromSteam(userId, itadIds): Promise<void>`, `resyncWishlistFromSteam(userId, itadIds, ownedItadIds): Promise<void>`, `runImport(userId, steamId): Promise<{ownedCount, wishlistCount}>` — consumed by `routes/steam.js` in Task 6.
 
-`resyncOwnedFromSteam`/`resyncWishlistFromSteam` are pure DB-diffing logic (no network calls), so they get full automated coverage against a real Postgres instance — this is the highest-risk logic in the whole spec (it can silently delete a user's manually-curated list if the diff is wrong), unlike `resolveAppIdsToItadIds`/`runImport`, which make live network calls and are verified manually.
+`resyncOwnedFromSteam`/`resyncWishlistFromSteam` are pure DB-diffing logic (no network calls), so they get full automated coverage against a real Postgres instance — this is the highest-risk logic in the whole spec (it can silently delete a user's manually-curated list if the diff is wrong), unlike `resolveAppIdsToItadIds`/`runImport`, which make live network calls and are verified manually (and, for `resolveAppIdsToItadIds`, already verified live by the exact-correlation plan, whose implementation this one reuses).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -491,32 +491,14 @@ Expected: FAIL — `Cannot find module '../services/steamImport'`.
 - [ ] **Step 3: Implement `services/steamImport.js`**
 
 ```js
-const axios = require('axios');
 const { pool } = require('./db');
 const steamApi = require('./steamApi');
+const store = require('./store');
 
-const ITAD_BASE = 'https://api.isthereanydeal.com';
-const STEAM_SHOP_ID = 61;
-
-async function resolveAppIdsToItadIds(appIds) {
-  const result = new Map(); // appId (string) → itadId
-  for (let i = 0; i < appIds.length; i += 200) {
-    const batch = appIds.slice(i, i + 200).map(id => `app/${id}`);
-    try {
-      const res = await axios.post(
-        `${ITAD_BASE}/lookup/id/shop/${STEAM_SHOP_ID}/v1`,
-        batch,
-        { params: { key: process.env.ITAD_API_KEY }, timeout: 15000 }
-      );
-      for (const [shopKey, itadId] of Object.entries(res.data ?? {})) {
-        if (itadId) result.set(shopKey.replace('app/', ''), itadId);
-      }
-    } catch (e) {
-      console.warn('[steamImport] ITAD shop lookup batch failed:', e.message);
-    }
-  }
-  return result;
-}
+// The exact-correlation plan already implements and manually-verifies this
+// exact ITAD /lookup/id/shop/61/v1 call in services/store.js — reused here
+// under the name this file's callers expect, rather than duplicated.
+const resolveAppIdsToItadIds = store.resolveSteamAppIdsToItadIds;
 
 async function resyncOwnedFromSteam(userId, itadIds) {
   const idSet = new Set(itadIds);
