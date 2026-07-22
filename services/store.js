@@ -152,6 +152,28 @@ async function resolveSteamAppIdsToItadIds(steamAppIds) {
   return result;
 }
 
+// Pure: assemble a game_titles entry for a title EmuReady resolved to an exact,
+// ITAD-verified Steam App ID. Returns null if ITAD doesn't recognize that App
+// ID (caller falls back to the title-lookup path).
+function buildExactEntry(title, steamAppId, itadId) {
+  if (!itadId) return null;
+  return {
+    id: itadId,
+    matchTitle: title,
+    steamAppId,
+    imageUrl: `https://cdn.akamai.steamstatic.com/steam/apps/${steamAppId}/header.jpg`,
+    resolvedVia: 'steam',
+  };
+}
+
+// Pure: assemble a game_titles entry from the ITAD title-lookup fallback.
+// steamAppId is deliberately left null here (no secondary reverse-derivation)
+// — this is the minority fallback path for games with no resolvable Steam App ID.
+function buildFallbackEntry(title, itadId) {
+  if (!itadId) return { id: null, resolvedVia: 'title' };
+  return { id: itadId, matchTitle: title, steamAppId: null, imageUrl: '', resolvedVia: 'title' };
+}
+
 function toNum(v) {
   return parseFloat(v) || 0;
 }
@@ -309,4 +331,4 @@ async function clearCache() {
   await Promise.all([delPattern('store:overview:*'), igdb.clearCache()]);
 }
 
-module.exports = { getDealsForTitles, resolveSteamAppIdsToItadIds, getShops, clearCache, REGIONS, STEAM_SHOP_ID };
+module.exports = { getDealsForTitles, resolveSteamAppIdsToItadIds, buildExactEntry, buildFallbackEntry, getShops, clearCache, REGIONS, STEAM_SHOP_ID };
