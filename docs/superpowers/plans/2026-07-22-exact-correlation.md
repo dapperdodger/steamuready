@@ -42,9 +42,11 @@ Edit `package.json`:
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "test": "node --test test/"
+    "test": "node --test test/*.js"
   },
 ```
+
+(`node --test test/` — a bare directory path — fails on this Node version: `require`'s module resolution treats the trailing-slash path as a module specifier and throws `MODULE_NOT_FOUND` rather than recursively discovering test files. Verified directly: `node --test test/` errors; `node --test test/*.js` runs correctly. Use the glob form.)
 
 - [ ] **Step 2: Add the schema change to `services/db.js`**
 
@@ -84,10 +86,19 @@ test('init() adds game_titles.resolved_via, nullable, checked against steam/titl
   assert.strictEqual(rows.length, 1);
   assert.strictEqual(rows[0].is_nullable, 'YES');
 
+  // Insert a real row to trigger constraint validation — `WHERE FALSE` matches
+  // zero rows, so Postgres never evaluates the CHECK constraint against any
+  // row and the query succeeds with rowCount 0 instead of rejecting (verified
+  // directly). The constraint must be checked against a row it actually touches.
+  const testKey = 'constraint_test_' + Date.now();
+  await pool.query('INSERT INTO game_titles (title_lower) VALUES ($1)', [testKey]);
+
   await assert.rejects(
-    () => pool.query("UPDATE game_titles SET resolved_via = 'bogus' WHERE FALSE"),
+    () => pool.query('UPDATE game_titles SET resolved_via = $1 WHERE title_lower = $2', ['bogus', testKey]),
     /violates check constraint|game_titles_resolved_via_check/
   );
+
+  await pool.query('DELETE FROM game_titles WHERE title_lower = $1', [testKey]);
 });
 ```
 
