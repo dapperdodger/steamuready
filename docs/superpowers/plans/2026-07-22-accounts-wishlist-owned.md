@@ -1508,7 +1508,7 @@ git commit -m "Document account/wishlist/owned API endpoints"
 **Interfaces:**
 - Produces: `excludeOwned(games, ownedItadIds): games[]` — a pure function, unit-tested directly; wired into the existing `/api/games` handler in `server.js`.
 
-Recall from `server.js` that each entry in the `/api/games` response already carries `appId: sg.appId`, and `sg.appId` is the ITAD id (`store.js` sets `appId: titleEntry.id` where `titleEntry.id` comes from the ITAD title lookup) — so filtering by the user's owned `itad_id`s against `g.appId` requires no extra join.
+Recall from `server.js` that each entry in the `/api/games` response already carries `appId: sg.appId`, and `sg.appId` is the ITAD id (`store.js` sets `appId: titleEntry.id`, where `titleEntry.id` is the resolved ITAD id — regardless of whether it was resolved via the exact Steam-App-ID path or the title-lookup fallback introduced by the exact-correlation rework) — so filtering by the user's owned `itad_id`s against `g.appId` requires no extra join.
 
 - [ ] **Step 1: Write the failing test**
 
