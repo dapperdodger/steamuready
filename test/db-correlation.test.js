@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { pool, init } = require('../services/db');
 
-test('init() adds game_titles.resolved_via, nullable, checked against steam/title', async () => {
+test('init() adds game_titles.resolved_via, nullable, checked against steam/title', async (t) => {
   await init();
 
   const { rows } = await pool.query(`
@@ -16,12 +16,11 @@ test('init() adds game_titles.resolved_via, nullable, checked against steam/titl
   // Insert a test row to trigger constraint validation
   const testKey = 'constraint_test_' + Date.now();
   await pool.query(`INSERT INTO game_titles (title_lower) VALUES ($1)`, [testKey]);
+  t.after(() => pool.query('DELETE FROM game_titles WHERE title_lower = $1', [testKey]));
+  t.after(() => pool.end());
 
   await assert.rejects(
-    () => pool.query("UPDATE game_titles SET resolved_via = 'bogus' WHERE title_lower = $1", [testKey]),
+    () => pool.query("UPDATE game_titles SET resolved_via = $1 WHERE title_lower = $2", ['bogus', testKey]),
     /violates check constraint|game_titles_resolved_via_check/
   );
-
-  // Clean up
-  await pool.query("DELETE FROM game_titles WHERE title_lower = $1", [testKey]);
 });
