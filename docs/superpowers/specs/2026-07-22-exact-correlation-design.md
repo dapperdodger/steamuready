@@ -172,6 +172,27 @@ gated on the new `resolved_via` column being NULL:**
   the existing controller-support warm, then only incremental for new titles.
   This one-time cost is the only "intent" in the migration; everything else is
   automatic.
+- **Deploy note, flagged by final review**: `resolveTitlesBatch`'s Phase A is
+  strictly sequential (one EmuReady call per uncached title — there's no batch
+  name→App-ID endpoint to parallelize against). The background `warmCaches()`
+  absorbs the one-time re-resolution cost as intended, but on the **first
+  boot after this deploys**, before that warm completes, a live `/api/games`
+  request for a device whose titles are still `resolved_via NULL` runs those
+  sequential EmuReady calls inline, inside the request — potentially tens of
+  seconds for a device with hundreds of still-unresolved listings. This
+  self-heals (each title stamps `resolved_via` once, permanently) and isn't a
+  correctness bug, but expect slow first-requests during the migration window
+  against a live, previously-populated `game_titles` table. Consider giving
+  `warmCaches()` a head start before serving traffic, or accepting the
+  transient slowness.
+- **Confirmed live** (2026-07-22, real DB with 44 resolved titles): ITAD's
+  `/lookup/id/title/v1` does return a key for every requested title, `null`
+  for genuine misses, rather than omitting unmatched titles from the
+  response — verified by observing `resolved_via='title'` rows with
+  `itad_id=NULL` actually persisted (e.g. a fan ROM-hack title with no store
+  presence anywhere), which is only reachable if the fallback loop received
+  that title as a key. This validates the "resolve once, ever" guarantee
+  holds for fully-unmatched titles, not just partially-matched ones.
 
 ## Impact on the three written specs
 
