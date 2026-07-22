@@ -599,7 +599,7 @@ Deferred to Task 6, Step 7, once wired into a route (needs a real `STEAM_API_KEY
 
 **Interfaces:**
 - Consumes: `requireAuth` (`middleware/session.js`), `services/steamAuth.js` (Task 3), `services/steamApi.js` (Task 4), `services/steamImport.js` (Task 5), `services/auth.js`'s Steam-link helpers (Task 2).
-- Produces: mounted at `/api/steam` — `GET /link`, `GET /callback`, `POST /unlink`, `GET /status`, `POST /import` — consumed by the frontend in Task 7.
+- Produces: mounted at `/api/steam` — `GET /link`, `GET /callback`, `POST /unlink`, `GET /status`, `POST /import` — consumed by the frontend in Task 10. (This same file gains `GET /library-compat` in Task 9.)
 
 The routes that require a live Steam OpenID handshake or live Steam/ITAD API calls (`/link`, `/callback`, and a successful `/import`) are verified manually in Step 7. The routes/behaviors that only depend on session + DB state (`/status`, `/unlink`, and `/import`'s "not linked" guard) are covered by `supertest`.
 
@@ -774,7 +774,7 @@ git commit -m "Add Steam link/unlink/status/import routes"
 Requires real `STEAM_API_KEY` and `ITAD_API_KEY` values in `.env`, and a real Steam account with game-details + wishlist privacy set to Public.
 
 1. Start the dev server (`npm start`), log into SteamUReady with an email/password account in a browser.
-2. Navigate to `/api/steam/link` directly (Task 7 will wire a button to this) — confirm it redirects to Steam's login page.
+2. Navigate to `/api/steam/link` directly (Task 10 will wire a button to this) — confirm it redirects to Steam's login page.
 3. Log into Steam — confirm it redirects back to `/?steamLinked=1` and `GET /api/steam/status` now reports `{linked: true, personaName: "<your Steam name>"}`.
 4. Call `POST /api/steam/import` — confirm it returns non-zero `ownedCount`/`wishlistCount` matching your actual Steam library/wishlist (spot-check a couple of known-owned games appear via `GET /api/me/owned`).
 5. Temporarily set your Steam profile's game-details/wishlist privacy to something other than Public, re-run import, and confirm it returns `{ownedCount: 0, wishlistCount: 0}` without erroring (matches the documented silent-empty behavior — revert your privacy setting afterward).
@@ -782,7 +782,397 @@ Requires real `STEAM_API_KEY` and `ITAD_API_KEY` values in `.env`, and a real St
 
 ---
 
-## Task 7: Frontend — Connected Accounts section
+## Task 7: `batchBySteamAppIds` wrapper (`services/emuready.js`)
+
+**Files:**
+- Modify: `services/emuready.js`
+- Create: `test/emuready-batchBySteamAppIds.test.js`
+
+**Interfaces:**
+- Produces: `batchBySteamAppIds(steamAppIds, emulatorIds?): Promise<Array<{steamAppId, game, matchStrategy}>>` (chunked to ≤1000 ids/call, results from all chunks concatenated), `filterValidSteamAppIds(steamAppIds): string[]` and `parseBatchBySteamAppIdsResponse(data)` (both exported for unit testing without a live call) — consumed by `services/steamLibraryCompat.js` in Task 8.
+
+Response shape verified live (2026-07-22) against the real endpoint:
+
+- A **found** entry: `{steamAppId: "220", game: {title, boxartUrl, imageUrl, listings: [...], ...}, matchStrategy: "exact"}`.
+- A **not-found** entry (confirmed by requesting a plausible-but-nonexistent App ID alongside a real one): `{steamAppId: "4000000", game: null, matchStrategy: "not_found"}` — `results` always has one entry per requested id, found or not; `game: null` is the not-found signal, not an omission from the array.
+- **A real gotcha, not documented anywhere**: sending an out-of-range App ID (tested with `999999999`) doesn't produce a `not_found` entry — it makes EmuReady's own Zod validation reject the **entire batch** with `400 "Steam App ID out of valid range"`. Real Steam library data (from `GetOwnedGames`/`GetWishlist`) will always be well-formed, but this is defended against anyway: `filterValidSteamAppIds` drops anything not shaped like a positive integer before sending, and each chunk's call is wrapped in try/catch so one bad chunk can't take down the whole batch.
+- `emulatorIds` is accepted as an optional filter param (per the endpoint's own description: "filtered by emulator if specified") — in practice, every game reachable via a Steam App ID is necessarily a Windows-system EmuReady entry (Steam App IDs only exist for the Windows store), and only Winlator/GameNative/GameHub run Windows-system games on EmuReady, so this filter is passed defensively but is not expected to change results for genuine Steam titles.
+
+- [ ] **Step 1: Write the failing tests**
+
+Create `test/emuready-batchBySteamAppIds.test.js`:
+
+```js
+require('dotenv').config();
+const test = require('node:test');
+const assert = require('node:assert');
+const { filterValidSteamAppIds, parseBatchBySteamAppIdsResponse } = require('../services/emuready');
+
+test('filterValidSteamAppIds keeps only positive-integer-shaped ids', () => {
+  assert.deepStrictEqual(
+    filterValidSteamAppIds(['220', '588650', 'not-a-number', '', null, undefined, '12.5']),
+    ['220', '588650']
+  );
+});
+
+test('parseBatchBySteamAppIdsResponse passes through found and not-found entries unchanged', () => {
+  const data = {
+    success: true,
+    results: [
+      { steamAppId: '220', game: { title: 'Half-Life 2' }, matchStrategy: 'exact' },
+      { steamAppId: '4000000', game: null, matchStrategy: 'not_found' },
+    ],
+    totalRequested: 2, totalFound: 1, totalNotFound: 1,
+  };
+  assert.deepStrictEqual(parseBatchBySteamAppIdsResponse(data), data.results);
+});
+
+test('parseBatchBySteamAppIdsResponse returns an empty array for a malformed response', () => {
+  assert.deepStrictEqual(parseBatchBySteamAppIdsResponse(null), []);
+  assert.deepStrictEqual(parseBatchBySteamAppIdsResponse({}), []);
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+```
+npm test
+```
+
+Expected: FAIL — `filterValidSteamAppIds is not a function`.
+
+- [ ] **Step 3: Implement in `services/emuready.js`**
+
+Add before `module.exports`:
+
+```js
+// EmuReady's own Zod validation 400s the WHOLE batch if any id is out of
+// range — filter to plausible positive-integer ids defensively so one
+// malformed id can't take down an otherwise-valid batch.
+function filterValidSteamAppIds(steamAppIds) {
+  return steamAppIds.filter(id => /^\d+$/.test(String(id)));
+}
+
+function parseBatchBySteamAppIdsResponse(data) {
+  return Array.isArray(data?.results) ? data.results : [];
+}
+
+async function batchBySteamAppIds(steamAppIds, emulatorIds) {
+  const validIds = filterValidSteamAppIds(steamAppIds);
+  const results = [];
+  for (let i = 0; i < validIds.length; i += 1000) {
+    const batch = validIds.slice(i, i + 1000);
+    try {
+      const input = { steamAppIds: batch };
+      if (emulatorIds?.length) input.emulatorIds = emulatorIds;
+      const data = await trpcGet('games.batchBySteamAppIds', input);
+      results.push(...parseBatchBySteamAppIdsResponse(data));
+    } catch (e) {
+      console.error(`[EmuReady] batchBySteamAppIds error (offset ${i}):`, e.message);
+    }
+  }
+  return results;
+}
+```
+
+Update the `module.exports` line at the end of `services/emuready.js` to:
+
+```js
+module.exports = { getDevices, getSocs, getPerformanceScales, getListings, getAllListings, getBestSteamAppId, parseBestSteamAppIdResponse, batchBySteamAppIds, filterValidSteamAppIds, parseBatchBySteamAppIdsResponse, clearCache };
+```
+
+(`getBestSteamAppId`/`parseBestSteamAppIdResponse` were added by the exact-correlation plan, which this plan depends on — this line reflects both plans' additions.)
+
+- [ ] **Step 4: Run test to verify it passes**
+
+```
+npm test
+```
+
+Expected: `test/emuready-batchBySteamAppIds.test.js` passes (4 tests).
+
+- [ ] **Step 5: Commit**
+
+```
+git add services/emuready.js test/emuready-batchBySteamAppIds.test.js
+git commit -m "Add batchBySteamAppIds wrapper to services/emuready.js"
+```
+
+- [ ] **Step 6: Manual verification (deferred to Task 9)**
+
+The live call is exercised end-to-end once wired into the library-compat route (Task 9).
+
+---
+
+## Task 8: Library-compatibility assembly (`services/steamLibraryCompat.js`)
+
+**Files:**
+- Create: `services/steamLibraryCompat.js`
+- Create: `test/steamLibraryCompat.test.js`
+
+**Interfaces:**
+- Consumes: `services/cache.js` (`get`/`set`), `services/steamApi.js` (Task 4), `services/emuready.js`'s `batchBySteamAppIds` (Task 7), `pool` (`services/db.js`, to read the user's saved device/SoC preference from `users.preferences` — added by the accounts plan).
+- Produces: `pickBestListing(listings, preferredDeviceIds, preferredSocIds): listing|null` and `buildCompatEntry(result, ownedSet, wishlistSet, preferredDeviceIds, preferredSocIds): entry|null` (both pure, exported for testing), `getLibraryCompat(userId, steamId): Promise<entry[]>` — consumed by `routes/steam.js` in Task 9.
+
+`pickBestListing`/`buildCompatEntry` are pure and get full automated coverage. `getLibraryCompat` orchestrates live Steam/EmuReady calls plus a Redis cache and is verified manually in Task 9 — same established pattern as the rest of this plan and the exact-correlation plan (pure logic automated, live network manual).
+
+- [ ] **Step 1: Write the failing tests**
+
+Create `test/steamLibraryCompat.test.js`:
+
+```js
+require('dotenv').config();
+const test = require('node:test');
+const assert = require('node:assert');
+const { pickBestListing, buildCompatEntry } = require('../services/steamLibraryCompat');
+
+function listing(rank, deviceId, socId, emulatorName = 'GameHub') {
+  return {
+    device: { id: deviceId, modelName: `Device ${deviceId}`, soc: { id: socId, name: `Soc ${socId}` } },
+    emulator: { name: emulatorName },
+    performance: { rank, label: `Rank ${rank}` },
+  };
+}
+
+test('pickBestListing picks the lowest-rank listing when no device preference matches', () => {
+  const listings = [listing(3, 'dev-a', 'soc-a'), listing(1, 'dev-b', 'soc-b'), listing(5, 'dev-c', 'soc-c')];
+  assert.strictEqual(pickBestListing(listings, [], []).performance.rank, 1);
+});
+
+test("pickBestListing prefers a listing matching the user's saved device, even if another device ranks better", () => {
+  const listings = [listing(1, 'dev-a', 'soc-a'), listing(4, 'dev-b', 'soc-b')];
+  const best = pickBestListing(listings, ['dev-b'], []);
+  assert.strictEqual(best.device.id, 'dev-b');
+});
+
+test('pickBestListing falls back to the best listing overall when no device/SoC preference matches', () => {
+  const listings = [listing(2, 'dev-a', 'soc-a'), listing(1, 'dev-b', 'soc-b')];
+  assert.strictEqual(pickBestListing(listings, ['dev-z'], ['soc-z']).performance.rank, 1);
+});
+
+test('pickBestListing returns null for an empty listings array', () => {
+  assert.strictEqual(pickBestListing([], [], []), null);
+});
+
+test('buildCompatEntry returns null for a not-found result', () => {
+  const entry = buildCompatEntry({ steamAppId: '4000000', game: null, matchStrategy: 'not_found' }, new Set(), new Set(), [], []);
+  assert.strictEqual(entry, null);
+});
+
+test('buildCompatEntry assembles a display entry with owned/wishlisted flags and best compatibility', () => {
+  const result = {
+    steamAppId: '220',
+    game: {
+      title: 'Half-Life 2',
+      boxartUrl: 'https://example.com/box.jpg',
+      imageUrl: 'https://example.com/img.jpg',
+      listings: [listing(1, 'dev-a', 'soc-a', 'GameHub')],
+    },
+    matchStrategy: 'exact',
+  };
+  const entry = buildCompatEntry(result, new Set(['220']), new Set(), [], []);
+  assert.deepStrictEqual(entry, {
+    steamAppId: '220',
+    gameName: 'Half-Life 2',
+    imageUrl: 'https://example.com/box.jpg',
+    owned: true,
+    wishlisted: false,
+    compatibility: { rank: 1, label: 'Rank 1', deviceName: 'Device dev-a', socName: 'Soc soc-a', emulatorName: 'GameHub' },
+  });
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+```
+npm test
+```
+
+Expected: FAIL — `Cannot find module '../services/steamLibraryCompat'`.
+
+- [ ] **Step 3: Implement `services/steamLibraryCompat.js`**
+
+```js
+const cache = require('./cache');
+const { pool } = require('./db');
+const steamApi = require('./steamApi');
+const emuready = require('./emuready');
+
+const CACHE_TTL_MS = 5 * 60 * 1000; // matches EmuReady's own ~5 min cache on batchBySteamAppIds
+
+function pickBestListing(listings, preferredDeviceIds = [], preferredSocIds = []) {
+  if (!listings || !listings.length) return null;
+  const deviceSet = new Set(preferredDeviceIds);
+  const socSet = new Set(preferredSocIds);
+  const preferred = listings.filter(l => deviceSet.has(l.device?.id) || socSet.has(l.device?.soc?.id));
+  const candidates = preferred.length ? preferred : listings;
+  return candidates.reduce((best, l) => {
+    const rank = l.performance?.rank ?? Infinity;
+    const bestRank = best?.performance?.rank ?? Infinity;
+    return rank < bestRank ? l : best;
+  }, null);
+}
+
+// EmuReady has no listing for a not-found game, or (defensively) an
+// EmuReady game entry with zero listings — both mean nothing to show.
+function buildCompatEntry(result, ownedSet, wishlistSet, preferredDeviceIds, preferredSocIds) {
+  if (!result.game || !result.game.listings?.length) return null;
+
+  const best = pickBestListing(result.game.listings, preferredDeviceIds, preferredSocIds);
+  if (!best) return null;
+
+  return {
+    steamAppId: result.steamAppId,
+    gameName: result.game.title,
+    imageUrl: result.game.boxartUrl || result.game.imageUrl || '',
+    owned: ownedSet.has(result.steamAppId),
+    wishlisted: wishlistSet.has(result.steamAppId),
+    compatibility: {
+      rank: best.performance?.rank ?? null,
+      label: best.performance?.label ?? '',
+      deviceName: best.device?.modelName ?? '',
+      socName: best.device?.soc?.name ?? '',
+      emulatorName: best.emulator?.name ?? '',
+    },
+  };
+}
+
+async function getLibraryCompat(userId, steamId) {
+  const cacheKey = `steam-library-compat:${userId}`;
+  const cached = await cache.get(cacheKey);
+  if (cached) return cached;
+
+  const [ownedAppIds, wishlistAppIds, userRow] = await Promise.all([
+    steamApi.getOwnedGameAppIds(steamId),
+    steamApi.getWishlistAppIds(steamId),
+    pool.query('SELECT preferences FROM users WHERE id = $1', [userId]),
+  ]);
+
+  const ownedSet = new Set(ownedAppIds);
+  const wishlistSet = new Set(wishlistAppIds);
+  const allAppIds = [...new Set([...ownedAppIds, ...wishlistAppIds])];
+
+  const preferences = userRow.rows[0]?.preferences ?? {};
+  const preferredDeviceIds = preferences.deviceIds ?? [];
+  const preferredSocIds = preferences.socIds ?? [];
+
+  const results = allAppIds.length ? await emuready.batchBySteamAppIds(allAppIds) : [];
+  const games = results
+    .map(r => buildCompatEntry(r, ownedSet, wishlistSet, preferredDeviceIds, preferredSocIds))
+    .filter(Boolean);
+
+  await cache.set(cacheKey, games, CACHE_TTL_MS);
+  return games;
+}
+
+module.exports = { pickBestListing, buildCompatEntry, getLibraryCompat };
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+```
+npm test
+```
+
+Expected: `test/steamLibraryCompat.test.js` passes (6 tests).
+
+- [ ] **Step 5: Commit**
+
+```
+git add services/steamLibraryCompat.js test/steamLibraryCompat.test.js
+git commit -m "Add library-compatibility assembly (pickBestListing, buildCompatEntry, getLibraryCompat)"
+```
+
+---
+
+## Task 9: `GET /api/steam/library-compat` route
+
+**Files:**
+- Modify: `routes/steam.js`
+- Modify: `test/steam-routes.test.js`
+
+**Interfaces:**
+- Consumes: `services/steamLibraryCompat.js`'s `getLibraryCompat` (Task 8).
+- Produces: `GET /api/steam/library-compat` (`requireAuth`, `400` if no Steam account linked) — response `{games: entry[]}` — consumed by the frontend in Task 11.
+
+- [ ] **Step 1: Write the failing test**
+
+Add to `test/steam-routes.test.js`:
+
+```js
+test('GET /api/steam/library-compat requires auth and 400s when no Steam account is linked', async () => {
+  const anon = await request(app).get('/api/steam/library-compat');
+  assert.strictEqual(anon.status, 401);
+
+  const { agent, email } = await signupAgent('steam-compat-unlinked');
+  const res = await agent.get('/api/steam/library-compat');
+  assert.strictEqual(res.status, 400);
+
+  await pool.query('DELETE FROM users WHERE email = $1', [email]);
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+```
+npm test
+```
+
+Expected: FAIL — `GET /api/steam/library-compat` returns 404.
+
+- [ ] **Step 3: Add the route to `routes/steam.js`**
+
+Add near the top, alongside the other requires:
+
+```js
+const steamLibraryCompat = require('../services/steamLibraryCompat');
+```
+
+Add before `module.exports = router;`:
+
+```js
+router.get('/library-compat', async (req, res) => {
+  const status = await auth.getSteamLinkStatus(req.session.userId);
+  if (!status.steamId) return res.status(400).json({ error: 'No Steam account linked' });
+
+  try {
+    const games = await steamLibraryCompat.getLibraryCompat(req.session.userId, status.steamId);
+    res.json({ games });
+  } catch (e) {
+    console.error('[/api/steam/library-compat]', e);
+    res.status(500).json({ error: 'Failed to load library compatibility' });
+  }
+});
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+```
+npm test
+```
+
+Expected: `test/steam-routes.test.js` passes (4 tests).
+
+- [ ] **Step 5: Commit**
+
+```
+git add routes/steam.js test/steam-routes.test.js
+git commit -m "Add GET /api/steam/library-compat route"
+```
+
+- [ ] **Step 6: Manual verification of the live path**
+
+With `STEAM_API_KEY`/`ITAD_API_KEY` set, a linked Steam account with Public game-details/wishlist privacy, and a saved device preference:
+
+1. Call `GET /api/steam/library-compat` and confirm it returns a `games` array where every entry has a non-null `compatibility` (no "unknown" placeholders — anything EmuReady has no listing for is simply absent).
+2. Spot-check a known-owned game that also appears in your EmuReady catalog search results — confirm `compatibility.rank`/`label` matches what the main app shows for that game on your saved device.
+3. Confirm `owned`/`wishlisted` flags are correct for a couple of games in each category.
+4. Call it twice in a row and confirm the second call is fast (Redis cache hit — check logs or timing) until the 5-minute TTL expires.
+5. Temporarily unset your saved device preference (or use an account with none) and confirm results still return, using best-overall compatibility instead of device-preferred.
+
+---
+
+## Task 10: Frontend — Connected Accounts section
 
 **Files:**
 - Modify: `public/index.html`
@@ -943,8 +1333,158 @@ git commit -m "Add Connected Accounts (Steam) section to account settings"
 
 ---
 
+## Task 11: Frontend — Library Compatibility view
+
+**Files:**
+- Modify: `public/index.html`
+- Modify: `public/app.js`
+- Modify: `public/style.css`
+- Modify: `public/i18n.js`
+
+**Interfaces:**
+- Consumes: `GET /api/steam/library-compat` (Task 9), `refreshSteamStatus()`/the account-menu dropdown scaffolding (Task 10, accounts plan's Task 12), `compatClass()` (existing helper in `public/app.js`, reused for badge coloring — same rank-to-color mapping already used everywhere else in the app).
+
+No automated test — no frontend test tooling in this project (see Global Constraints). Verified manually via the `run` skill.
+
+- [ ] **Step 1: Add the markup**
+
+Add a new account-menu button inside `#accountDropdown` (accounts plan's Task 12), alongside the existing `data-view="wishlist"`/`data-view="owned"` buttons — hidden by default since it's only relevant once Steam is linked:
+
+```html
+<button data-view="library-compat" id="libraryCompatMenuBtn" hidden data-i18n="myLibraryCompat">My Library Compatibility</button>
+```
+
+Add the view itself, as a sibling of `#trackedView` (accounts plan's Task 14) and `#settingsView` (accounts plan's Task 16):
+
+```html
+<section id="libraryCompatView" hidden>
+  <button class="btn-modal-skip" id="libraryCompatBackBtn" data-i18n="backToSearch">&larr; Back</button>
+  <h2 data-i18n="myLibraryCompat">My Library Compatibility</h2>
+  <div class="grid" id="libraryCompatGrid"></div>
+  <div class="state-box" id="libraryCompatEmpty" hidden>
+    <div class="icon">🎮</div>
+    <p data-i18n="libraryCompatEmptyMsg">No games from your Steam library have EmuReady compatibility info yet, or your Steam privacy settings aren't set to Public.</p>
+  </div>
+</section>
+```
+
+- [ ] **Step 2: Add the frontend logic to `public/app.js`**
+
+Add an API helper to the `Object.assign(api, {...})` block:
+
+```js
+  steamLibraryCompat() { return api.json('/api/steam/library-compat'); },
+```
+
+Add a card renderer — a lighter-weight sibling of `buildCard()` (accounts plan's Task 13), since library-compat entries have no price/discount/store-link data, only compatibility:
+
+```js
+function buildCompatCard(g) {
+  const div = document.createElement('div');
+  div.className = 'card';
+  const rankClass = compatClass(g.compatibility?.rank);
+  div.innerHTML = `
+    <div class="card-img-wrap">
+      <img class="card-img" src="${escHtml(g.imageUrl)}" alt="${escHtml(g.gameName)}" />
+      <div class="card-img-placeholder" style="display:none">🎮</div>
+      <span class="compat-badge compat-${rankClass}">${escHtml(g.compatibility?.label || '')}</span>
+      ${g.owned ? `<span class="owned-badge" data-i18n="ownedBadge">Owned</span>` : ''}
+      ${g.wishlisted ? `<span class="wishlisted-badge" data-i18n="wishlistedBadge">Wishlisted</span>` : ''}
+    </div>
+    <div class="card-body">
+      <div class="card-game-name">${escHtml(g.gameName)}</div>
+      <div class="card-meta">
+        ${g.compatibility?.deviceName ? `<span class="tag">${escHtml(g.compatibility.deviceName)}</span>` : ''}
+        ${g.compatibility?.emulatorName ? `<span class="tag">${escHtml(g.compatibility.emulatorName)}</span>` : ''}
+      </div>
+    </div>`;
+  const img = div.querySelector('.card-img');
+  img.addEventListener('error', () => { img.style.display = 'none'; img.nextElementSibling.style.display = 'flex'; });
+  return div;
+}
+
+async function openLibraryCompatView() {
+  $('accountDropdown').hidden = true;
+  document.querySelector('.layout').hidden = true;
+  $('libraryCompatView').hidden = false;
+
+  const body = await api.steamLibraryCompat().catch(() => ({ games: [] }));
+  const grid = $('libraryCompatGrid');
+  grid.innerHTML = '';
+  if (!body.games?.length) {
+    $('libraryCompatEmpty').hidden = false;
+    return;
+  }
+  $('libraryCompatEmpty').hidden = true;
+  body.games.forEach(g => grid.appendChild(buildCompatCard(g)));
+}
+
+function closeLibraryCompatView() {
+  $('libraryCompatView').hidden = true;
+  document.querySelector('.layout').hidden = false;
+}
+
+function initLibraryCompatView() {
+  $('libraryCompatBackBtn').addEventListener('click', closeLibraryCompatView);
+  $('libraryCompatMenuBtn').addEventListener('click', openLibraryCompatView);
+}
+```
+
+Extend `refreshSteamStatus()` (Task 10) to also toggle the new menu button — add this line alongside its existing `$('steamNotLinked').hidden = ...`/`$('steamLinked').hidden = ...` assignments:
+
+```js
+  $('libraryCompatMenuBtn').hidden = !status.linked;
+```
+
+`refreshSteamStatus()` is currently only called from `openAccountSettings()` (Task 10), which means the account-menu button wouldn't reflect link status until the user opens Settings once. Call it at page load too — in `init()`, add `await refreshSteamStatus();` right after `initSteamSettings();` (so the account menu is correct immediately after login, not just after a settings visit).
+
+Wire `initLibraryCompatView();` into `init()`, alongside `initSteamSettings();`.
+
+- [ ] **Step 3: i18n keys**
+
+Add to each language object in `public/i18n.js`:
+
+```js
+    myLibraryCompat:       'My Library Compatibility',
+    libraryCompatEmptyMsg: "No games from your Steam library have EmuReady compatibility info yet, or your Steam privacy settings aren't set to Public.",
+    ownedBadge:             'Owned',
+    wishlistedBadge:        'Wishlisted',
+```
+
+- [ ] **Step 4: Styles**
+
+Append to `public/style.css`:
+
+```css
+.owned-badge, .wishlisted-badge {
+  position: absolute;
+  top: .5rem;
+  font-size: .75rem;
+  padding: .15rem .5rem;
+  border-radius: 4px;
+  background: rgba(0,0,0,.6);
+  color: #fff;
+}
+.owned-badge { left: .5rem; }
+.wishlisted-badge { left: .5rem; top: 2rem; }
+```
+
+- [ ] **Step 5: Manual verification**
+
+Log in with a linked Steam account, confirm "My Library Compatibility" appears in the account menu (immediately after login, without needing to open Settings first). Open it, confirm cards render with compatibility badges, device/emulator tags, and owned/wishlisted badges matching what Task 9's manual check found. Log out and confirm the menu button doesn't appear (no Steam link, no session). Unlink Steam and confirm the button disappears from the menu without a page reload.
+
+- [ ] **Step 6: Commit**
+
+```
+git add public/index.html public/app.js public/style.css public/i18n.js
+git commit -m "Add Library Compatibility view"
+```
+
+---
+
 ## Self-Review Notes
 
-- **Spec coverage:** Every section of `docs/superpowers/specs/2026-07-22-steam-import-design.md` maps to a task — data model (Task 1), one-time linking vs. ongoing reads (Tasks 3-4), verified API details (Tasks 3-4, cited directly in code comments), routes (Task 6), import logic (Task 5), frontend UI (Task 7), security (steam_id uniqueness in Task 1, server-side-only keys throughout, session-derived auth in every route in Task 6).
-- **Cross-plan consistency:** `resyncOwnedFromSteam`'s wishlist cross-removal (Task 5) matches the rule already implemented in the accounts plan's `services/wishlist.js` `addOwned` — both independently enforce "owning it clears the wishlist," so a game marked owned via either path behaves identically.
+- **Spec coverage:** Every section of `docs/superpowers/specs/2026-07-22-steam-import-design.md` maps to a task — data model (Task 1), one-time linking vs. ongoing reads (Tasks 3-4), verified API details (Tasks 3-4, 7-8, cited directly in code comments), routes (Task 6, extended in Task 9), import logic (Task 5), library compatibility (Tasks 7-9, frontend Task 11), frontend UI (Tasks 10-11), security (steam_id uniqueness in Task 1, server-side-only keys throughout, session-derived auth in every route in Task 6/9).
+- **Cross-plan consistency:** `resyncOwnedFromSteam`'s wishlist cross-removal (Task 5) matches the rule already implemented in the accounts plan's `services/wishlist.js` `addOwned` — both independently enforce "owning it clears the wishlist," so a game marked owned via either path behaves identically. `services/emuready.js`'s `module.exports` in Task 7 accounts for both this plan's `batchBySteamAppIds` and the exact-correlation plan's `getBestSteamAppId`, so neither plan's addition silently drops the other's export if implemented in sequence.
+- **New in this revision (library compatibility):** `pickBestListing`/`buildCompatEntry` (Task 8) are pure and fully tested; the real API gotcha found while researching this feature — `batchBySteamAppIds` 400s the whole batch on an out-of-range id rather than marking it not-found — is defended against in Task 7's `filterValidSteamAppIds` and covered by a test. The Redis cache key (`steam-library-compat:<userId>`) and 5-minute TTL match EmuReady's own upstream cache window, so this plan never caches staler than the source data.
 - **Type/name consistency check:** `itad_id` (string) is the consistent join key from `resolveAppIdsToItadIds`'s `Map<appId, itadId>` through `resyncOwnedFromSteam`/`resyncWishlistFromSteam` into the same `owned_games`/`wishlist_items` tables the accounts plan defined — no new identifier scheme introduced. `steamId` (string, not parsed as a number) is used consistently from `extractSteamId` through `services/auth.js`'s helpers to `owned`/`wishlist` resync, avoiding the classic SteamID64-exceeds-safe-integer-range bug.
