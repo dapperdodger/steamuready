@@ -130,6 +130,28 @@ async function fetchOverviewAPI(itadIds, cc, shops) {
   return pairs;
 }
 
+// Resolve Steam App IDs → ITAD ids via ITAD's exact shop lookup (batched 200/call).
+// Returns Map(steamAppId → itadId). Steam App IDs ITAD doesn't recognize are omitted.
+async function resolveSteamAppIdsToItadIds(steamAppIds) {
+  const result = new Map();
+  for (let i = 0; i < steamAppIds.length; i += 200) {
+    const batch = steamAppIds.slice(i, i + 200).map(id => `app/${id}`);
+    try {
+      const res = await axios.post(
+        `${ITAD_BASE}/lookup/id/shop/${STEAM_SHOP_ID}/v1`,
+        batch,
+        { params: { key: process.env.ITAD_API_KEY }, timeout: 15000 }
+      );
+      for (const [shopKey, itadId] of Object.entries(res.data ?? {})) {
+        if (itadId) result.set(shopKey.replace('app/', ''), itadId);
+      }
+    } catch (e) {
+      console.warn(`[Store] Steam appId → itad_id lookup failed (offset ${i}):`, e.message);
+    }
+  }
+  return result;
+}
+
 function toNum(v) {
   return parseFloat(v) || 0;
 }
@@ -287,4 +309,4 @@ async function clearCache() {
   await Promise.all([delPattern('store:overview:*'), igdb.clearCache()]);
 }
 
-module.exports = { getDealsForTitles, getShops, clearCache, REGIONS, STEAM_SHOP_ID };
+module.exports = { getDealsForTitles, resolveSteamAppIdsToItadIds, getShops, clearCache, REGIONS, STEAM_SHOP_ID };
