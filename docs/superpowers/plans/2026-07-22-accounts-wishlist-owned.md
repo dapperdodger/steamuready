@@ -127,11 +127,33 @@ npm start
 
 Expected: same console output as before (`🎮  SteamUReady Running`, then cache warm-up logs). Stop with Ctrl+C once confirmed.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: Add a shared test helper for unique per-test IPs**
+
+`routes/auth.js` (Task 6) rate-limits `/signup` and `/login` per-IP at 5 requests/60s. Every test file below that calls either endpoint via `supertest` needs its own simulated IP so it doesn't share a rate-limit bucket with every other test in the suite — `node --test` runs files in parallel by default, and this project's tests collectively make well over 5 such calls. `server.js` already has `app.set('trust proxy', 1)`, so an `X-Forwarded-For` header on a direct `supertest` request is honored as `req.ip`.
+
+Create `test/helpers/testIp.js`:
+
+```js
+let counter = 0;
+
+// Each call returns a distinct IPv4-shaped string so tests that hit
+// rate-limited endpoints (routes/auth.js's authRateLimiter) don't share a
+// bucket with other tests running in the same `npm test` invocation.
+function nextTestIp() {
+  counter += 1;
+  return `10.123.${Math.floor(counter / 255) % 255}.${counter % 255}`;
+}
+
+module.exports = { nextTestIp };
+```
+
+Every test below that calls `/api/auth/signup` or `/api/auth/login` (directly, or indirectly via a helper like `signupAgent`) chains `.set('X-Forwarded-For', testIp)` on those specific calls, using one `testIp` obtained via `nextTestIp()` per test.
+
+- [ ] **Step 8: Commit**
 
 ```
-git add package.json package-lock.json server.js test/server.test.js
-git commit -m "Add node:test + supertest tooling, make server.js testable"
+git add package.json package-lock.json server.js test/server.test.js test/helpers/testIp.js
+git commit -m "Add node:test + supertest tooling, make server.js testable, add per-test IP helper"
 ```
 
 ---
@@ -618,6 +640,7 @@ const assert = require('node:assert');
 const request = require('supertest');
 const app = require('../server');
 const { pool } = require('../services/db');
+const { nextTestIp } = require('./helpers/testIp');
 
 function uniqueEmail(tag) {
   return `${tag}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
@@ -629,20 +652,21 @@ async function cleanupUser(email) {
 
 test('signup: creates a user, sets a session cookie, rejects duplicates and weak input', async () => {
   const email = uniqueEmail('signup');
+  const testIp = nextTestIp();
   const agent = request.agent(app);
 
-  const ok = await agent.post('/api/auth/signup').send({ email, password: 'password123' });
+  const ok = await agent.post('/api/auth/signup').set('X-Forwarded-For', testIp).send({ email, password: 'password123' });
   assert.strictEqual(ok.status, 201);
   assert.strictEqual(ok.body.email, email);
   assert.deepStrictEqual(ok.body.preferences, {});
 
-  const dup = await request(app).post('/api/auth/signup').send({ email, password: 'password123' });
+  const dup = await request(app).post('/api/auth/signup').set('X-Forwarded-For', testIp).send({ email, password: 'password123' });
   assert.strictEqual(dup.status, 409);
 
-  const weakPw = await request(app).post('/api/auth/signup').send({ email: uniqueEmail('weak'), password: 'short' });
+  const weakPw = await request(app).post('/api/auth/signup').set('X-Forwarded-For', testIp).send({ email: uniqueEmail('weak'), password: 'short' });
   assert.strictEqual(weakPw.status, 400);
 
-  const badEmail = await request(app).post('/api/auth/signup').send({ email: 'not-an-email', password: 'password123' });
+  const badEmail = await request(app).post('/api/auth/signup').set('X-Forwarded-For', testIp).send({ email: 'not-an-email', password: 'password123' });
   assert.strictEqual(badEmail.status, 400);
 
   await cleanupUser(email);
@@ -650,17 +674,18 @@ test('signup: creates a user, sets a session cookie, rejects duplicates and weak
 
 test('login: succeeds with correct credentials, generic 401 on wrong password or unknown email', async () => {
   const email = uniqueEmail('login');
-  await request(app).post('/api/auth/signup').send({ email, password: 'password123' }).expect(201);
+  const testIp = nextTestIp();
+  await request(app).post('/api/auth/signup').set('X-Forwarded-For', testIp).send({ email, password: 'password123' }).expect(201);
 
-  const wrongPw = await request(app).post('/api/auth/login').send({ email, password: 'wrong-password' });
+  const wrongPw = await request(app).post('/api/auth/login').set('X-Forwarded-For', testIp).send({ email, password: 'wrong-password' });
   assert.strictEqual(wrongPw.status, 401);
   assert.strictEqual(wrongPw.body.error, 'Invalid email or password');
 
-  const unknownEmail = await request(app).post('/api/auth/login').send({ email: uniqueEmail('nope'), password: 'password123' });
+  const unknownEmail = await request(app).post('/api/auth/login').set('X-Forwarded-For', testIp).send({ email: uniqueEmail('nope'), password: 'password123' });
   assert.strictEqual(unknownEmail.status, 401);
   assert.strictEqual(unknownEmail.body.error, 'Invalid email or password');
 
-  const ok = await request(app).post('/api/auth/login').send({ email, password: 'password123' });
+  const ok = await request(app).post('/api/auth/login').set('X-Forwarded-For', testIp).send({ email, password: 'password123' });
   assert.strictEqual(ok.status, 200);
   assert.strictEqual(ok.body.email, email);
 
@@ -669,12 +694,13 @@ test('login: succeeds with correct credentials, generic 401 on wrong password or
 
 test('logout clears the session, and /me reflects logged-in vs logged-out state', async () => {
   const email = uniqueEmail('me');
+  const testIp = nextTestIp();
   const agent = request.agent(app);
 
   const loggedOut = await agent.get('/api/auth/me');
   assert.strictEqual(loggedOut.status, 401);
 
-  await agent.post('/api/auth/signup').send({ email, password: 'password123' }).expect(201);
+  await agent.post('/api/auth/signup').set('X-Forwarded-For', testIp).send({ email, password: 'password123' }).expect(201);
 
   const loggedIn = await agent.get('/api/auth/me');
   assert.strictEqual(loggedIn.status, 200);
@@ -845,6 +871,7 @@ const assert = require('node:assert');
 const request = require('supertest');
 const app = require('../server');
 const { pool } = require('../services/db');
+const { nextTestIp } = require('./helpers/testIp');
 
 test('PUT /api/me/preferences requires auth and persists a preferences object', async () => {
   const anon = await request(app).put('/api/me/preferences').send({ region: 'us' });
@@ -852,7 +879,7 @@ test('PUT /api/me/preferences requires auth and persists a preferences object', 
 
   const email = `prefs-test-${Date.now()}@example.com`;
   const agent = request.agent(app);
-  await agent.post('/api/auth/signup').send({ email, password: 'password123' }).expect(201);
+  await agent.post('/api/auth/signup').set('X-Forwarded-For', nextTestIp()).send({ email, password: 'password123' }).expect(201);
 
   const invalid = await agent.put('/api/me/preferences').send([1, 2, 3]);
   assert.strictEqual(invalid.status, 400);
@@ -1276,6 +1303,7 @@ const request = require('supertest');
 const app = require('../server');
 const { pool } = require('../services/db');
 const { redis } = require('../services/cache');
+const { nextTestIp } = require('./helpers/testIp');
 
 async function seedGameTitleAndOverview(itadId, steamAppId) {
   await pool.query(
@@ -1312,7 +1340,7 @@ test('wishlist: unauthenticated requests are rejected, authenticated add/list/re
 
   const email = `wishlist-route-${Date.now()}@example.com`;
   const agent = request.agent(app);
-  await agent.post('/api/auth/signup').send({ email, password: 'password123' }).expect(201);
+  await agent.post('/api/auth/signup').set('X-Forwarded-For', nextTestIp()).send({ email, password: 'password123' }).expect(201);
 
   await agent.post(`/api/me/wishlist/${itadId}`).expect(204);
 
@@ -1335,7 +1363,7 @@ test('owned: add/list/remove works, and marking owned removes the game from the 
 
   const email = `owned-route-${Date.now()}@example.com`;
   const agent = request.agent(app);
-  await agent.post('/api/auth/signup').send({ email, password: 'password123' }).expect(201);
+  await agent.post('/api/auth/signup').set('X-Forwarded-For', nextTestIp()).send({ email, password: 'password123' }).expect(201);
 
   // Wishlist it first, to prove marking it owned clears the wishlist entry.
   await agent.post(`/api/me/wishlist/${itadId}`).expect(204);
@@ -2179,11 +2207,13 @@ const assert = require('node:assert');
 const request = require('supertest');
 const app = require('../server');
 const { pool } = require('../services/db');
+const { nextTestIp } = require('./helpers/testIp');
 
 test('PUT /api/me/password requires the current password and updates the hash', async () => {
   const email = `pw-change-${Date.now()}@example.com`;
+  const testIp = nextTestIp();
   const agent = request.agent(app);
-  await agent.post('/api/auth/signup').send({ email, password: 'password123' }).expect(201);
+  await agent.post('/api/auth/signup').set('X-Forwarded-For', testIp).send({ email, password: 'password123' }).expect(201);
 
   const wrongCurrent = await agent.put('/api/me/password').send({ currentPassword: 'nope', newPassword: 'newpassword456' });
   assert.strictEqual(wrongCurrent.status, 401);
@@ -2192,9 +2222,9 @@ test('PUT /api/me/password requires the current password and updates the hash', 
   assert.strictEqual(ok.status, 200);
 
   await agent.post('/api/auth/logout');
-  const loginOld = await request(app).post('/api/auth/login').send({ email, password: 'password123' });
+  const loginOld = await request(app).post('/api/auth/login').set('X-Forwarded-For', testIp).send({ email, password: 'password123' });
   assert.strictEqual(loginOld.status, 401);
-  const loginNew = await request(app).post('/api/auth/login').send({ email, password: 'newpassword456' });
+  const loginNew = await request(app).post('/api/auth/login').set('X-Forwarded-For', testIp).send({ email, password: 'newpassword456' });
   assert.strictEqual(loginNew.status, 200);
 
   await pool.query('DELETE FROM users WHERE email = $1', [email]);
@@ -2203,7 +2233,7 @@ test('PUT /api/me/password requires the current password and updates the hash', 
 test('DELETE /api/me removes the account and its session', async () => {
   const email = `delete-acct-${Date.now()}@example.com`;
   const agent = request.agent(app);
-  await agent.post('/api/auth/signup').send({ email, password: 'password123' }).expect(201);
+  await agent.post('/api/auth/signup').set('X-Forwarded-For', nextTestIp()).send({ email, password: 'password123' }).expect(201);
 
   await agent.delete('/api/me').expect(200);
 

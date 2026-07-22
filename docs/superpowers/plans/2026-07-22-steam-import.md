@@ -632,11 +632,12 @@ const assert = require('node:assert');
 const request = require('supertest');
 const app = require('../server');
 const { pool } = require('../services/db');
+const { nextTestIp } = require('./helpers/testIp');
 
 async function signupAgent(tag) {
   const email = `${tag}-${Date.now()}@example.com`;
   const agent = request.agent(app);
-  await agent.post('/api/auth/signup').send({ email, password: 'password123' }).expect(201);
+  await agent.post('/api/auth/signup').set('X-Forwarded-For', nextTestIp()).send({ email, password: 'password123' }).expect(201);
   return { agent, email };
 }
 
