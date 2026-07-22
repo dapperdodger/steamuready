@@ -942,7 +942,7 @@ git commit -m "Add PUT /api/me/preferences endpoint"
 
 **Interfaces:**
 - Consumes: `pool` from `services/db.js`.
-- Produces: `addWishlistItem(userId, itadId)`, `removeWishlistItem(userId, itadId)`, `listWishlistItadIds(userId): Promise<string[]>`, `addOwned(userId, itadId, source = 'manual')`, `removeOwned(userId, itadId)`, `listOwnedItadIds(userId): Promise<string[]>` — consumed by `routes/me.js` in Task 10 and the hide-owned filter in Task 11.
+- Produces: `addWishlistItem(userId, itadId)`, `removeWishlistItem(userId, itadId)`, `listWishlistItadIds(userId): Promise<string[]>`, `addOwned(userId, itadId, source = 'manual')` (also deletes any `wishlist_items` row for the same `userId`/`itadId` — owning a game always implies not wanting it on the wishlist, regardless of how either state was set), `removeOwned(userId, itadId)`, `listOwnedItadIds(userId): Promise<string[]>` — consumed by `routes/me.js` in Task 10 and the hide-owned filter in Task 11.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -992,6 +992,20 @@ test('owned add/list/remove defaults source to manual', async () => {
 
   await deleteUser(user.id);
 });
+
+test('addOwned removes any existing wishlist entry for the same game', async () => {
+  const user = await makeTestUser('owned-wishlist-svc');
+  const itadId = 'itad-test-ccc';
+
+  await addWishlistItem(user.id, itadId);
+  assert.deepStrictEqual(await listWishlistItadIds(user.id), [itadId]);
+
+  await addOwned(user.id, itadId);
+  assert.deepStrictEqual(await listOwnedItadIds(user.id), [itadId]);
+  assert.deepStrictEqual(await listWishlistItadIds(user.id), []); // owning it clears the wishlist entry
+
+  await deleteUser(user.id);
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1027,12 +1041,15 @@ async function listWishlistItadIds(userId) {
   return rows.map(r => r.itad_id);
 }
 
+// Owning a game always implies it shouldn't stay on the wishlist, regardless
+// of how it got there (manually added, or previously imported from Steam).
 async function addOwned(userId, itadId, source = 'manual') {
   await pool.query(
     `INSERT INTO owned_games (user_id, itad_id, source) VALUES ($1, $2, $3)
      ON CONFLICT (user_id, itad_id) DO NOTHING`,
     [userId, itadId, source]
   );
+  await removeWishlistItem(userId, itadId);
 }
 
 async function removeOwned(userId, itadId) {
@@ -1059,7 +1076,7 @@ module.exports = {
 npm test
 ```
 
-Expected: `test/wishlist-service.test.js` passes (2 tests).
+Expected: `test/wishlist-service.test.js` passes (3 tests).
 
 - [ ] **Step 5: Commit**
 
@@ -1312,7 +1329,7 @@ test('wishlist: unauthenticated requests are rejected, authenticated add/list/re
   await cleanup(email, itadId);
 });
 
-test('owned: add/list/remove works and is independent of wishlist', async () => {
+test('owned: add/list/remove works, and marking owned removes the game from the wishlist', async () => {
   const itadId = `itad-owned-test-${Date.now()}`;
   await seedGameTitleAndOverview(itadId, '900002');
 
@@ -1320,12 +1337,15 @@ test('owned: add/list/remove works and is independent of wishlist', async () => 
   const agent = request.agent(app);
   await agent.post('/api/auth/signup').send({ email, password: 'password123' }).expect(201);
 
+  // Wishlist it first, to prove marking it owned clears the wishlist entry.
+  await agent.post(`/api/me/wishlist/${itadId}`).expect(204);
+
   await agent.post(`/api/me/owned/${itadId}`).expect(204);
   const owned = await agent.get('/api/me/owned');
   assert.strictEqual(owned.body.games.length, 1);
 
   const wishlist = await agent.get('/api/me/wishlist');
-  assert.strictEqual(wishlist.body.games.length, 0);
+  assert.strictEqual(wishlist.body.games.length, 0); // owning it cleared the wishlist entry
 
   await agent.delete(`/api/me/owned/${itadId}`).expect(204);
   const ownedAfter = await agent.get('/api/me/owned');
@@ -1847,14 +1867,30 @@ After the existing `img.addEventListener('error', ...)` block in `buildCard`, be
       const kind = btn.dataset.kind;
       const wasActive = btn.classList.contains('active');
       btn.classList.toggle('active', !wasActive); // optimistic
+
+      // Marking owned always clears the wishlist too (backend enforces this
+      // unconditionally in services/wishlist.js's addOwned) — reflect it
+      // immediately in this card rather than waiting for a refetch.
+      const wishlistBtn = div.querySelector('.btn-wishlist');
+      const wishlistWasActive = wishlistBtn?.classList.contains('active');
+      if (kind === 'owned' && !wasActive && wishlistBtn) {
+        wishlistBtn.classList.remove('active');
+      }
+
       const call = kind === 'wishlist'
         ? (wasActive ? api.removeWishlist(itadId) : api.addWishlist(itadId))
         : (wasActive ? api.removeOwned(itadId) : api.addOwned(itadId));
       try {
         await call;
         document.dispatchEvent(new CustomEvent(`${kind}-changed`, { detail: { itadId, active: !wasActive } }));
+        if (kind === 'owned' && !wasActive && wishlistWasActive) {
+          document.dispatchEvent(new CustomEvent('wishlist-changed', { detail: { itadId, active: false } }));
+        }
       } catch {
         btn.classList.toggle('active', wasActive); // revert on failure
+        if (kind === 'owned' && !wasActive && wishlistBtn && wishlistWasActive) {
+          wishlistBtn.classList.add('active'); // revert the wishlist side-effect too
+        }
       }
     });
   });
@@ -1904,7 +1940,7 @@ Append to `public/style.css`:
 
 - [ ] **Step 6: Manual verification**
 
-With a logged-in session, click the heart/checkmark on a few cards, reload the page, and confirm the active state persists (comes from `g.isWishlisted`/`g.isOwned` on the next `/api/games` fetch). Log out and confirm both buttons appear greyed out with a tooltip, and clicking them does nothing.
+With a logged-in session, click the heart/checkmark on a few cards, reload the page, and confirm the active state persists (comes from `g.isWishlisted`/`g.isOwned` on the next `/api/games` fetch). Log out and confirm both buttons appear greyed out with a tooltip, and clicking them does nothing. Also: wishlist a game, then click its owned button — confirm the heart deactivates immediately in the same card without a reload, and stays deactivated after a reload.
 
 - [ ] **Step 7: Commit**
 
@@ -2488,3 +2524,4 @@ git commit -m "Sync filter preferences to the account when logged in"
 - **Spec coverage:** Every section of `docs/superpowers/specs/2026-07-22-accounts-wishlist-owned-design.md` maps to a task — data model (Tasks 2, 8), auth flow (Tasks 3-6), preferences (Tasks 7, 17), wishlist/owned API (Tasks 8-10), hide-owned filter (Task 11), UI (Tasks 12-16), security (bcrypt cost 12 in Task 3, session cookie flags in Task 5, rate limiting in Task 6, generic login errors in Task 6, session-derived auth in Task 5/7/10).
 - **Deferred by design (per spec):** email verification, password reset, price-drop alerts, platform import — none of these have tasks here, matching the spec's explicit scope cut.
 - **Type/name consistency check:** `itad_id` is used consistently as the join key across `services/wishlist.js`, `services/store.js` (`getDealsForItadIds`, `buildItadIdEntry`), and the `/api/games` `g.appId` field (confirmed to already be the ITAD id, not the Steam app id, by reading `services/store.js`'s existing `getDealsForTitles`). `req.session.userId` is the single source of truth for the authenticated user across all `/api/me/*` routes and the hide-owned filter — no route reads a user id from the request body or params.
+- **Amendment (post-hoc, from the Steam import spec's brainstorm):** Task 8's `addOwned` and Task 10's owned-route test were updated so marking a game owned always removes any matching wishlist entry, superseding the originally-independent behavior. Task 13's card-button click handler was updated to reflect this in the UI immediately rather than waiting for a refetch. This keeps the accounts spec/plan and the Steam import spec (`docs/superpowers/specs/2026-07-22-steam-import-design.md`) consistent with each other, since the import spec's resync logic relies on this same rule being enforced unconditionally in `services/wishlist.js`, not duplicated in the import code.

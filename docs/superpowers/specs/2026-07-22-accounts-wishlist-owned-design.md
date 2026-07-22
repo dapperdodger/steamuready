@@ -108,8 +108,17 @@ implementation time):
 | `POST /api/me/wishlist/:itadId` | Yes | Add to wishlist |
 | `DELETE /api/me/wishlist/:itadId` | Yes | Remove from wishlist |
 | `GET /api/me/owned` | Yes | List of owned games (same join shape as wishlist) |
-| `POST /api/me/owned/:itadId` | Yes | Mark owned (`source = 'manual'`) |
+| `POST /api/me/owned/:itadId` | Yes | Mark owned (`source = 'manual'`); also deletes any `wishlist_items` row for the same `itad_id` (see below) |
 | `DELETE /api/me/owned/:itadId` | Yes | Unmark owned |
+
+**Owned implies not-wishlisted:** marking a game owned — via this endpoint or
+via the Steam import spec's resync — always removes it from the wishlist,
+regardless of how it originally got onto the wishlist (manually added or
+previously imported). Owning a game and still wanting it is contradictory, so
+this rule is unconditional rather than scoped to any one entry point.
+(**Amendment**, added after the Steam import spec was brainstormed: this
+spec's Task 10 originally specified owned/wishlist as fully independent —
+that has been superseded by this rule.)
 
 Every `/api/me/*` route reads `req.session.userId` for authorization — no
 route trusts a client-supplied user id.
