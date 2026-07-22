@@ -194,4 +194,19 @@ async function clearCache() {
   await cache.delPattern('emu:*');
 }
 
-module.exports = { getDevices, getSocs, getPerformanceScales, getListings, getAllListings, clearCache };
+function parseBestSteamAppIdResponse(data) {
+  if (data?.found && data?.appId) return { found: true, appId: String(data.appId) };
+  return { found: false, appId: null };
+}
+
+async function getBestSteamAppId(gameName) {
+  try {
+    const data = await trpcGet('games.getBestSteamAppId', { gameName });
+    return parseBestSteamAppIdResponse(data);
+  } catch (e) {
+    console.error('[EmuReady] getBestSteamAppId error:', e.message);
+    return { found: false, appId: null };
+  }
+}
+
+module.exports = { getDevices, getSocs, getPerformanceScales, getListings, getAllListings, getBestSteamAppId, parseBestSteamAppIdResponse, clearCache };
