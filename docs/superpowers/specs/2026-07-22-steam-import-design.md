@@ -6,10 +6,16 @@ Date: 2026-07-22
 ## Summary
 
 Let a logged-in user (per the accounts spec) link their Steam account and
-import their Steam-owned games and wishlist into SteamUReady's own
-`owned_games`/`wishlist_items` tables. This is the second of the two specs
+(a) import their Steam-owned games and wishlist into SteamUReady's own
+`owned_games`/`wishlist_items` tables for deal-tracking, and (b) see which of
+their library games actually run on their handheld — a **library
+compatibility** view powered by EmuReady's `batchBySteamAppIds` (the reverse
+lookup unblocked by EmuReady PR #342). This is the second of the two specs
 remaining after the accounts spec (the other being email alerts +
-verification/reset).
+verification/reset), and it depends on the exact-correlation rework
+(`docs/superpowers/specs/2026-07-22-exact-correlation-design.md`) only insofar
+as both add wrappers to `services/emuready.js` for the now-working PR #342
+endpoints.
 
 ## Scope
 
@@ -142,6 +148,64 @@ All under `requireAuth` (from the accounts spec's session middleware):
    `source` — whose `itad_id` is in the just-computed owned set.
 6. Return `{ownedCount, wishlistCount}` so the UI can display a summary.
 
+## Library compatibility (reverse lookup via `batchBySteamAppIds`)
+
+This is the capability that EmuReady PR
+[#342](https://github.com/Producdevity/EmuReady/pull/342) unblocked: mapping a
+user's whole Steam library to EmuReady handheld compatibility in one batched
+call. It is **separate from deal-tracking** above — deal-tracking is about
+prices on owned/wishlist games; this is about *which of the user's games run
+on their handheld at all*, on sale or not.
+
+Why this uses the reverse direction (unlike the main app's forward
+correlation): the input here is the user's **own** library — a bounded set of
+Steam App IDs we already have from `GetOwnedGames`/`GetWishlist`. That's
+exactly what `games.batchBySteamAppIds` wants (App IDs in → EmuReady
+games+listings out), with no deal-enumeration and no title matching. (The main
+app stays forward because its input is the unbounded ITAD deals set — see
+`docs/superpowers/specs/2026-07-22-exact-correlation-design.md`.)
+
+Endpoint (`requireAuth`, `400` if no Steam account linked):
+
+| Endpoint | Behavior |
+|---|---|
+| `GET /api/steam/library-compat` | Fetch the user's owned+wishlist Steam App IDs, batch them (1000 per call) through `games.batchBySteamAppIds`, and return only the games EmuReady has listings for, each with its best compatibility |
+
+Flow:
+
+1. Get the user's owned + wishlist Steam App IDs (reusing the same
+   `GetOwnedGames`/`GetWishlist` calls the import uses — or the caller may pass
+   the already-fetched set to avoid re-calling Steam).
+2. Batch those App IDs (≤1000 per call) through
+   `games.batchBySteamAppIds({ steamAppIds, ... })`. The response's
+   `totalNotFound` set (games EmuReady has no listing for) is **excluded** —
+   the view only ever shows games we actually have compatibility info on. This
+   satisfies the requirement that we not surface library games we have no
+   EmuReady data for.
+3. For each returned game, derive a best-compatibility summary from its nested
+   `listings` (performance `rank`/`label`, the device/SoC it was achieved on,
+   and the emulator). When the user has a saved device/chipset preference
+   (from the accounts spec), prefer listings matching it so the view answers
+   "does it run on *my* handheld," falling back to the best listing on any
+   device otherwise.
+4. Tag each result as `owned` and/or `wishlisted` (a game can be both sources
+   in the library) so the UI can group or badge them.
+5. Cache the assembled result briefly in Redis (per user, short TTL — the
+   underlying `batchBySteamAppIds` is itself only cached ~5 min on EmuReady's
+   side), so re-opening the view doesn't re-batch every time.
+
+No new persistent table — compatibility is fetched on demand and cached in
+Redis, mirroring how the main correlation map is cached rather than stored in
+Postgres.
+
+## EmuReady API wrapper additions
+
+`services/emuready.js` gains a `batchBySteamAppIds(steamAppIds)` wrapper
+(tRPC, `{ json: { steamAppIds } }`, chunked to ≤1000 per call, default full
+response shape). The correlation-rework spec adds `getBestSteamAppId`; this
+spec adds `batchBySteamAppIds`. Both are the now-working endpoints from PR
+#342.
+
 ## Frontend UI
 
 All additions live in the Account Settings page (from the accounts spec)
@@ -163,6 +227,16 @@ under a new "Connected Accounts" section:
   `?steamError=already_linked`) to show a success/error toast after
   redirecting back.
 
+**Library compatibility view** (only shown when a Steam account is linked): a
+new view — reachable from the account menu — that calls
+`GET /api/steam/library-compat` and renders the user's library games that run
+on a handheld, reusing the existing game-card grid. Each card shows the
+game plus its best compatibility (performance label, the device/SoC + emulator
+it was achieved on) and an owned/wishlisted badge. Games EmuReady has no
+listing for are simply absent (not rendered as "unknown"). An empty result
+reuses the same "Public privacy required" hint as import, since an empty
+library-compat and an empty import share the same likely cause.
+
 ## Security
 
 - OpenID assertion verification is delegated to the `openid` package, which
@@ -179,11 +253,15 @@ under a new "Connected Accounts" section:
 The resync logic (diff/upsert/delete/cross-removal, once given a resolved
 list of `itad_id`s) is pure DB logic and gets automated `node:test` coverage
 against a real Postgres instance — the same approach used for
-`services/wishlist.js` in the accounts spec. The OpenID handshake and live
-Steam/ITAD network calls are verified manually, consistent with this
-codebase's existing lack of HTTP-mocking infrastructure (`services/store.js`
-and `services/steamcontroller.js` have no automated tests for their network
-calls either, and introducing an HTTP-mocking library is out of scope here).
+`services/wishlist.js` in the accounts spec. The library-compat assembly (turn
+a synthetic `batchBySteamAppIds` response into best-compatibility summaries,
+excluding `totalNotFound`, honoring a saved device preference) is likewise
+pure and unit-tested against captured response fixtures. The OpenID handshake
+and live Steam/ITAD/EmuReady network calls are verified manually, consistent
+with this codebase's existing lack of HTTP-mocking infrastructure
+(`services/store.js` and `services/steamcontroller.js` have no automated tests
+for their network calls either, and introducing an HTTP-mocking library is out
+of scope here).
 
 ## Amendment to the accounts spec
 

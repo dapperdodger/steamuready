@@ -65,6 +65,12 @@ Notes:
   tracked once cross-store data exists. This differs from `controller_support`
   and `igdb_mappings`, which key on `steam_app_id` for Steam-specific data —
   intentional, since wishlist/owned status isn't Steam-specific.
+  - Note (added 2026-07-22): the exact-correlation rework
+    (`docs/superpowers/specs/2026-07-22-exact-correlation-design.md`) makes
+    `game_titles.steam_app_id` **authoritative** (sourced from EmuReady rather
+    than derived from ITAD). This only improves the accuracy of the
+    `steam_app_id` that `buildItadIdEntry` reads; the `itad_id` keying here is
+    unchanged, so this spec's data model is unaffected.
 - `owned_games.source` defaults to `'manual'` now, but exists so the future
   import spec can write `'steam'`/`'gog'`/etc. without a migration.
 - `users.preferences` is a JSONB blob mirroring the shape currently written to
