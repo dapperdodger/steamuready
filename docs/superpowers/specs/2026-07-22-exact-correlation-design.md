@@ -136,19 +136,42 @@ Existing `game_titles.steam_app_id` values are ITAD-derived and may be wrong;
 `controller_support` and `igdb_mappings` are keyed on `steam_app_id`, so rows
 built from a wrong App ID describe the wrong game.
 
-- **One-time re-resolution**: clear `game_titles.steam_app_id` /
-  `resolved_via` (or truncate `game_titles`) and let the existing background
-  warm (`warmCaches` in `server.js`) repopulate via the new flow. This is the
-  same warm path that already exists; it just resolves via `getBestSteamAppId`
-  now.
-- **Controller/IGDB re-warm**: after re-resolution, corrected `steam_app_id`s
-  drive fresh `controller_support` (`warmMissing`) and `igdb_ratings` fetches.
-  Rows in those tables keyed on stale App IDs become harmless orphans (never
-  looked up again); they can be left in place or cleaned up opportunistically.
-- **Warm cost**: `getBestSteamAppId` is one-at-a-time (no batch name→App-ID
-  endpoint exists), ~2–3k unique catalog titles at ~120ms ≈ 3–6 min one-time,
-  comparable to the existing controller-support warm, then only incremental
-  for new titles. Acceptable for a background warm.
+**The re-resolution is fully automated — no manual script or ops step —
+gated on the new `resolved_via` column being NULL:**
+
+- After `ALTER TABLE game_titles ADD COLUMN resolved_via TEXT` runs in
+  `db.init()`, every pre-existing row has `resolved_via = NULL` (fresh
+  column). The correlation cache read in `store.getDealsForTitles`
+  (`services/store.js:144`) is changed to treat those as cache misses:
+
+  ```sql
+  SELECT title_lower, itad_id, match_title, steam_app_id, image_url
+  FROM game_titles
+  WHERE title_lower = ANY($1) AND resolved_via IS NOT NULL
+  ```
+
+  A row read as a miss falls into `needsLookup` and is re-resolved through the
+  new `getBestSteamAppId` flow, then written back stamped with
+  `resolved_via = 'steam'` or `'title'`. Once stamped it's a cache hit again,
+  so **each title re-resolves exactly once, ever** — the migration is
+  self-limiting with no version flag or cleanup step.
+- **It piggybacks on the existing background warm.** `warmCaches()` in
+  `server.js` already runs after the server starts listening (non-blocking)
+  and calls `store.getDealsForTitles([...allTitles], 'us', [])`. On the first
+  boot after deploy this re-resolves the whole catalog via the new flow; on
+  every subsequent boot the rows are already stamped, so it's a no-op beyond
+  genuinely new titles. Nothing new needs to be scheduled or invoked.
+- **Controller/IGDB re-warm is automatic too.** After re-resolution, corrected
+  `steam_app_id`s flow through the existing `warmMissing()` (controller) and
+  the IGDB fetch, which only fetch App IDs not already present. Rows in those
+  tables keyed on stale App IDs become harmless orphans (never looked up
+  again); they can be left in place or cleaned up opportunistically.
+- **Warm cost / deliberate spend**: `getBestSteamAppId` is one-at-a-time (no
+  batch name→App-ID endpoint exists), so this deliberately spends ~2–3k
+  EmuReady calls once (~120ms each ≈ 3–6 min in the background), comparable to
+  the existing controller-support warm, then only incremental for new titles.
+  This one-time cost is the only "intent" in the migration; everything else is
+  automatic.
 
 ## Impact on the three written specs
 
