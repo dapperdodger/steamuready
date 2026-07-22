@@ -127,8 +127,9 @@ higher-value brute-force/enumeration targets.
 - **Login/signup modal**: reuse the existing `modal-overlay`/`modal` pattern
   (same structure as `prefDevicesModal` in `index.html`).
 - **Game cards**: two icon toggle buttons added to `card-footer` — wishlist
-  (heart) and owned (checkmark). Optimistic UI update on click, backed by the
-  corresponding POST/DELETE call.
+  (heart) and owned (checkmark), both greyed out with a tooltip explaining
+  the need to log in when not authenticated. Optimistic UI update on click,
+  backed by the corresponding POST/DELETE call.
 - **My Wishlist / My Games view**: new view reusing the existing card-grid
   rendering, fed by `/api/me/wishlist` / `/api/me/owned` instead of
   `/api/games`.
@@ -138,7 +139,7 @@ higher-value brute-force/enumeration targets.
 - **Account settings page**: email (read-only), change password (requires
   current password), delete account, and an editable view of the synced
   preferences (devices/chipset, compat minimum, region, stores, filter mode)
-  matching what's editable via the existing preferred-settings modal.
+  matching what's editable via the existing preferred-settings modal .
 - **Preferences sync**: logged-out behavior is unchanged (localStorage,
   exactly as today). On login, `GET /api/auth/me` returns `preferences`,
   which takes over as the source of truth; subsequent changes call
