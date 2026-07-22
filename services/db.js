@@ -25,6 +25,15 @@ async function init() {
       updated_at   TIMESTAMPTZ DEFAULT NOW()
     );
 
+    ALTER TABLE game_titles ADD COLUMN IF NOT EXISTS resolved_via TEXT;
+
+    DO $$ BEGIN
+      ALTER TABLE game_titles ADD CONSTRAINT game_titles_resolved_via_check
+        CHECK (resolved_via IS NULL OR resolved_via IN ('steam', 'title'));
+    EXCEPTION
+      WHEN duplicate_object THEN NULL;
+    END $$;
+
     CREATE TABLE IF NOT EXISTS controller_support (
       steam_app_id TEXT PRIMARY KEY,
       support      TEXT CHECK (support IN ('full', 'partial', 'none')),
