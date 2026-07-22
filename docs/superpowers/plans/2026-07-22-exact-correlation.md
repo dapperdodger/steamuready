@@ -243,11 +243,21 @@ async function resolveSteamAppIdsToItadIds(steamAppIds) {
 }
 ```
 
-- [ ] **Step 2: Manual verification (deferred to Task 7)**
+- [ ] **Step 2: Update `module.exports`**
+
+Update the `module.exports` line at the end of `services/store.js` to:
+
+```js
+module.exports = { getDealsForTitles, resolveSteamAppIdsToItadIds, getShops, clearCache, REGIONS, STEAM_SHOP_ID };
+```
+
+(Exported now, not deferred to a later task, since it has no test in this task that would otherwise catch a missing export — and the Steam-import plan's reuse of this function depends on it being reachable via `require('../services/store')`.)
+
+- [ ] **Step 3: Manual verification (deferred to Task 7)**
 
 Exercised end-to-end once wired into `resolveTitlesBatch` (Task 5).
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```
 git add services/store.js
@@ -342,7 +352,17 @@ function buildFallbackEntry(title, itadId) {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Update `module.exports`**
+
+Update the `module.exports` line at the end of `services/store.js` (added by Task 3) to:
+
+```js
+module.exports = { getDealsForTitles, resolveSteamAppIdsToItadIds, buildExactEntry, buildFallbackEntry, getShops, clearCache, REGIONS, STEAM_SHOP_ID };
+```
+
+(Required for this task's own test — `test/store-resolution.test.js` imports both functions via `require('../services/store')`, which returns `undefined` for anything not in this list.)
+
+- [ ] **Step 5: Run test to verify it passes**
 
 ```
 npm test
@@ -350,7 +370,7 @@ npm test
 
 Expected: `test/store-resolution.test.js` passes (4 tests).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```
 git add services/store.js test/store-resolution.test.js
@@ -463,13 +483,15 @@ async function resolveTitlesBatch(titles) {
 }
 ```
 
-- [ ] **Step 3: Update `module.exports`**
+- [ ] **Step 3: Confirm `module.exports` already reflects this task's additions**
 
-Update the `module.exports` line at the end of `services/store.js` to:
+Tasks 3 and 4 already updated `module.exports` to its final form for this file:
 
 ```js
 module.exports = { getDealsForTitles, resolveSteamAppIdsToItadIds, buildExactEntry, buildFallbackEntry, getShops, clearCache, REGIONS, STEAM_SHOP_ID };
 ```
+
+This task adds no new exported function (`resolveTitlesBatch` was never exported, before or after), so there is nothing to change here — just confirm the line still matches the above after Step 2's replacement (the replaced function body doesn't touch this line, but double-check no stray edit affected it).
 
 - [ ] **Step 4: Run the full test suite**
 
