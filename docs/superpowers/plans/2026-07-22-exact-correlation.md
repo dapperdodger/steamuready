@@ -92,9 +92,10 @@ test('init() adds game_titles.resolved_via, nullable, checked against steam/titl
   // directly). The constraint must be checked against a row it actually touches.
   const testKey = 'constraint_test_' + Date.now();
   await pool.query('INSERT INTO game_titles (title_lower) VALUES ($1)', [testKey]);
-  // t.after() runs regardless of test outcome (LIFO order), so cleanup isn't
-  // skipped if the assertion below throws, and the pool closes only after the
-  // row-delete has run against it — avoiding both a leaked row on failure and
+  // t.after() runs regardless of test outcome, in registration order (FIFO,
+  // verified directly — NOT LIFO), so cleanup isn't skipped if the assertion
+  // below throws, and the pool closes only after the row-delete has run
+  // against it (registered first) — avoiding both a leaked row on failure and
   // the ~30s pg pool idle-timeout otherwise added to every test run.
   t.after(() => pool.query('DELETE FROM game_titles WHERE title_lower = $1', [testKey]));
   t.after(() => pool.end());
