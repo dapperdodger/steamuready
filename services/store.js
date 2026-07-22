@@ -3,6 +3,7 @@ const { redis, delPattern } = require('./cache');
 const { pool } = require('./db');
 const igdb = require('./igdb');
 const steamcontroller = require('./steamcontroller');
+const emuready = require('./emuready');
 
 const ITAD_BASE = 'https://api.isthereanydeal.com';
 const STEAM_SHOP_ID = 61;
@@ -22,87 +23,85 @@ const REGIONS = {
 
 const OVERVIEW_TTL = 60 * 60 * 1000; // 1 h
 
-// ── Phase 1: Batch title → ITAD ID resolution + Steam appId lookup ────────────
-// Returns { [titleLower]: cacheEntry } for all resolved titles.
+// ── Resolve titles to itad_ids via exact Steam App ID matching, falling
+// back to ITAD's fuzzy title lookup only for what can't be resolved exactly.
+// Returns { [titleLower]: entry } for all resolved titles.
 async function resolveTitlesBatch(titles) {
-  const BATCH_SIZE = 200;
-  const resolved = {};
+  const entries = {};
 
-  for (let i = 0; i < titles.length; i += BATCH_SIZE) {
-    const batch = titles.slice(i, i + BATCH_SIZE);
-
-    // 1a. Titles → ITAD UUIDs
-    let lookupResult = {};
-    try {
-      const res = await axios.post(
-        `${ITAD_BASE}/lookup/id/title/v1`,
-        batch,
-        { params: { key: process.env.ITAD_API_KEY }, timeout: 15000 }
-      );
-      lookupResult = res.data ?? {};
-    } catch (e) {
-      console.warn(`[Store] batch title lookup failed (offset ${i}):`, e.message);
-    }
-
-    // Build initial entries (imageUrl filled in next step for matched titles)
-    const entries = {};
-    for (const [title, id] of Object.entries(lookupResult)) {
-      entries[title.toLowerCase()] = id
-        ? { id, matchTitle: title, imageUrl: '', steamAppId: null }
-        : { id: null };
-    }
-
-    // 1b. ITAD UUIDs → Steam appIds (batch, one call per 200)
-    const matchedIds = Object.values(lookupResult).filter(Boolean);
-    if (matchedIds.length) {
-      try {
-        const res = await axios.post(
-          `${ITAD_BASE}/lookup/shop/${STEAM_SHOP_ID}/id/v1`,
-          matchedIds,
-          { params: { key: process.env.ITAD_API_KEY }, timeout: 15000 }
-        );
-        const steamMap = res.data ?? {}; // { itadUuid: ["app/123456", ...] }
-
-        for (const [title, id] of Object.entries(lookupResult)) {
-          if (!id) continue;
-          const shopIds = steamMap[id];
-          const appEntry = shopIds?.find(s => s.startsWith('app/'));
-          if (appEntry) {
-            const steamAppId = appEntry.replace('app/', '');
-            const key = title.toLowerCase();
-            if (entries[key]) {
-              entries[key].steamAppId = steamAppId;
-              entries[key].imageUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${steamAppId}/header.jpg`;
-            }
-          }
-        }
-      } catch (e) {
-        console.warn(`[Store] Steam appId lookup failed (offset ${i}):`, e.message);
-      }
-    }
-
-    // Bulk upsert into game_titles
-    const vals = Object.entries(entries);
-    if (vals.length) {
-      const placeholders = vals.map((_, j) => `($${j*5+1}, $${j*5+2}, $${j*5+3}, $${j*5+4}, $${j*5+5})`).join(', ');
-      const params = vals.flatMap(([key, e]) => [key, e.id ?? null, e.matchTitle ?? null, e.steamAppId ?? null, e.imageUrl ?? null]);
-      await pool.query(
-        `INSERT INTO game_titles (title_lower, itad_id, match_title, steam_app_id, image_url)
-         VALUES ${placeholders}
-         ON CONFLICT (title_lower) DO UPDATE SET
-           itad_id      = EXCLUDED.itad_id,
-           match_title  = EXCLUDED.match_title,
-           steam_app_id = EXCLUDED.steam_app_id,
-           image_url    = EXCLUDED.image_url,
-           updated_at   = NOW()`,
-        params
-      );
-    }
-
-    Object.assign(resolved, entries);
+  // Phase A: title → steamAppId via EmuReady. No batch name→App-ID endpoint
+  // exists, so this is one call per title (this only ever runs for titles
+  // not already cached in game_titles — see the resolved_via gate in
+  // getDealsForTitles — so it's a one-time cost per title, not per request).
+  const steamResultByTitle = new Map(); // titleLower → {found, appId}
+  for (const title of titles) {
+    steamResultByTitle.set(title.toLowerCase(), await emuready.getBestSteamAppId(title));
   }
 
-  return resolved;
+  // Phase B: batch-resolve the found steamAppIds → itad_id (exact, 200/call).
+  const exactAppIds = [...new Set(
+    [...steamResultByTitle.values()].filter(r => r.found).map(r => r.appId)
+  )];
+  const appIdToItadId = exactAppIds.length
+    ? await resolveSteamAppIdsToItadIds(exactAppIds)
+    : new Map();
+
+  const titlesNeedingFallback = [];
+  for (const title of titles) {
+    const steamResult = steamResultByTitle.get(title.toLowerCase());
+    const itadId = steamResult.found ? appIdToItadId.get(steamResult.appId) : null;
+    const entry = itadId ? buildExactEntry(title, steamResult.appId, itadId) : null;
+    if (entry) {
+      entries[title.toLowerCase()] = entry;
+    } else {
+      titlesNeedingFallback.push(title);
+    }
+  }
+
+  // Phase C: fallback — ITAD title lookup for anything not resolved exactly
+  // (EmuReady had no Steam App ID for it, or ITAD didn't recognize the App ID
+  // EmuReady gave us — e.g. an Epic/GOG-exclusive).
+  if (titlesNeedingFallback.length) {
+    for (let i = 0; i < titlesNeedingFallback.length; i += 200) {
+      const batch = titlesNeedingFallback.slice(i, i + 200);
+      let lookupResult = {};
+      try {
+        const res = await axios.post(
+          `${ITAD_BASE}/lookup/id/title/v1`,
+          batch,
+          { params: { key: process.env.ITAD_API_KEY }, timeout: 15000 }
+        );
+        lookupResult = res.data ?? {};
+      } catch (e) {
+        console.warn(`[Store] ITAD title-lookup fallback failed (offset ${i}):`, e.message);
+      }
+      for (const [title, itadId] of Object.entries(lookupResult)) {
+        entries[title.toLowerCase()] = buildFallbackEntry(title, itadId);
+      }
+    }
+  }
+
+  // Phase D: persist (batched upsert, 200 rows/call).
+  const vals = Object.entries(entries);
+  for (let i = 0; i < vals.length; i += 200) {
+    const chunk = vals.slice(i, i + 200);
+    const placeholders = chunk.map((_, j) => `($${j*6+1}, $${j*6+2}, $${j*6+3}, $${j*6+4}, $${j*6+5}, $${j*6+6})`).join(', ');
+    const params = chunk.flatMap(([key, e]) => [key, e.id ?? null, e.matchTitle ?? null, e.steamAppId ?? null, e.imageUrl ?? null, e.resolvedVia ?? null]);
+    await pool.query(
+      `INSERT INTO game_titles (title_lower, itad_id, match_title, steam_app_id, image_url, resolved_via)
+       VALUES ${placeholders}
+       ON CONFLICT (title_lower) DO UPDATE SET
+         itad_id      = EXCLUDED.itad_id,
+         match_title  = EXCLUDED.match_title,
+         steam_app_id = EXCLUDED.steam_app_id,
+         image_url    = EXCLUDED.image_url,
+         resolved_via = EXCLUDED.resolved_via,
+         updated_at   = NOW()`,
+      params
+    );
+  }
+
+  return entries;
 }
 
 // ── Phase 2: Fetch overview for a batch of ITAD IDs ───────────────────────────
