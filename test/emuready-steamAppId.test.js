@@ -2,8 +2,10 @@ require('dotenv').config();
 const test = require('node:test');
 const assert = require('node:assert');
 const { parseBestSteamAppIdResponse } = require('../services/emuready');
+const { redis } = require('../services/cache');
 
-test('parseBestSteamAppIdResponse extracts a found appId as a string', () => {
+test('parseBestSteamAppIdResponse extracts a found appId as a string', (t) => {
+  t.after(() => redis.disconnect());
   const data = { success: true, appId: '367520', query: 'Hollow Knight', found: true };
   assert.deepStrictEqual(parseBestSteamAppIdResponse(data), { found: true, appId: '367520' });
 });
