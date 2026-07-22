@@ -185,7 +185,7 @@ async function getDealsForTitles(titles, cc = 'us', shops = []) {
   // ── Phase 1: read title cache from DB ─────────────────────────────────────
   const titleLowers = titles.map(t => t.toLowerCase());
   const { rows: dbRows } = await pool.query(
-    'SELECT title_lower, itad_id, match_title, steam_app_id, image_url FROM game_titles WHERE title_lower = ANY($1)',
+    'SELECT title_lower, itad_id, match_title, steam_app_id, image_url FROM game_titles WHERE title_lower = ANY($1) AND resolved_via IS NOT NULL',
     [titleLowers]
   );
 
