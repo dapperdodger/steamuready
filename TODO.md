@@ -33,4 +33,5 @@
   - [ ] Set desired price for game with alert when it goes below threshold
   - [ ] Mark owned games
   - [ ] Hide Games
-      
+- [ ] Portugese(BR) Language Support
+- [ ] use fixed bulk endpoints (https://github.com/Producdevity/EmuReady/pull/342)
