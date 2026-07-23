@@ -1786,8 +1786,9 @@ el.controllerButtons.querySelectorAll('.disc-btn').forEach(btn => {
 // Historical low toggle (instant, Filters)
 el.histLowCheck.addEventListener('change', () => fetchGames(true));
 
-// Hide-owned toggle — persists to the logged-in account (Filters)
+// Hide-owned toggle — persists to the logged-in account and refreshes results (Filters)
 el.hideOwnedCheck.addEventListener('change', () => {
+  fetchGames(true);
   if (!authState.loggedIn) return;
   fetch('/api/me/hide-owned-default', {
     method: 'PUT',
