@@ -98,6 +98,115 @@ const api = {
   status()        { return api.json('/api/status'); },
 };
 
+Object.assign(api, {
+  authMe()               { return api.json('/api/auth/me').catch(() => null); },
+  authSignup(email, pw)  { return fetch('/api/auth/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: pw }) }); },
+  authLogin(email, pw)   { return fetch('/api/auth/login',  { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: pw }) }); },
+  authLogout()           { return fetch('/api/auth/logout', { method: 'POST' }); },
+});
+
+/* ── Auth state ────────────────────────────────────────────────────────────── */
+const authState = { loggedIn: false, email: null, preferences: null, hideOwnedDefault: false };
+
+async function refreshAuthState() {
+  const res = await fetch('/api/auth/me');
+  if (res.status === 200) {
+    const body = await res.json();
+    authState.loggedIn = true;
+    authState.email = body.email;
+    authState.preferences = body.preferences;
+    authState.hideOwnedDefault = body.hideOwnedDefault;
+  } else {
+    authState.loggedIn = false;
+    authState.email = null;
+    authState.preferences = null;
+    authState.hideOwnedDefault = false;
+  }
+  renderAuthMenu();
+}
+
+function renderAuthMenu() {
+  const btn = $('accountMenuBtn');
+  const emailLabel = $('accountEmailLabel');
+  if (authState.loggedIn) {
+    btn.textContent = authState.email;
+    emailLabel.textContent = authState.email;
+  } else {
+    btn.textContent = t('logIn');
+    emailLabel.textContent = '';
+  }
+}
+
+/* ── Auth modal ────────────────────────────────────────────────────────────── */
+const authEl = {
+  modal:     $('authModal'),
+  tabLogin:  $('authTabLogin'),
+  tabSignup: $('authTabSignup'),
+  email:     $('authEmail'),
+  password:  $('authPassword'),
+  error:     $('authError'),
+  submit:    $('authSubmit'),
+  cancel:    $('authCancel'),
+};
+let authMode = 'login';
+
+function openAuthModal(mode = 'login') {
+  authMode = mode;
+  authEl.error.hidden = true;
+  authEl.email.value = '';
+  authEl.password.value = '';
+  authEl.tabLogin.classList.toggle('active', mode === 'login');
+  authEl.tabSignup.classList.toggle('active', mode === 'signup');
+  authEl.submit.textContent = mode === 'login' ? t('authSubmitLogin') : t('authSubmitSignup');
+  authEl.modal.hidden = false;
+  authEl.email.focus();
+}
+
+function closeAuthModal() {
+  authEl.modal.hidden = true;
+}
+
+function initAuthModal() {
+  authEl.tabLogin.addEventListener('click', () => openAuthModal('login'));
+  authEl.tabSignup.addEventListener('click', () => openAuthModal('signup'));
+  authEl.cancel.addEventListener('click', closeAuthModal);
+
+  authEl.submit.addEventListener('click', async () => {
+    const email = authEl.email.value.trim();
+    const password = authEl.password.value;
+    authEl.error.hidden = true;
+
+    const res = authMode === 'login'
+      ? await api.authLogin(email, password)
+      : await api.authSignup(email, password);
+
+    if (res.status === 200 || res.status === 201) {
+      await refreshAuthState();
+      closeAuthModal();
+      fetchGames(false);
+      return;
+    }
+    const body = await res.json().catch(() => ({}));
+    authEl.error.textContent = body.error || t('authInvalidCreds');
+    authEl.error.hidden = false;
+  });
+
+  $('accountMenuBtn').addEventListener('click', () => {
+    if (authState.loggedIn) {
+      $('accountDropdown').hidden = !$('accountDropdown').hidden;
+    } else {
+      openAuthModal('login');
+    }
+  });
+
+  $('logoutBtn').addEventListener('click', async () => {
+    await api.authLogout();
+    $('accountDropdown').hidden = true;
+    await refreshAuthState();
+    fetchGames(false);
+  });
+}
+
 /* ── Progress ──────────────────────────────────────────────────────────────── */
 function progress(pct) {
   el.progressBar.style.width = pct + '%';
@@ -146,6 +255,8 @@ async function init() {
     initAppFilter();
     initFilterModeToggle();
     initPreferredDevicesModal();
+    initAuthModal();
+    await refreshAuthState();
 
     const isFirstVisit = loadPreferredDeviceIds() === null;
     if (isFirstVisit) {
