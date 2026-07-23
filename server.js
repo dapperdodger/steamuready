@@ -503,14 +503,15 @@ app.get('/api/status', (req, res) => {
 // Guarded by a Postgres advisory lock: with desired_count=2 (ECS), both tasks
 // boot and call this independently. Without the lock, both would redundantly
 // re-resolve the same backlog concurrently, doubling the burst against
-// EmuReady on top of Phase A's own throttle (see store.js). Only one task
-// performs the warm per deploy; the other serves live traffic immediately —
-// its own on-demand lookups still work via the DB-backed resolved_via cache
-// once the lock-holder catches up.
+// EmuReady on top of getBestSteamAppId's own global throttle+dedup (see
+// services/emuready.js). Only one task performs the warm per deploy; the
+// other serves live traffic immediately — its own on-demand lookups still
+// work via the DB-backed resolved_via cache once the lock-holder catches up.
 const WARM_CACHE_LOCK_ID = 727299001;
 
 async function warmCaches() {
   await db.tryWithAdvisoryLock(WARM_CACHE_LOCK_ID, async () => {
+    const warmStart = Date.now();
     try {
       console.log('[warm] starting background cache warm…');
 
@@ -523,6 +524,7 @@ async function warmCaches() {
 
       console.log(`[warm] resolving ${titleMap.size} titles…`);
       await store.getDealsForTitles([...titleMap.values()], 'us', []);
+      console.log(`[warm] title resolution done (${((Date.now() - warmStart) / 1000).toFixed(1)}s elapsed, this task's backlog only — other tasks/live requests may still be resolving their own)`);
 
       if (process.env.SKIP_CTRL_WARM === 'true') {
         console.log('[warm] SKIP_CTRL_WARM set — skipping controller support warm-up');
@@ -530,7 +532,7 @@ async function warmCaches() {
         await steamcontroller.warmMissing();
       }
       ctrlCacheReady = true;
-      console.log('[warm] all cache warming complete — server ready');
+      console.log(`[warm] all cache warming complete — server ready (${((Date.now() - warmStart) / 1000).toFixed(1)}s total)`);
     } catch (e) {
       console.warn('[warm] failed:', e.message);
     }

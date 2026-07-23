@@ -23,25 +23,6 @@ const REGIONS = {
 
 const OVERVIEW_TTL = 60 * 60 * 1000; // 1 h
 
-// Spacing between Phase A's sequential getBestSteamAppId calls — mirrors
-// steamcontroller.js's REQUEST_DELAY pattern for the same reason: a
-// migration-scale backlog (thousands of titles, all uncached at once) hammered
-// EmuReady's fuzzy-search endpoint fast enough to push its own response times
-// past our 15s client timeout in production.
-const PHASE_A_REQUEST_DELAY_MS = 1500;
-
-// Sequentially await fn(item) for each item, waiting delayMs between calls
-// (not after the last one). Extracted so the delay behavior is testable in
-// isolation without touching resolveTitlesBatch's exports or making network calls.
-async function mapWithDelay(items, fn, delayMs) {
-  const results = [];
-  for (let i = 0; i < items.length; i++) {
-    results.push(await fn(items[i]));
-    if (i < items.length - 1) await new Promise(r => setTimeout(r, delayMs));
-  }
-  return results;
-}
-
 // ── Resolve titles to itad_ids via exact Steam App ID matching, falling
 // back to ITAD's fuzzy title lookup only for what can't be resolved exactly.
 // Returns { [titleLower]: entry } for all resolved titles.
@@ -52,11 +33,11 @@ async function resolveTitlesBatch(titles) {
   // exists, so this is one call per title (this only ever runs for titles
   // not already cached in game_titles — see the resolved_via gate in
   // getDealsForTitles — so it's a one-time cost per title, not per request).
-  const steamResults = await mapWithDelay(
-    titles,
-    title => emuready.getBestSteamAppId(title),
-    PHASE_A_REQUEST_DELAY_MS
-  );
+  // getBestSteamAppId itself is globally throttled + deduped across the whole
+  // process (see services/emuready.js) — safe to fire concurrently here even
+  // when other resolveTitlesBatch calls (other live requests, the other ECS
+  // task's warm) are doing the same at the same time.
+  const steamResults = await Promise.all(titles.map(title => emuready.getBestSteamAppId(title)));
   const steamResultByTitle = new Map(titles.map((t, i) => [t.toLowerCase(), steamResults[i]]));
 
   // Phase B: batch-resolve the found steamAppIds → itad_id (exact, 200/call).
@@ -351,4 +332,4 @@ async function clearCache() {
   await Promise.all([delPattern('store:overview:*'), igdb.clearCache()]);
 }
 
-module.exports = { getDealsForTitles, resolveSteamAppIdsToItadIds, buildExactEntry, buildFallbackEntry, mapWithDelay, getShops, clearCache, REGIONS, STEAM_SHOP_ID };
+module.exports = { getDealsForTitles, resolveSteamAppIdsToItadIds, buildExactEntry, buildFallbackEntry, getShops, clearCache, REGIONS, STEAM_SHOP_ID };

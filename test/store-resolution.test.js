@@ -1,7 +1,7 @@
 require('dotenv').config();
 const test = require('node:test');
 const assert = require('node:assert');
-const { buildExactEntry, buildFallbackEntry, mapWithDelay } = require('../services/store');
+const { buildExactEntry, buildFallbackEntry } = require('../services/store');
 const { redis } = require('../services/cache');
 
 test('buildExactEntry assembles a steam-resolved-and-verified entry with a Steam header image', (t) => {
@@ -33,23 +33,4 @@ test('buildFallbackEntry assembles a title-resolved entry with steamAppId left n
 
 test('buildFallbackEntry marks a fully unresolved title so it is cached as a permanent miss', () => {
   assert.deepStrictEqual(buildFallbackEntry('Some Unmatchable Title', null), { id: null, resolvedVia: 'title' });
-});
-
-test('mapWithDelay runs fn for every item in order and spaces calls by delayMs (not after the last one)', async () => {
-  const start = Date.now();
-  const elapsedAtCall = [];
-  const results = await mapWithDelay(['a', 'b', 'c'], async (item) => {
-    elapsedAtCall.push(Date.now() - start);
-    return item.toUpperCase();
-  }, 50);
-
-  assert.deepStrictEqual(results, ['A', 'B', 'C']);
-  assert.strictEqual(elapsedAtCall.length, 3);
-  // Tolerant lower bound to avoid flakiness from timer granularity, while
-  // still proving the spacing mechanism actually delays between calls.
-  assert.ok(elapsedAtCall[1] - elapsedAtCall[0] >= 45, `expected >=45ms gap before call 2, got ${elapsedAtCall[1] - elapsedAtCall[0]}ms`);
-  assert.ok(elapsedAtCall[2] - elapsedAtCall[1] >= 45, `expected >=45ms gap before call 3, got ${elapsedAtCall[2] - elapsedAtCall[1]}ms`);
-  // No trailing wait after the last item — total runtime should be close to 2 delays, not 3.
-  const total = Date.now() - start;
-  assert.ok(total < 150, `expected no delay after last item, total runtime was ${total}ms`);
 });

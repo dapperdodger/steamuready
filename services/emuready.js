@@ -199,7 +199,30 @@ function parseBestSteamAppIdResponse(data) {
   return { found: false, appId: null };
 }
 
-async function getBestSteamAppId(gameName) {
+// Wraps an async fn(key, ...args) so that (a) concurrent calls for the same
+// key share one in-flight call, and (b) distinct calls are globally
+// serialized and spaced at least delayMs apart — no matter how many callers
+// invoke concurrently. A per-request sequential delay only paces calls
+// *within* one request; it does nothing to bound the aggregate rate when
+// multiple concurrent live requests (or a request racing the background
+// warm) each fire their own calls at the same time — which is exactly what
+// overwhelmed EmuReady in production.
+function throttledDedup(fn, delayMs) {
+  const inFlight = new Map();
+  let queueTail = Promise.resolve();
+  return function call(key, ...args) {
+    if (inFlight.has(key)) return inFlight.get(key);
+    const run = queueTail.then(() => fn(key, ...args));
+    queueTail = run.catch(() => {}).then(() => new Promise(r => setTimeout(r, delayMs)));
+    inFlight.set(key, run);
+    run.finally(() => inFlight.delete(key));
+    return run;
+  };
+}
+
+const GET_BEST_STEAM_APPID_DELAY_MS = 1500;
+
+const _getBestSteamAppIdThrottled = throttledDedup(async (key, gameName) => {
   try {
     const data = await trpcGet('games.getBestSteamAppId', { gameName });
     return parseBestSteamAppIdResponse(data);
@@ -207,6 +230,10 @@ async function getBestSteamAppId(gameName) {
     console.error('[EmuReady] getBestSteamAppId error:', e.message);
     return { found: false, appId: null };
   }
+}, GET_BEST_STEAM_APPID_DELAY_MS);
+
+async function getBestSteamAppId(gameName) {
+  return _getBestSteamAppIdThrottled(gameName.toLowerCase(), gameName);
 }
 
-module.exports = { getDevices, getSocs, getPerformanceScales, getListings, getAllListings, getBestSteamAppId, parseBestSteamAppIdResponse, clearCache };
+module.exports = { getDevices, getSocs, getPerformanceScales, getListings, getAllListings, getBestSteamAppId, parseBestSteamAppIdResponse, throttledDedup, clearCache };
