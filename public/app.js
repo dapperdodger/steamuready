@@ -1839,6 +1839,9 @@ el.resetBtn.addEventListener('click', () => {
   // Reset historical low
   el.histLowCheck.checked = false;
 
+  // Reset hide-owned (local view only — does not touch the account's saved default)
+  el.hideOwnedCheck.checked = false;
+
   // Reset deal age
   el.newAgeButtons.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
   el.newAgeButtons.querySelector('[data-value=""]')?.classList.add('active');
