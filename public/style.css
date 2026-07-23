@@ -326,6 +326,7 @@ select option { background: var(--card); }
   transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
   cursor: default;
 }
+.card[hidden] { display: none; }
 .card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow);
@@ -926,6 +927,7 @@ select option { background: var(--card); }
   flex-direction: column;
   z-index: 50;
 }
+.account-dropdown[hidden] { display: none; }
 .account-dropdown button, .account-email {
   padding: .5rem .75rem;
   text-align: left;
@@ -966,6 +968,7 @@ select option { background: var(--card); }
   flex-direction: column;
   z-index: 50;
 }
+.card-menu[hidden] { display: none; }
 .card-menu-item {
   padding: .5rem .75rem;
   text-align: left;
