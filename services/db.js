@@ -89,12 +89,18 @@ async function init() {
       updated_at        TIMESTAMPTZ DEFAULT NOW()
     );
 
+    DROP TABLE IF EXISTS hidden_games CASCADE;
+    DROP TABLE IF EXISTS owned_games CASCADE;
+    DROP TABLE IF EXISTS wishlist_items CASCADE;
+    DROP TABLE IF EXISTS users CASCADE;
+
     CREATE TABLE IF NOT EXISTS users (
-      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      email         TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      preferences   JSONB DEFAULT '{}',
-      created_at    TIMESTAMPTZ DEFAULT NOW()
+      id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      email              TEXT UNIQUE NOT NULL,
+      password_hash      TEXT NOT NULL,
+      preferences        JSONB DEFAULT '{}',
+      hide_owned_default BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at         TIMESTAMPTZ DEFAULT NOW()
     );
 
     CREATE TABLE IF NOT EXISTS wishlist_items (
@@ -108,6 +114,13 @@ async function init() {
       user_id    UUID REFERENCES users(id) ON DELETE CASCADE,
       itad_id    TEXT NOT NULL,
       source     TEXT DEFAULT 'manual',
+      added_at   TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (user_id, itad_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS hidden_games (
+      user_id    UUID REFERENCES users(id) ON DELETE CASCADE,
+      itad_id    TEXT NOT NULL,
       added_at   TIMESTAMPTZ DEFAULT NOW(),
       PRIMARY KEY (user_id, itad_id)
     );
