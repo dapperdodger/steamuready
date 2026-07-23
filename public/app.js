@@ -21,6 +21,7 @@ const state = {
     minDiscount:   0,
     minRating:     0,
     histLow:       false,
+    hideOwned:     false,
     newAge:           '',
     controllerSupport: '',
     search:        '',
@@ -64,6 +65,8 @@ const el = {
   appList:      $('appList'),
   storeList:    $('storeList'),
   histLowCheck:  $('histLowCheck'),
+  hideOwnedCheck: $('hideOwnedCheck'),
+  hideOwnedRow:   $('hideOwnedRow'),
   newAgeButtons: $('newAgeButtons'),
   ratingButtons:     $('ratingButtons'),
   controllerButtons:     $('controllerButtons'),
@@ -137,10 +140,15 @@ function renderAuthMenu() {
   if (authState.loggedIn) {
     btn.textContent = authState.email;
     emailLabel.textContent = authState.email;
+    el.hideOwnedCheck.checked = authState.hideOwnedDefault;
+    state.filters.hideOwned = authState.hideOwnedDefault;
   } else {
     btn.textContent = t('logIn');
     emailLabel.textContent = '';
+    el.hideOwnedCheck.checked = false;
+    state.filters.hideOwned = false;
   }
+  el.hideOwnedRow.hidden = !authState.loggedIn;
 }
 
 /* ── Auth modal ────────────────────────────────────────────────────────────── */
@@ -1310,6 +1318,7 @@ async function fetchGames(resetPage = true, isSettingsChange = false) {
     shops:         state.filters.shops.join(',') || '',
     apps:          state.filters.apps.join(',') || '',
     histLow:           state.filters.histLow ? '1' : '',
+    hideOwned:         state.filters.hideOwned ? '1' : '',
     newAge:            state.filters.newAge,
     controllerSupport: state.filters.controllerSupport,
     page:              state.page,
@@ -1390,6 +1399,7 @@ function readFilters() {
     : [...checkedStores].map(i => i.value);
   state.filters.apps          = [...el.appList.querySelectorAll('input:checked')].map(i => i.value);
   state.filters.histLow       = el.histLowCheck.checked;
+  state.filters.hideOwned     = el.hideOwnedCheck.checked;
   const activeAge = el.newAgeButtons.querySelector('.disc-btn.active');
   state.filters.newAge        = activeAge ? activeAge.dataset.value : '';
 
@@ -1775,6 +1785,16 @@ el.controllerButtons.querySelectorAll('.disc-btn').forEach(btn => {
 
 // Historical low toggle (instant, Filters)
 el.histLowCheck.addEventListener('change', () => fetchGames(true));
+
+// Hide-owned toggle — persists to the logged-in account (Filters)
+el.hideOwnedCheck.addEventListener('change', () => {
+  if (!authState.loggedIn) return;
+  fetch('/api/me/hide-owned-default', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hideOwnedDefault: el.hideOwnedCheck.checked }),
+  });
+});
 
 // Price inputs — debounced (Filters)
 const _debouncedFetch = debounce(() => fetchGames(true), 400);
