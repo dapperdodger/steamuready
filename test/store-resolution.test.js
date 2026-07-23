@@ -1,7 +1,7 @@
 require('dotenv').config();
 const test = require('node:test');
 const assert = require('node:assert');
-const { buildExactEntry, buildFallbackEntry } = require('../services/store');
+const { buildExactEntry, buildFallbackEntry, splitForInlineResolution } = require('../services/store');
 const { redis } = require('../services/cache');
 
 test('buildExactEntry assembles a steam-resolved-and-verified entry with a Steam header image', (t) => {
@@ -33,4 +33,25 @@ test('buildFallbackEntry assembles a title-resolved entry with steamAppId left n
 
 test('buildFallbackEntry marks a fully unresolved title so it is cached as a permanent miss', () => {
   assert.deepStrictEqual(buildFallbackEntry('Some Unmatchable Title', null), { id: null, resolvedVia: 'title' });
+});
+
+test('splitForInlineResolution caps the inline batch and defers the remainder', () => {
+  const titles = Array.from({ length: 20 }, (_, i) => `Title ${i}`);
+  const { inline, deferred } = splitForInlineResolution(titles, 15);
+  assert.strictEqual(inline.length, 15);
+  assert.strictEqual(deferred.length, 5);
+  assert.deepStrictEqual(inline, titles.slice(0, 15));
+  assert.deepStrictEqual(deferred, titles.slice(15));
+});
+
+test('splitForInlineResolution defers nothing when the backlog is at or under the cap', () => {
+  const titles = ['a', 'b', 'c'];
+  assert.deepStrictEqual(splitForInlineResolution(titles, 15), { inline: titles, deferred: [] });
+});
+
+test('splitForInlineResolution treats an Infinity cap as "resolve everything inline" (warmCaches opt-out)', () => {
+  const titles = Array.from({ length: 50 }, (_, i) => `Title ${i}`);
+  const { inline, deferred } = splitForInlineResolution(titles, Infinity);
+  assert.strictEqual(inline.length, 50);
+  assert.strictEqual(deferred.length, 0);
 });
