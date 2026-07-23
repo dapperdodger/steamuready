@@ -219,6 +219,60 @@ function initCardMenus() {
   });
 }
 
+/* ── Tracked view (My Wishlist / My Games) ───────────────────────────────────── */
+async function openTrackedView(kind) {
+  $('accountDropdown').hidden = true;
+  document.querySelector('.layout').hidden = true;
+  $('trackedView').hidden = false;
+  $('trackedViewTitle').textContent = kind === 'wishlist' ? t('myWishlist') : t('myGames');
+
+  const res = await fetch(kind === 'wishlist' ? '/api/me/wishlist' : '/api/me/owned');
+  const body = await res.json();
+  const grid = $('trackedGrid');
+  grid.innerHTML = '';
+  if (!body.games.length) {
+    $('trackedEmpty').hidden = false;
+    $('trackedEmptyMsg').textContent = kind === 'wishlist' ? t('emptyWishlistMsg') : t('emptyOwnedMsg');
+    return;
+  }
+  $('trackedEmpty').hidden = true;
+  body.games.forEach(g => grid.appendChild(buildCard({
+    ...g,
+    gameName: g.name,
+    // /api/me/wishlist and /api/me/owned return the raw deal entry (no
+    // isWishlisted/isOwned flags — those are only computed for /api/games).
+    // Every game returned by these endpoints is, by definition, in that
+    // list, so set the flag from `kind` rather than leaving it undefined
+    // (which would render an inactive heart for an already-wishlisted game).
+    isWishlisted: kind === 'wishlist',
+    isOwned:      kind === 'owned',
+  })));
+}
+
+function closeTrackedView() {
+  $('trackedView').hidden = true;
+  document.querySelector('.layout').hidden = false;
+}
+
+function initTrackedView() {
+  $('trackedBackBtn').addEventListener('click', closeTrackedView);
+
+  document.querySelectorAll('#accountDropdown button[data-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const view = btn.dataset.view;
+      if (view === 'settings') { openAccountSettings(); return; }
+      openTrackedView(view);
+    });
+  });
+
+  document.addEventListener('wishlist-changed', () => {
+    if (!$('trackedView').hidden && $('trackedViewTitle').textContent === t('myWishlist')) openTrackedView('wishlist');
+  });
+  document.addEventListener('owned-changed', () => {
+    if (!$('trackedView').hidden && $('trackedViewTitle').textContent === t('myGames')) openTrackedView('owned');
+  });
+}
+
 /* ── Progress ──────────────────────────────────────────────────────────────── */
 function progress(pct) {
   el.progressBar.style.width = pct + '%';
@@ -268,6 +322,7 @@ async function init() {
     initFilterModeToggle();
     initPreferredDevicesModal();
     initAuthModal();
+    initTrackedView();
     initCardMenus();
     await refreshAuthState();
 

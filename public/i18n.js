@@ -105,6 +105,9 @@ const translations = {
     hideThisGame:           'Masquer ce jeu',
     gameHiddenToast:        'Jeu masqué',
     undoBtn:                'Annuler',
+    emptyWishlistMsg:       "Tu n'as encore ajouté aucun jeu à ta liste de souhaits.",
+    emptyOwnedMsg:          "Tu n'as encore marqué aucun jeu comme possédé.",
+    backToSearch:           '← Retour à la recherche',
   },
 
   en: {
@@ -212,6 +215,9 @@ const translations = {
     hideThisGame:           'Hide this game',
     gameHiddenToast:        'Game hidden',
     undoBtn:                'Undo',
+    emptyWishlistMsg:       "You haven't wishlisted any games yet.",
+    emptyOwnedMsg:          "You haven't marked any games as owned yet.",
+    backToSearch:           '← Back to search',
   },
 
   de: {
@@ -319,6 +325,9 @@ const translations = {
     hideThisGame:           'Dieses Spiel ausblenden',
     gameHiddenToast:        'Spiel ausgeblendet',
     undoBtn:                'Rückgängig',
+    emptyWishlistMsg:       'Du hast noch keine Spiele auf deine Wunschliste gesetzt.',
+    emptyOwnedMsg:          'Du hast noch keine Spiele als im Besitz markiert.',
+    backToSearch:           '← Zurück zur Suche',
   },
 
   es: {
@@ -426,6 +435,9 @@ const translations = {
     hideThisGame:           'Ocultar este juego',
     gameHiddenToast:        'Juego ocultado',
     undoBtn:                'Deshacer',
+    emptyWishlistMsg:       'Todavía no has añadido ningún juego a tu lista de deseos.',
+    emptyOwnedMsg:          'Todavía no has marcado ningún juego como poseído.',
+    backToSearch:           '← Volver a la búsqueda',
   },
 };
 

@@ -83,6 +83,7 @@ body {
   gap: 0;
   min-height: calc(100vh - 52px);
 }
+.layout[hidden] { display: none; }
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────────── */
 .sidebar {
@@ -1008,4 +1009,24 @@ select option { background: var(--card); }
   color: #6db3f2;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* ── Tracked view (My Wishlist / My Games) ────────────────────────────────── */
+#trackedView { padding: 1rem; }
+#trackedView h2 { margin-bottom: 1rem; }
+#trackedView[hidden] { display: none; }
+#trackedView #trackedBackBtn { margin-bottom: 1rem; }
+/* .grid isn't defined anywhere else in this file — reuses .games-grid's
+   layout so tracked cards render in the same responsive grid, not stacked. */
+#trackedView .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 768px) {
+  #trackedView .grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+  }
 }
