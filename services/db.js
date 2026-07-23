@@ -14,6 +14,28 @@ const pool = new Pool({
   connectionTimeoutMillis: 5000,
 });
 
+// Run fn() only if this process wins a Postgres session-level advisory lock
+// for lockId; skips fn() (logging via onSkip) if another process already
+// holds it. Used to keep two concurrently-booting instances from redundantly
+// running the same expensive background job (see server.js's warmCaches()).
+async function tryWithAdvisoryLock(lockId, fn, onSkip) {
+  const client = await pool.connect();
+  try {
+    const { rows } = await client.query('SELECT pg_try_advisory_lock($1) AS locked', [lockId]);
+    if (!rows[0].locked) {
+      if (onSkip) onSkip();
+      return;
+    }
+    try {
+      await fn();
+    } finally {
+      await client.query('SELECT pg_advisory_unlock($1)', [lockId]);
+    }
+  } finally {
+    client.release();
+  }
+}
+
 async function init() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS game_titles (
@@ -58,4 +80,4 @@ async function init() {
   console.log('[DB] schema ready');
 }
 
-module.exports = { pool, init };
+module.exports = { pool, init, tryWithAdvisoryLock };

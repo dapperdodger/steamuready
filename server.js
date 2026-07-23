@@ -499,30 +499,45 @@ app.get('/api/status', (req, res) => {
 // Runs after the server starts listening so it never blocks requests.
 // Resolves EmuReady titles into game_titles DB (skips already-known entries),
 // then fills any controller_support gaps via warmMissing().
+//
+// Guarded by a Postgres advisory lock: with desired_count=2 (ECS), both tasks
+// boot and call this independently. Without the lock, both would redundantly
+// re-resolve the same backlog concurrently, doubling the burst against
+// EmuReady on top of Phase A's own throttle (see store.js). Only one task
+// performs the warm per deploy; the other serves live traffic immediately —
+// its own on-demand lookups still work via the DB-backed resolved_via cache
+// once the lock-holder catches up.
+const WARM_CACHE_LOCK_ID = 727299001;
+
 async function warmCaches() {
-  try {
-    console.log('[warm] starting background cache warm…');
+  await db.tryWithAdvisoryLock(WARM_CACHE_LOCK_ID, async () => {
+    try {
+      console.log('[warm] starting background cache warm…');
 
-    const listings = (await emuready.getAllListings({})).filter(isAllowedEmulator);
-    const titleMap = new Map();
-    for (const l of listings) {
-      const title = l.game?.title ?? l.game?.name ?? '';
-      if (title) titleMap.set(title.toLowerCase(), title);
+      const listings = (await emuready.getAllListings({})).filter(isAllowedEmulator);
+      const titleMap = new Map();
+      for (const l of listings) {
+        const title = l.game?.title ?? l.game?.name ?? '';
+        if (title) titleMap.set(title.toLowerCase(), title);
+      }
+
+      console.log(`[warm] resolving ${titleMap.size} titles…`);
+      await store.getDealsForTitles([...titleMap.values()], 'us', []);
+
+      if (process.env.SKIP_CTRL_WARM === 'true') {
+        console.log('[warm] SKIP_CTRL_WARM set — skipping controller support warm-up');
+      } else {
+        await steamcontroller.warmMissing();
+      }
+      ctrlCacheReady = true;
+      console.log('[warm] all cache warming complete — server ready');
+    } catch (e) {
+      console.warn('[warm] failed:', e.message);
     }
-
-    console.log(`[warm] resolving ${titleMap.size} titles…`);
-    await store.getDealsForTitles([...titleMap.values()], 'us', []);
-
-    if (process.env.SKIP_CTRL_WARM === 'true') {
-      console.log('[warm] SKIP_CTRL_WARM set — skipping controller support warm-up');
-    } else {
-      await steamcontroller.warmMissing();
-    }
+  }, () => {
+    console.log('[warm] another instance already holds the warm-cache lock — skipping background warm on this task');
     ctrlCacheReady = true;
-    console.log('[warm] all cache warming complete — server ready');
-  } catch (e) {
-    console.warn('[warm] failed:', e.message);
-  }
+  });
 }
 
 const PORT = process.env.PORT || 3000;
