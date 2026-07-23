@@ -26,7 +26,7 @@ test('init() adds game_titles.resolved_via, nullable, checked against steam/titl
   );
 });
 
-test('tryWithAdvisoryLock: a second concurrent attempt under the same lock id is skipped', async () => {
+test('tryWithAdvisoryLock: with retries:0, a second concurrent attempt under the same lock id is skipped immediately', async () => {
   const lockId = 999999001; // dedicated to this test, distinct from server.js's WARM_CACHE_LOCK_ID
   let firstStarted = false;
   let firstFinished = false;
@@ -43,7 +43,7 @@ test('tryWithAdvisoryLock: a second concurrent attempt under the same lock id is
 
   const second = tryWithAdvisoryLock(lockId, async () => {
     secondRan = true;
-  }, () => { skipCalled = true; });
+  }, () => { skipCalled = true; }, { retries: 0 });
 
   await second;
   assert.strictEqual(secondRan, false, 'second call should have been skipped while the first held the lock');
@@ -63,4 +63,42 @@ test('tryWithAdvisoryLock: a later attempt succeeds once the lock has been relea
   let ranAgain = false;
   await tryWithAdvisoryLock(lockId, async () => { ranAgain = true; });
   assert.strictEqual(ranAgain, true, 'lock should have been released after the first call completed');
+});
+
+test('tryWithAdvisoryLock: retries pick up the lock once the holder releases it mid-retry (rolling-deploy race)', async () => {
+  const lockId = 999999003;
+  let secondRan = false;
+  let skipCalled = false;
+
+  const first = tryWithAdvisoryLock(lockId, async () => {
+    await new Promise(r => setTimeout(r, 120)); // simulates an old task still mid-warm
+  });
+
+  await new Promise(r => setTimeout(r, 20)); // let `first` win the lock before `second` checks
+
+  const second = tryWithAdvisoryLock(lockId, async () => {
+    secondRan = true;
+  }, () => { skipCalled = true; }, { retries: 5, retryDelayMs: 50 });
+
+  await Promise.all([first, second]);
+  assert.strictEqual(secondRan, true, 'a retry should have acquired the lock once the first call released it');
+  assert.strictEqual(skipCalled, false, 'onSkip should not fire when a retry succeeds');
+});
+
+test('tryWithAdvisoryLock: onSkip only fires after exhausting all retries', async () => {
+  const lockId = 999999004;
+  let skipCalled = false;
+
+  const first = tryWithAdvisoryLock(lockId, async () => {
+    await new Promise(r => setTimeout(r, 200)); // outlives the second call's whole retry budget
+  });
+
+  await new Promise(r => setTimeout(r, 20));
+
+  const second = tryWithAdvisoryLock(lockId, async () => {
+    throw new Error('should not run — lock never frees within the retry budget');
+  }, () => { skipCalled = true; }, { retries: 2, retryDelayMs: 30 });
+
+  await Promise.all([first, second]);
+  assert.strictEqual(skipCalled, true, 'onSkip should fire once retries are exhausted');
 });

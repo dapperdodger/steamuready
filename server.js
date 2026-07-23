@@ -523,7 +523,9 @@ async function warmCaches() {
       }
 
       console.log(`[warm] resolving ${titleMap.size} titles…`);
-      await store.getDealsForTitles([...titleMap.values()], 'us', []);
+      // Unlike live requests, the background warm must fully resolve the
+      // backlog rather than cap-and-defer — it isn't blocking an HTTP response.
+      await store.getDealsForTitles([...titleMap.values()], 'us', [], { inlineResolveCap: Infinity });
       console.log(`[warm] title resolution done (${((Date.now() - warmStart) / 1000).toFixed(1)}s elapsed, this task's backlog only — other tasks/live requests may still be resolving their own)`);
 
       if (process.env.SKIP_CTRL_WARM === 'true') {
@@ -537,7 +539,7 @@ async function warmCaches() {
       console.warn('[warm] failed:', e.message);
     }
   }, () => {
-    console.log('[warm] another instance already holds the warm-cache lock — skipping background warm on this task');
+    console.log('[warm] warm-cache lock still held after retries — skipping background warm on this task');
     ctrlCacheReady = true;
   });
 }

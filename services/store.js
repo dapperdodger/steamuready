@@ -179,8 +179,24 @@ function toNum(v) {
   return parseFloat(v) || 0;
 }
 
+// Live requests must never block on resolving an arbitrarily large uncached
+// backlog (a freshly-selected device filter can need hundreds of titles that
+// have never been looked up). Cap how many this request resolves inline —
+// worst case ~cap × GET_BEST_STEAM_APPID_DELAY_MS — and defer the rest to a
+// background call so they're cached for the next request instead of blocking
+// this one. warmCaches() opts out via inlineResolveCap: Infinity, since it
+// exists specifically to fully resolve the backlog and isn't blocking an
+// HTTP response.
+const INLINE_RESOLVE_CAP = 15;
+
+// Pure: splits titles needing lookup into what resolves inline (bounded
+// latency) vs. what gets deferred to a background resolution.
+function splitForInlineResolution(titles, cap) {
+  return { inline: titles.slice(0, cap), deferred: titles.slice(cap) };
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
-async function getDealsForTitles(titles, cc = 'us', shops = []) {
+async function getDealsForTitles(titles, cc = 'us', shops = [], { inlineResolveCap = INLINE_RESOLVE_CAP } = {}) {
   const shopsKey = shops.length ? shops.slice().sort().join(',') : 'all';
   const t0 = Date.now();
 
@@ -200,11 +216,18 @@ async function getDealsForTitles(titles, cc = 'us', shops = []) {
 
   const needsLookup = titles.filter(t => !titleCache[t.toLowerCase()]);
 
-  // ── Phase 2: batch-resolve uncached titles ─────────────────────────────────
+  // ── Phase 2: batch-resolve uncached titles (inline up to the cap; the rest
+  // resolves in the background). getBestSteamAppId's global throttle+dedup
+  // (services/emuready.js) means inline and background resolution share the
+  // same rate limit safely, even across concurrent requests.
   if (needsLookup.length) {
-    console.log(`[Store] batch-resolving ${needsLookup.length} titles…`);
-    const newEntries = await resolveTitlesBatch(needsLookup);
+    const { inline, deferred } = splitForInlineResolution(needsLookup, inlineResolveCap);
+    console.log(`[Store] batch-resolving ${inline.length} titles inline${deferred.length ? ` (+${deferred.length} deferred to background)` : ''}…`);
+    const newEntries = await resolveTitlesBatch(inline);
     Object.assign(titleCache, newEntries);
+    if (deferred.length) {
+      resolveTitlesBatch(deferred).catch(e => console.warn('[Store] background title resolution failed:', e.message));
+    }
     console.log(`[Store] title resolution done (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
   }
 
@@ -332,4 +355,4 @@ async function clearCache() {
   await Promise.all([delPattern('store:overview:*'), igdb.clearCache()]);
 }
 
-module.exports = { getDealsForTitles, resolveSteamAppIdsToItadIds, buildExactEntry, buildFallbackEntry, getShops, clearCache, REGIONS, STEAM_SHOP_ID };
+module.exports = { getDealsForTitles, resolveSteamAppIdsToItadIds, buildExactEntry, buildFallbackEntry, splitForInlineResolution, getShops, clearCache, REGIONS, STEAM_SHOP_ID };
