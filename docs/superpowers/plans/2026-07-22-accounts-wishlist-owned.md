@@ -845,9 +845,14 @@ router.post('/logout', (req, res) => {
 
 router.get('/me', async (req, res) => {
   if (!req.session?.userId) return res.status(401).json({ error: 'Not logged in' });
-  const user = await auth.findUserById(req.session.userId);
-  if (!user) return res.status(401).json({ error: 'Not logged in' });
-  res.json({ email: user.email, preferences: user.preferences, hideOwnedDefault: user.hide_owned_default });
+  try {
+    const user = await auth.findUserById(req.session.userId);
+    if (!user) return res.status(401).json({ error: 'Not logged in' });
+    res.json({ email: user.email, preferences: user.preferences, hideOwnedDefault: user.hide_owned_default });
+  } catch (e) {
+    console.error('[/api/auth/me]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 module.exports = router;
