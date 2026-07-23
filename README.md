@@ -108,6 +108,21 @@ The seed file is written to `seeds/controller_support.json` and can be committed
 | `GET /api/shops` | Available stores for the given `cc` region |
 | `GET /api/status` | Health check + cache readiness flags |
 | `POST /api/refresh` | Clear all caches (requires `Authorization: Bearer <REFRESH_SECRET>`) |
+| `POST /api/auth/signup` | Create an account (params: `email`, `password`) |
+| `POST /api/auth/login` | Log in (params: `email`, `password`) |
+| `POST /api/auth/logout` | Log out |
+| `GET /api/auth/me` | Current user's email + preferences + hideOwnedDefault, or `401` |
+| `PUT /api/me/preferences` | Save filter preferences for the logged-in user |
+| `PUT /api/me/hide-owned-default` | Save the logged-in user's hide-owned-games default |
+| `GET /api/me/wishlist` | Logged-in user's wishlisted games |
+| `POST /api/me/wishlist/:itadId` | Add a game to the wishlist |
+| `DELETE /api/me/wishlist/:itadId` | Remove a game from the wishlist |
+| `GET /api/me/owned` | Logged-in user's owned games |
+| `POST /api/me/owned/:itadId` | Mark a game as owned |
+| `DELETE /api/me/owned/:itadId` | Unmark a game as owned |
+| `GET /api/me/hidden` | Logged-in user's hidden games (title only, no price) |
+| `POST /api/me/hidden/:itadId` | Hide a game |
+| `DELETE /api/me/hidden/:itadId` | Unhide a game |
 
 ## Docker
 
