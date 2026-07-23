@@ -220,7 +220,15 @@ function throttledDedup(fn, delayMs) {
   };
 }
 
-const GET_BEST_STEAM_APPID_DELAY_MS = 1500;
+// What actually protects EmuReady from an overwhelming burst is full
+// serialization (never more than 1 call in flight, enforced above) — not
+// this extra gap. Measured live: EmuReady's own Steam-matching cache flaps
+// hit/miss across their backend instances, with per-call latency ranging
+// ~0.1s (hit) to ~2-4s (miss); the call itself already provides real pacing.
+// Keep a small buffer on top mainly as a courtesy against burst-detection,
+// not because larger gaps were shown to be necessary — a large gap here
+// directly lengthens the queue-drain time live requests block on.
+const GET_BEST_STEAM_APPID_DELAY_MS = 250;
 
 const _getBestSteamAppIdThrottled = throttledDedup(async (key, gameName) => {
   try {
