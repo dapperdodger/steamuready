@@ -539,7 +539,7 @@ async function warmCaches() {
       console.warn('[warm] failed:', e.message);
     }
   }, () => {
-    console.log('[warm] another instance already holds the warm-cache lock — skipping background warm on this task');
+    console.log('[warm] warm-cache lock still held after retries — skipping background warm on this task');
     ctrlCacheReady = true;
   });
 }

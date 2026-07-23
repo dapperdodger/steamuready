@@ -15,25 +15,37 @@ const pool = new Pool({
 });
 
 // Run fn() only if this process wins a Postgres session-level advisory lock
-// for lockId; skips fn() (logging via onSkip) if another process already
-// holds it. Used to keep two concurrently-booting instances from redundantly
-// running the same expensive background job (see server.js's warmCaches()).
-async function tryWithAdvisoryLock(lockId, fn, onSkip) {
-  const client = await pool.connect();
-  try {
-    const { rows } = await client.query('SELECT pg_try_advisory_lock($1) AS locked', [lockId]);
-    if (!rows[0].locked) {
-      if (onSkip) onSkip();
-      return;
-    }
+// for lockId; skips fn() (logging via onSkip) if the lock is still held after
+// exhausting retries. Used to keep two concurrently-booting instances from
+// redundantly running the same expensive background job (see server.js's
+// warmCaches()).
+//
+// Retries with a delay rather than checking once: during a rolling ECS
+// deploy, old and new tasks briefly coexist. An old task can still be
+// mid-warm (genuinely holding the lock) at the exact moment new tasks boot
+// and do their check — a one-shot check makes every new task give up
+// permanently, even though the old task is killed moments later and the
+// lock frees up. Retrying gives a new task a chance to pick up the lock once
+// the outgoing task's connection is torn down (which releases the lock).
+async function tryWithAdvisoryLock(lockId, fn, onSkip, { retries = 5, retryDelayMs = 30000 } = {}) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const client = await pool.connect();
     try {
-      await fn();
+      const { rows } = await client.query('SELECT pg_try_advisory_lock($1) AS locked', [lockId]);
+      if (rows[0].locked) {
+        try {
+          await fn();
+        } finally {
+          await client.query('SELECT pg_advisory_unlock($1)', [lockId]);
+        }
+        return;
+      }
     } finally {
-      await client.query('SELECT pg_advisory_unlock($1)', [lockId]);
+      client.release();
     }
-  } finally {
-    client.release();
+    if (attempt < retries) await new Promise(r => setTimeout(r, retryDelayMs));
   }
+  if (onSkip) onSkip();
 }
 
 async function init() {
