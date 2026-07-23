@@ -12,6 +12,8 @@ const db = require('./services/db');
 const { sessionMiddleware } = require('./middleware/session');
 const authRouter = require('./routes/auth');
 const meRouter = require('./routes/me');
+const { excludeOwned, excludeHidden } = require('./services/gameFilters');
+const wishlist = require('./services/wishlist');
 
 const app = express();
 let ctrlCacheReady = false;
@@ -411,6 +413,15 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
     const minRating = parseFloat(req.query.minRating) || 0;
     if (minRating > 0) {
       filtered = filtered.filter(g => g.igdbRating?.igdbRating != null && g.igdbRating.igdbRating >= minRating);
+    }
+
+    if (req.session?.userId) {
+      const hiddenIds = await wishlist.listHiddenItadIds(req.session.userId);
+      filtered = excludeHidden(filtered, hiddenIds);
+    }
+    if (req.session?.userId && req.query.hideOwned === '1') {
+      const ownedIds = await wishlist.listOwnedItadIds(req.session.userId);
+      filtered = excludeOwned(filtered, ownedIds);
     }
 
     if (rawCtrl) {
