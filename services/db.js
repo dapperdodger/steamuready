@@ -90,14 +90,13 @@ async function init() {
     );
 
     CREATE TABLE IF NOT EXISTS users (
-      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      email         TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      preferences   JSONB DEFAULT '{}',
-      created_at    TIMESTAMPTZ DEFAULT NOW()
+      id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      email              TEXT UNIQUE NOT NULL,
+      password_hash      TEXT NOT NULL,
+      preferences        JSONB DEFAULT '{}',
+      hide_owned_default BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at         TIMESTAMPTZ DEFAULT NOW()
     );
-
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS hide_owned_default BOOLEAN NOT NULL DEFAULT FALSE;
 
     CREATE TABLE IF NOT EXISTS wishlist_items (
       user_id    UUID REFERENCES users(id) ON DELETE CASCADE,
