@@ -13,3 +13,4 @@ infra/terraform.tfstate.backup
 infra/terraform.tfvars
 .claude/ref/*
 .superpowers/
+.claude/settings.local.json
