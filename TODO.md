@@ -34,4 +34,4 @@
   - [ ] Mark owned games
   - [ ] Hide Games
 - [ ] Portugese(BR) Language Support
-- [ ] use fixed bulk endpoints (https://github.com/Producdevity/EmuReady/pull/342)
+- [x] use fixed bulk endpoints (https://github.com/Producdevity/EmuReady/pull/342)
