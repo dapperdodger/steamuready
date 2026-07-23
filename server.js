@@ -542,22 +542,26 @@ async function warmCaches() {
   });
 }
 
-const PORT = process.env.PORT || 3000;
-db.init().then(() => {
-  const server = app.listen(PORT, () => {
-    console.log(`\n🎮  SteamUReady Running`);
-    warmCaches();
-  });
-
-  // ── Graceful shutdown (ECS/ALB task draining) ───────────────────────────────
-  process.on('SIGTERM', () => {
-    console.log('[shutdown] SIGTERM received — draining connections…');
-    server.close(() => {
-      console.log('[shutdown] all connections closed, exiting');
-      process.exit(0);
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  db.init().then(() => {
+    const server = app.listen(PORT, () => {
+      console.log(`\n🎮  SteamUReady Running`);
+      warmCaches();
     });
+
+    // ── Graceful shutdown (ECS/ALB task draining) ───────────────────────────────
+    process.on('SIGTERM', () => {
+      console.log('[shutdown] SIGTERM received — draining connections…');
+      server.close(() => {
+        console.log('[shutdown] all connections closed, exiting');
+        process.exit(0);
+      });
+    });
+  }).catch(e => {
+    console.error('[DB] init failed:', e.message);
+    process.exit(1);
   });
-}).catch(e => {
-  console.error('[DB] init failed:', e.message);
-  process.exit(1);
-});
+}
+
+module.exports = app;
