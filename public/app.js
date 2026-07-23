@@ -208,6 +208,7 @@ function initAuthModal() {
   $('logoutBtn').addEventListener('click', async () => {
     await api.authLogout();
     $('accountDropdown').hidden = true;
+    closeTrackedView(); // the account dropdown stays reachable while the tracked view is open, so logging out from there must not leave it showing stale data behind a hidden .layout
     await refreshAuthState();
     fetchGames(false);
   });
@@ -224,9 +225,11 @@ async function openTrackedView(kind) {
   $('accountDropdown').hidden = true;
   document.querySelector('.layout').hidden = true;
   $('trackedView').hidden = false;
+  $('trackedView').dataset.kind = kind;
   $('trackedViewTitle').textContent = kind === 'wishlist' ? t('myWishlist') : t('myGames');
 
   const res = await fetch(kind === 'wishlist' ? '/api/me/wishlist' : '/api/me/owned');
+  if (!res.ok) { closeTrackedView(); return; }
   const body = await res.json();
   const grid = $('trackedGrid');
   grid.innerHTML = '';
@@ -251,6 +254,7 @@ async function openTrackedView(kind) {
 
 function closeTrackedView() {
   $('trackedView').hidden = true;
+  delete $('trackedView').dataset.kind;
   document.querySelector('.layout').hidden = false;
 }
 
@@ -265,11 +269,14 @@ function initTrackedView() {
     });
   });
 
+  // Compare the open view's kind via a data attribute, not translated text —
+  // t('myWishlist') can change out from under a stored string if the user
+  // switches language while the view is open.
   document.addEventListener('wishlist-changed', () => {
-    if (!$('trackedView').hidden && $('trackedViewTitle').textContent === t('myWishlist')) openTrackedView('wishlist');
+    if (!$('trackedView').hidden && $('trackedView').dataset.kind === 'wishlist') openTrackedView('wishlist');
   });
   document.addEventListener('owned-changed', () => {
-    if (!$('trackedView').hidden && $('trackedViewTitle').textContent === t('myGames')) openTrackedView('owned');
+    if (!$('trackedView').hidden && $('trackedView').dataset.kind === 'owned') openTrackedView('owned');
   });
 }
 
@@ -1480,12 +1487,12 @@ function buildCard(g) {
         </svg>
         ${t('viewOnStore')(escHtml(g.storeName || 'Store'))}
       </a>
-      <a href="https://www.emuready.com/listings/${encodeURIComponent(g.id)}" target="_blank" rel="noopener" class="btn-emu">
+      ${g.id ? `<a href="https://www.emuready.com/listings/${encodeURIComponent(g.id)}" target="_blank" rel="noopener" class="btn-emu">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01M8 12h.01M16 12h.01"/><path d="M6 10v4"/>
         </svg>
         ${t('viewOnEmuReady')}
-      </a>
+      </a>` : ''}
     </div>`;
 
   const img = div.querySelector('.card-img');
