@@ -355,4 +355,73 @@ async function clearCache() {
   await Promise.all([delPattern('store:overview:*'), igdb.clearCache()]);
 }
 
-module.exports = { getDealsForTitles, resolveSteamAppIdsToItadIds, buildExactEntry, buildFallbackEntry, splitForInlineResolution, getShops, clearCache, REGIONS, STEAM_SHOP_ID };
+// ── Price lookup by itad_id (wishlist/owned games) ────────────────────────────
+function buildItadIdEntry(itadId, titleRow, item, cc) {
+  const sym = REGIONS[cc]?.sym ?? '$';
+  const current = item.current;
+  const lowest = item.lowest ?? null;
+  const price = toNum(current.price?.amount);
+  const originalPrice = toNum(current.regular?.amount ?? current.price?.amount);
+
+  return {
+    appId: itadId,
+    name: titleRow?.match_title ?? '',
+    steamAppId: titleRow?.steam_app_id ?? null,
+    storeName: current.shop?.name ?? 'Store',
+    imageUrl: titleRow?.image_url ?? '',
+    storeUrl: current.url,
+    discountPercent: current.cut ?? 0,
+    price,
+    originalPrice,
+    priceFormatted: price === 0 ? 'Free' : `${sym}${price.toFixed(2)}`,
+    originalPriceFormatted: (current.cut ?? 0) > 0 ? `${sym}${originalPrice.toFixed(2)}` : '',
+    currency: current.price?.currency ?? cc.toUpperCase(),
+    dealSince: current.timestamp ?? null,
+    dealExpiry: current.expiry ?? null,
+    historicalLow: lowest ? {
+      price: toNum(lowest.price?.amount),
+      cut: lowest.cut ?? 0,
+      shop: lowest.shop?.name ?? '',
+      timestamp: lowest.timestamp ?? null,
+      priceFormatted: toNum(lowest.price?.amount) === 0
+        ? 'Free'
+        : `${sym}${toNum(lowest.price?.amount).toFixed(2)}`,
+    } : null,
+  };
+}
+
+async function getDealsForItadIds(itadIds, cc = 'us', shops = []) {
+  if (!itadIds.length) return new Map();
+  const shopsKey = shops.length ? shops.slice().sort().join(',') : 'all';
+
+  const { rows } = await pool.query(
+    'SELECT itad_id, match_title, steam_app_id, image_url FROM game_titles WHERE itad_id = ANY($1)',
+    [itadIds]
+  );
+  const titleByItadId = new Map(rows.map(r => [r.itad_id, r]));
+
+  const overviewKey = `store:overview:${cc}:${shopsKey}`;
+  const overviewRaw = await redis.get(overviewKey);
+  const overviewMap = overviewRaw ? new Map(JSON.parse(overviewRaw)) : new Map();
+
+  const missing = itadIds.filter(id => !overviewMap.has(id));
+  if (missing.length) {
+    const pairs = await fetchOverviewAPI(missing, cc, shops);
+    pairs.forEach(([id, item]) => overviewMap.set(id, item));
+    await redis.set(overviewKey, JSON.stringify([...overviewMap.entries()]), 'PX', OVERVIEW_TTL);
+  }
+
+  const result = new Map();
+  for (const itadId of itadIds) {
+    const item = overviewMap.get(itadId);
+    if (!item?.current) continue;
+    result.set(itadId, buildItadIdEntry(itadId, titleByItadId.get(itadId), item, cc));
+  }
+  return result;
+}
+
+module.exports = {
+  getDealsForTitles, getDealsForItadIds, buildItadIdEntry,
+  resolveSteamAppIdsToItadIds, buildExactEntry, buildFallbackEntry, splitForInlineResolution,
+  getShops, clearCache, REGIONS, STEAM_SHOP_ID,
+};
