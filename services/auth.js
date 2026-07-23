@@ -40,6 +40,15 @@ async function updatePasswordHash(id, passwordHash) {
   await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, id]);
 }
 
+// Narrow, purpose-built lookup — findUserById deliberately excludes
+// password_hash (it backs GET /api/auth/me, which must never leak it).
+// Changing a password needs the hash without a second round-trip through
+// email, so this exists instead of loosening findUserById.
+async function findPasswordHashById(id) {
+  const { rows } = await pool.query('SELECT password_hash FROM users WHERE id = $1', [id]);
+  return rows[0]?.password_hash ?? null;
+}
+
 async function updatePreferences(id, preferences) {
   const { rows } = await pool.query(
     'UPDATE users SET preferences = $1 WHERE id = $2 RETURNING preferences',
@@ -63,5 +72,5 @@ async function deleteUser(id) {
 module.exports = {
   hashPassword, verifyPassword,
   createUser, findUserByEmail, findUserById,
-  updatePasswordHash, updatePreferences, updateHideOwnedDefault, deleteUser,
+  updatePasswordHash, findPasswordHashById, updatePreferences, updateHideOwnedDefault, deleteUser,
 };

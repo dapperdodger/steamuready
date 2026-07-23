@@ -133,4 +133,41 @@ router.delete('/hidden/:itadId', async (req, res) => {
   }
 });
 
+router.put('/password', async (req, res) => {
+  const { currentPassword, newPassword } = req.body ?? {};
+  if (typeof currentPassword !== 'string' || typeof newPassword !== 'string' || newPassword.length < 8) {
+    return res.status(400).json({ error: 'currentPassword and a newPassword of at least 8 characters are required' });
+  }
+  try {
+    const currentHash = await auth.findPasswordHashById(req.session.userId);
+    const valid = currentHash ? await auth.verifyPassword(currentPassword, currentHash) : false;
+    if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
+
+    const newHash = await auth.hashPassword(newPassword);
+    await auth.updatePasswordHash(req.session.userId, newHash);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[PUT /api/me/password]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/', async (req, res) => {
+  const userId = req.session.userId;
+  req.session.destroy(async err => {
+    if (err) {
+      console.error('[DELETE /api/me]', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    try {
+      res.clearCookie('connect.sid');
+      await auth.deleteUser(userId);
+      res.json({ ok: true });
+    } catch (e) {
+      console.error('[DELETE /api/me]', e);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+});
+
 module.exports = router;
