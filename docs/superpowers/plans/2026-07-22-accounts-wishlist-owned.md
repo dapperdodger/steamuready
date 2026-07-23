@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add optional email/password accounts to SteamUReady, letting logged-in users mark games as wishlisted or owned, hide owned games from search results, and sync their filter preferences to their account instead of localStorage.
+**Goal:** Add optional email/password accounts to SteamUReady, letting logged-in users mark games as wishlisted, owned, or hidden; hide owned games and hidden games from search results; manage hidden games from Account Settings; and sync their filter preferences (including the hide-owned default) to their account instead of localStorage.
 
-**Architecture:** Express routes (`routes/auth.js`, `routes/me.js`) backed by new Postgres tables (`users`, `wishlist_items`, `owned_games`) and Redis-backed sessions (`express-session` + `connect-redis`, reusing the existing `ioredis` client). Frontend additions are vanilla JS/HTML/CSS following the existing patterns in `public/app.js` (no build step, no framework). Backend auth/session/wishlist logic gets automated tests (Node's built-in `node:test` + `supertest`); frontend changes are verified manually per existing project convention (no frontend test tooling exists and none is being introduced).
+**Architecture:** Express routes (`routes/auth.js`, `routes/me.js`) backed by new Postgres tables (`users`, `wishlist_items`, `owned_games`, `hidden_games`) and Redis-backed sessions (`express-session` + `connect-redis`, reusing the existing `ioredis` client). Frontend additions are vanilla JS/HTML/CSS following the existing patterns in `public/app.js` (no build step, no framework). Backend auth/session/wishlist logic gets automated tests (Node's built-in `node:test` + `supertest`); frontend changes are verified manually per existing project convention (no frontend test tooling exists and none is being introduced).
 
 **Tech Stack:** Node.js/Express, PostgreSQL (`pg`), Redis (`ioredis`), `bcrypt`, `express-session`, `connect-redis`, `node:test`, `supertest`.
 
@@ -12,7 +12,9 @@
 
 - Password hashing: bcrypt, cost factor 12 — never log or return a password or hash in any API response.
 - Session cookie: `httpOnly: true`, `sameSite: 'lax'`, `secure: true` in production.
-- Wishlist/owned rows key on `itad_id` (ITAD's UUID from `game_titles`), not `steam_app_id`.
+- Wishlist/owned/hidden rows key on `itad_id` (ITAD's UUID from `game_titles`), not `steam_app_id`.
+- Hidden games are unconditionally excluded from `/api/games` whenever a session exists — this is not a query-param-gated filter like `hideOwned`.
+- `hide_owned_default` is its own `users` column, not a key inside the `preferences` JSONB blob — that blob is reserved for filters with an anonymous/logged-out equivalent, and hide-owned has none.
 - No email verification or password-reset flow in this plan — deferred to the alerts spec, which needs email infra anyway.
 - Auth endpoints (`/api/auth/signup`, `/api/auth/login`) are rate-limited separately from the existing `gamesRateLimiter` (5 requests/min/IP).
 - No route may trust a client-supplied user id — every `/api/me/*` route derives the user id from `req.session.userId`.
@@ -158,27 +160,28 @@ git commit -m "Add node:test + supertest tooling, make server.js testable, add p
 
 ---
 
-## Task 2: DB schema — `users`, `wishlist_items`, `owned_games`
+## Task 2: DB schema — `users`, `wishlist_items`, `owned_games`, `hidden_games`
 
 **Files:**
 - Modify: `services/db.js:17-50` (`init()` function)
 - Create: `test/db.test.js`
 
 **Interfaces:**
-- Produces: three tables — `users(id UUID, email, password_hash, preferences JSONB, created_at)`, `wishlist_items(user_id UUID, itad_id, added_at)`, `owned_games(user_id UUID, itad_id, source, added_at)` — consumed by `services/auth.js` and `services/wishlist.js` in later tasks.
+- Produces: four tables — `users(id UUID, email, password_hash, preferences JSONB, hide_owned_default BOOLEAN, created_at)`, `wishlist_items(user_id UUID, itad_id, added_at)`, `owned_games(user_id UUID, itad_id, source, added_at)`, `hidden_games(user_id UUID, itad_id, added_at)` — consumed by `services/auth.js` and `services/wishlist.js` in later tasks.
 
-- [ ] **Step 1: Add the three tables to `init()`**
+- [ ] **Step 1: Add the tables to `init()`**
 
 In `services/db.js`, add inside the template string in `init()` (after the existing `igdb_ratings` table, before the closing `` ` ``):
 
 ```sql
 
     CREATE TABLE IF NOT EXISTS users (
-      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      email         TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      preferences   JSONB DEFAULT '{}',
-      created_at    TIMESTAMPTZ DEFAULT NOW()
+      id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      email              TEXT UNIQUE NOT NULL,
+      password_hash      TEXT NOT NULL,
+      preferences        JSONB DEFAULT '{}',
+      hide_owned_default BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at         TIMESTAMPTZ DEFAULT NOW()
     );
 
     CREATE TABLE IF NOT EXISTS wishlist_items (
@@ -195,7 +198,21 @@ In `services/db.js`, add inside the template string in `init()` (after the exist
       added_at   TIMESTAMPTZ DEFAULT NOW(),
       PRIMARY KEY (user_id, itad_id)
     );
+
+    CREATE TABLE IF NOT EXISTS hidden_games (
+      user_id    UUID REFERENCES users(id) ON DELETE CASCADE,
+      itad_id    TEXT NOT NULL,
+      added_at   TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (user_id, itad_id)
+    );
 ```
+
+`hidden_games` has no `source` column — unlike `owned_games`, hiding is always
+a manual action (see the design spec's 2026-07-23 amendment). `users` gains
+`hide_owned_default` as its own column rather than a key inside
+`preferences` — that JSONB blob is reserved for filters that also apply
+while logged out (see the spec's Data model notes); the hide-owned filter has
+no logged-out equivalent.
 
 - [ ] **Step 2: Write the failing test**
 
@@ -207,12 +224,12 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { pool, init } = require('../services/db');
 
-test('init() creates users, wishlist_items, owned_games with expected columns', async () => {
+test('init() creates users, wishlist_items, owned_games, hidden_games with expected columns', async () => {
   await init();
 
   const { rows } = await pool.query(`
     SELECT table_name, column_name FROM information_schema.columns
-    WHERE table_name IN ('users', 'wishlist_items', 'owned_games')
+    WHERE table_name IN ('users', 'wishlist_items', 'owned_games', 'hidden_games')
     ORDER BY table_name, ordinal_position
   `);
 
@@ -221,9 +238,10 @@ test('init() creates users, wishlist_items, owned_games with expected columns', 
     (byTable[r.table_name] ??= []).push(r.column_name);
   }
 
-  assert.deepStrictEqual(byTable.users, ['id', 'email', 'password_hash', 'preferences', 'created_at']);
+  assert.deepStrictEqual(byTable.users, ['id', 'email', 'password_hash', 'preferences', 'hide_owned_default', 'created_at']);
   assert.deepStrictEqual(byTable.wishlist_items, ['user_id', 'itad_id', 'added_at']);
   assert.deepStrictEqual(byTable.owned_games, ['user_id', 'itad_id', 'source', 'added_at']);
+  assert.deepStrictEqual(byTable.hidden_games, ['user_id', 'itad_id', 'added_at']);
 });
 ```
 
@@ -241,7 +259,7 @@ Expected: `test/db.test.js` passes.
 
 ```
 git add services/db.js test/db.test.js
-git commit -m "Add users, wishlist_items, owned_games tables"
+git commit -m "Add users, wishlist_items, owned_games, hidden_games tables"
 ```
 
 ---
@@ -338,7 +356,7 @@ git commit -m "Add bcrypt password hashing helpers"
 
 **Interfaces:**
 - Consumes: `pool` from `services/db.js` (`const { pool } = require('./db')`).
-- Produces: `createUser(email, passwordHash): Promise<{id, email, preferences, created_at}>` (rejects with `.code === '23505'` on duplicate email), `findUserByEmail(email): Promise<user|null>` (includes `password_hash`), `findUserById(id): Promise<{id,email,preferences,created_at}|null>`, `updatePasswordHash(id, passwordHash): Promise<void>`, `updatePreferences(id, preferences): Promise<object>`, `deleteUser(id): Promise<void>` — all consumed by `routes/auth.js` (Task 6) and `routes/me.js` (Task 7).
+- Produces: `createUser(email, passwordHash): Promise<{id, email, preferences, hide_owned_default, created_at}>` (rejects with `.code === '23505'` on duplicate email), `findUserByEmail(email): Promise<user|null>` (includes `password_hash`), `findUserById(id): Promise<{id,email,preferences,hide_owned_default,created_at}|null>`, `updatePasswordHash(id, passwordHash): Promise<void>`, `updatePreferences(id, preferences): Promise<object>`, `updateHideOwnedDefault(id, value): Promise<boolean>`, `deleteUser(id): Promise<void>` — all consumed by `routes/auth.js` (Task 6) and `routes/me.js` (Task 7). The DB layer keeps the snake_case column name; `routes/auth.js` maps it to `hideOwnedDefault` in JSON responses (Task 6).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -348,16 +366,17 @@ Append to `test/auth.test.js`:
 const { pool } = require('../services/db');
 const {
   createUser, findUserByEmail, findUserById,
-  updatePasswordHash, updatePreferences, deleteUser,
+  updatePasswordHash, updatePreferences, updateHideOwnedDefault, deleteUser,
 } = require('../services/auth');
 
-test('createUser + findUserByEmail + findUserById + updatePreferences + updatePasswordHash + deleteUser', async () => {
+test('createUser + findUserByEmail + findUserById + updatePreferences + updatePasswordHash + updateHideOwnedDefault + deleteUser', async () => {
   const email = `crud-test-${Date.now()}@example.com`;
   const hash = await hashPassword('initial-password');
 
   const created = await createUser(email, hash);
   assert.strictEqual(created.email, email);
   assert.deepStrictEqual(created.preferences, {});
+  assert.strictEqual(created.hide_owned_default, false);
 
   const byEmail = await findUserByEmail(email);
   assert.strictEqual(byEmail.id, created.id);
@@ -365,10 +384,15 @@ test('createUser + findUserByEmail + findUserById + updatePreferences + updatePa
 
   const byId = await findUserById(created.id);
   assert.strictEqual(byId.email, email);
+  assert.strictEqual(byId.hide_owned_default, false);
   assert.strictEqual('password_hash' in byId, false); // never expose the hash from findUserById
 
   const savedPrefs = await updatePreferences(created.id, { region: 'us' });
   assert.deepStrictEqual(savedPrefs, { region: 'us' });
+
+  const savedHideOwned = await updateHideOwnedDefault(created.id, true);
+  assert.strictEqual(savedHideOwned, true);
+  assert.strictEqual((await findUserById(created.id)).hide_owned_default, true);
 
   const newHash = await hashPassword('new-password');
   await updatePasswordHash(created.id, newHash);
@@ -411,7 +435,7 @@ const { pool } = require('./db');
 async function createUser(email, passwordHash) {
   const { rows } = await pool.query(
     `INSERT INTO users (email, password_hash) VALUES ($1, $2)
-     RETURNING id, email, preferences, created_at`,
+     RETURNING id, email, preferences, hide_owned_default, created_at`,
     [email, passwordHash]
   );
   return rows[0];
@@ -419,7 +443,7 @@ async function createUser(email, passwordHash) {
 
 async function findUserByEmail(email) {
   const { rows } = await pool.query(
-    'SELECT id, email, password_hash, preferences, created_at FROM users WHERE email = $1',
+    'SELECT id, email, password_hash, preferences, hide_owned_default, created_at FROM users WHERE email = $1',
     [email]
   );
   return rows[0] || null;
@@ -427,7 +451,7 @@ async function findUserByEmail(email) {
 
 async function findUserById(id) {
   const { rows } = await pool.query(
-    'SELECT id, email, preferences, created_at FROM users WHERE id = $1',
+    'SELECT id, email, preferences, hide_owned_default, created_at FROM users WHERE id = $1',
     [id]
   );
   return rows[0] || null;
@@ -445,6 +469,14 @@ async function updatePreferences(id, preferences) {
   return rows[0]?.preferences;
 }
 
+async function updateHideOwnedDefault(id, value) {
+  const { rows } = await pool.query(
+    'UPDATE users SET hide_owned_default = $1 WHERE id = $2 RETURNING hide_owned_default',
+    [value, id]
+  );
+  return rows[0]?.hide_owned_default;
+}
+
 async function deleteUser(id) {
   await pool.query('DELETE FROM users WHERE id = $1', [id]);
 }
@@ -456,7 +488,7 @@ And update the final `module.exports` in `services/auth.js` to:
 module.exports = {
   hashPassword, verifyPassword,
   createUser, findUserByEmail, findUserById,
-  updatePasswordHash, updatePreferences, deleteUser,
+  updatePasswordHash, updatePreferences, updateHideOwnedDefault, deleteUser,
 };
 ```
 
@@ -627,7 +659,7 @@ git commit -m "Add Redis-backed session middleware"
 
 **Interfaces:**
 - Consumes: `services/auth.js` (Tasks 3-4), `services/cache.js`'s `redis`, `req.session` (Task 5).
-- Produces: mounted at `/api/auth` — `POST /signup`, `POST /login`, `POST /logout`, `GET /me`. Response shape on success: `{email, preferences}`.
+- Produces: mounted at `/api/auth` — `POST /signup`, `POST /login`, `POST /logout`, `GET /me`. Response shape on success: `{email, preferences, hideOwnedDefault}`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -659,6 +691,7 @@ test('signup: creates a user, sets a session cookie, rejects duplicates and weak
   assert.strictEqual(ok.status, 201);
   assert.strictEqual(ok.body.email, email);
   assert.deepStrictEqual(ok.body.preferences, {});
+  assert.strictEqual(ok.body.hideOwnedDefault, false);
 
   const dup = await request(app).post('/api/auth/signup').set('X-Forwarded-For', testIp).send({ email, password: 'password123' });
   assert.strictEqual(dup.status, 409);
@@ -688,6 +721,7 @@ test('login: succeeds with correct credentials, generic 401 on wrong password or
   const ok = await request(app).post('/api/auth/login').set('X-Forwarded-For', testIp).send({ email, password: 'password123' });
   assert.strictEqual(ok.status, 200);
   assert.strictEqual(ok.body.email, email);
+  assert.strictEqual(ok.body.hideOwnedDefault, false);
 
   await cleanupUser(email);
 });
@@ -705,6 +739,7 @@ test('logout clears the session, and /me reflects logged-in vs logged-out state'
   const loggedIn = await agent.get('/api/auth/me');
   assert.strictEqual(loggedIn.status, 200);
   assert.strictEqual(loggedIn.body.email, email);
+  assert.strictEqual(loggedIn.body.hideOwnedDefault, false);
 
   await agent.post('/api/auth/logout').expect(200);
 
@@ -768,7 +803,7 @@ router.post('/signup', authRateLimiter, async (req, res) => {
     const passwordHash = await auth.hashPassword(password);
     const user = await auth.createUser(email.toLowerCase(), passwordHash);
     req.session.userId = user.id;
-    res.status(201).json({ email: user.email, preferences: user.preferences });
+    res.status(201).json({ email: user.email, preferences: user.preferences, hideOwnedDefault: user.hide_owned_default });
   } catch (e) {
     if (e.code === '23505') {
       return res.status(409).json({ error: 'Email already registered' });
@@ -790,7 +825,7 @@ router.post('/login', authRateLimiter, async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
     req.session.userId = user.id;
-    res.json({ email: user.email, preferences: user.preferences });
+    res.json({ email: user.email, preferences: user.preferences, hideOwnedDefault: user.hide_owned_default });
   } catch (e) {
     console.error('[/api/auth/login]', e);
     res.status(500).json({ error: 'Internal server error' });
@@ -812,7 +847,7 @@ router.get('/me', async (req, res) => {
   if (!req.session?.userId) return res.status(401).json({ error: 'Not logged in' });
   const user = await auth.findUserById(req.session.userId);
   if (!user) return res.status(401).json({ error: 'Not logged in' });
-  res.json({ email: user.email, preferences: user.preferences });
+  res.json({ email: user.email, preferences: user.preferences, hideOwnedDefault: user.hide_owned_default });
 });
 
 module.exports = router;
@@ -849,7 +884,7 @@ git commit -m "Add signup/login/logout/me auth routes"
 
 ---
 
-## Task 7: Preferences endpoint
+## Task 7: Preferences + hide-owned-default endpoints
 
 **Files:**
 - Create: `routes/me.js`
@@ -857,8 +892,8 @@ git commit -m "Add signup/login/logout/me auth routes"
 - Create: `test/me-preferences.test.js`
 
 **Interfaces:**
-- Consumes: `requireAuth` (Task 5), `auth.updatePreferences` (Task 4).
-- Produces: mounted at `/api/me` — `PUT /preferences`, consumed by the frontend in Task 17.
+- Consumes: `requireAuth` (Task 5), `auth.updatePreferences`, `auth.updateHideOwnedDefault` (Task 4).
+- Produces: mounted at `/api/me` — `PUT /preferences` (consumed by the frontend in Task 17) and `PUT /hide-owned-default` (consumed by the frontend in Task 15).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -893,6 +928,27 @@ test('PUT /api/me/preferences requires auth and persists a preferences object', 
 
   await pool.query('DELETE FROM users WHERE email = $1', [email]);
 });
+
+test('PUT /api/me/hide-owned-default requires auth and persists a boolean', async () => {
+  const anon = await request(app).put('/api/me/hide-owned-default').send({ hideOwnedDefault: true });
+  assert.strictEqual(anon.status, 401);
+
+  const email = `hide-owned-default-test-${Date.now()}@example.com`;
+  const agent = request.agent(app);
+  await agent.post('/api/auth/signup').set('X-Forwarded-For', nextTestIp()).send({ email, password: 'password123' }).expect(201);
+
+  const invalid = await agent.put('/api/me/hide-owned-default').send({ hideOwnedDefault: 'yes' });
+  assert.strictEqual(invalid.status, 400);
+
+  const saved = await agent.put('/api/me/hide-owned-default').send({ hideOwnedDefault: true });
+  assert.strictEqual(saved.status, 200);
+  assert.strictEqual(saved.body.hideOwnedDefault, true);
+
+  const me = await agent.get('/api/auth/me');
+  assert.strictEqual(me.body.hideOwnedDefault, true);
+
+  await pool.query('DELETE FROM users WHERE email = $1', [email]);
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -901,7 +957,7 @@ test('PUT /api/me/preferences requires auth and persists a preferences object', 
 npm test
 ```
 
-Expected: FAIL — `PUT /api/me/preferences` returns 404.
+Expected: FAIL — `PUT /api/me/preferences` and `PUT /api/me/hide-owned-default` both return 404.
 
 - [ ] **Step 3: Implement `routes/me.js`**
 
@@ -923,6 +979,20 @@ router.put('/preferences', async (req, res) => {
     res.json({ preferences: saved });
   } catch (e) {
     console.error('[/api/me/preferences]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.put('/hide-owned-default', async (req, res) => {
+  const { hideOwnedDefault } = req.body ?? {};
+  if (typeof hideOwnedDefault !== 'boolean') {
+    return res.status(400).json({ error: 'hideOwnedDefault must be a boolean' });
+  }
+  try {
+    const saved = await auth.updateHideOwnedDefault(req.session.userId, hideOwnedDefault);
+    res.json({ hideOwnedDefault: saved });
+  } catch (e) {
+    console.error('[/api/me/hide-owned-default]', e);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -950,13 +1020,13 @@ app.use('/api/me', meRouter);
 npm test
 ```
 
-Expected: `test/me-preferences.test.js` passes.
+Expected: `test/me-preferences.test.js` passes (2 tests).
 
 - [ ] **Step 6: Commit**
 
 ```
 git add routes/me.js server.js test/me-preferences.test.js
-git commit -m "Add PUT /api/me/preferences endpoint"
+git commit -m "Add PUT /api/me/preferences and PUT /api/me/hide-owned-default endpoints"
 ```
 
 ---
@@ -969,7 +1039,7 @@ git commit -m "Add PUT /api/me/preferences endpoint"
 
 **Interfaces:**
 - Consumes: `pool` from `services/db.js`.
-- Produces: `addWishlistItem(userId, itadId)`, `removeWishlistItem(userId, itadId)`, `listWishlistItadIds(userId): Promise<string[]>`, `addOwned(userId, itadId, source = 'manual')` (also deletes any `wishlist_items` row for the same `userId`/`itadId` — owning a game always implies not wanting it on the wishlist, regardless of how either state was set), `removeOwned(userId, itadId)`, `listOwnedItadIds(userId): Promise<string[]>` — consumed by `routes/me.js` in Task 10 and the hide-owned filter in Task 11.
+- Produces: `addWishlistItem(userId, itadId)`, `removeWishlistItem(userId, itadId)`, `listWishlistItadIds(userId): Promise<string[]>`, `addOwned(userId, itadId, source = 'manual')` (also deletes any `wishlist_items` row and any `hidden_games` row for the same `userId`/`itadId` — owning a game always implies not wanting it on the wishlist and not hiding it, regardless of how any of those states were set), `removeOwned(userId, itadId)`, `listOwnedItadIds(userId): Promise<string[]>`, `addHidden(userId, itadId)` (also deletes any `wishlist_items` row for the same `userId`/`itadId`), `removeHidden(userId, itadId)`, `listHiddenItadIds(userId): Promise<string[]>`, `listHiddenWithTitles(userId): Promise<{itadId, name}[]>` — consumed by `routes/me.js` in Task 10, the `/api/games` filters in Task 11, and the frontend in Tasks 14 and 16.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -984,6 +1054,7 @@ const { createUser, deleteUser, hashPassword } = require('../services/auth');
 const {
   addWishlistItem, removeWishlistItem, listWishlistItadIds,
   addOwned, removeOwned, listOwnedItadIds,
+  addHidden, removeHidden, listHiddenItadIds, listHiddenWithTitles,
 } = require('../services/wishlist');
 
 async function makeTestUser(tag) {
@@ -1033,6 +1104,57 @@ test('addOwned removes any existing wishlist entry for the same game', async () 
 
   await deleteUser(user.id);
 });
+
+test('hidden add/list/remove is idempotent and scoped per user, and addHidden clears the wishlist', async () => {
+  const user = await makeTestUser('hidden-svc');
+  const itadId = 'itad-test-ddd';
+
+  await addWishlistItem(user.id, itadId);
+  assert.deepStrictEqual(await listWishlistItadIds(user.id), [itadId]);
+
+  await addHidden(user.id, itadId);
+  await addHidden(user.id, itadId); // duplicate add must not throw
+  assert.deepStrictEqual(await listHiddenItadIds(user.id), [itadId]);
+  assert.deepStrictEqual(await listWishlistItadIds(user.id), []); // hiding it clears the wishlist entry
+
+  await removeHidden(user.id, itadId);
+  assert.deepStrictEqual(await listHiddenItadIds(user.id), []);
+
+  await deleteUser(user.id);
+});
+
+test('addOwned removes any existing hidden entry for the same game', async () => {
+  const user = await makeTestUser('owned-hidden-svc');
+  const itadId = 'itad-test-eee';
+
+  await addHidden(user.id, itadId);
+  assert.deepStrictEqual(await listHiddenItadIds(user.id), [itadId]);
+
+  await addOwned(user.id, itadId);
+  assert.deepStrictEqual(await listOwnedItadIds(user.id), [itadId]);
+  assert.deepStrictEqual(await listHiddenItadIds(user.id), []); // owning it clears the hidden entry
+
+  await deleteUser(user.id);
+});
+
+test('listHiddenWithTitles joins game_titles for a display name', async () => {
+  const user = await makeTestUser('hidden-titles-svc');
+  const itadId = `itad-test-fff-${Date.now()}`;
+
+  await pool.query(
+    `INSERT INTO game_titles (title_lower, itad_id, match_title)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (title_lower) DO UPDATE SET itad_id = EXCLUDED.itad_id`,
+    [`test hidden game ${itadId}`, itadId, `Test Hidden Game ${itadId}`]
+  );
+
+  await addHidden(user.id, itadId);
+  const list = await listHiddenWithTitles(user.id);
+  assert.deepStrictEqual(list, [{ itadId, name: `Test Hidden Game ${itadId}` }]);
+
+  await pool.query('DELETE FROM game_titles WHERE itad_id = $1', [itadId]);
+  await deleteUser(user.id);
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1068,8 +1190,9 @@ async function listWishlistItadIds(userId) {
   return rows.map(r => r.itad_id);
 }
 
-// Owning a game always implies it shouldn't stay on the wishlist, regardless
-// of how it got there (manually added, or previously imported from Steam).
+// Owning a game always implies it shouldn't stay on the wishlist or stay
+// hidden, regardless of how it got there (manually added/hidden, or
+// previously imported from Steam).
 async function addOwned(userId, itadId, source = 'manual') {
   await pool.query(
     `INSERT INTO owned_games (user_id, itad_id, source) VALUES ($1, $2, $3)
@@ -1077,6 +1200,7 @@ async function addOwned(userId, itadId, source = 'manual') {
     [userId, itadId, source]
   );
   await removeWishlistItem(userId, itadId);
+  await removeHidden(userId, itadId);
 }
 
 async function removeOwned(userId, itadId) {
@@ -1091,9 +1215,47 @@ async function listOwnedItadIds(userId) {
   return rows.map(r => r.itad_id);
 }
 
+// Hiding a game always implies it shouldn't stay on the wishlist — "don't
+// show me this" is incompatible with "I want this."
+async function addHidden(userId, itadId) {
+  await pool.query(
+    `INSERT INTO hidden_games (user_id, itad_id) VALUES ($1, $2)
+     ON CONFLICT (user_id, itad_id) DO NOTHING`,
+    [userId, itadId]
+  );
+  await removeWishlistItem(userId, itadId);
+}
+
+async function removeHidden(userId, itadId) {
+  await pool.query('DELETE FROM hidden_games WHERE user_id = $1 AND itad_id = $2', [userId, itadId]);
+}
+
+async function listHiddenItadIds(userId) {
+  const { rows } = await pool.query(
+    'SELECT itad_id FROM hidden_games WHERE user_id = $1 ORDER BY added_at DESC',
+    [userId]
+  );
+  return rows.map(r => r.itad_id);
+}
+
+// Lightweight — title only, no price/image lookup. Backs the "Manage hidden
+// games" list (Task 16), which is a maintenance screen, not a card grid.
+async function listHiddenWithTitles(userId) {
+  const { rows } = await pool.query(
+    `SELECT hg.itad_id, gt.match_title AS name
+     FROM hidden_games hg
+     LEFT JOIN game_titles gt ON gt.itad_id = hg.itad_id
+     WHERE hg.user_id = $1
+     ORDER BY hg.added_at DESC`,
+    [userId]
+  );
+  return rows.map(r => ({ itadId: r.itad_id, name: r.name || '' }));
+}
+
 module.exports = {
   addWishlistItem, removeWishlistItem, listWishlistItadIds,
   addOwned, removeOwned, listOwnedItadIds,
+  addHidden, removeHidden, listHiddenItadIds, listHiddenWithTitles,
 };
 ```
 
@@ -1103,13 +1265,13 @@ module.exports = {
 npm test
 ```
 
-Expected: `test/wishlist-service.test.js` passes (3 tests).
+Expected: `test/wishlist-service.test.js` passes (6 tests).
 
 - [ ] **Step 5: Commit**
 
 ```
 git add services/wishlist.js test/wishlist-service.test.js
-git commit -m "Add wishlist/owned DB service"
+git commit -m "Add wishlist/owned/hidden DB service"
 ```
 
 ---
@@ -1289,7 +1451,7 @@ This step has no automated test — it exercises live ITAD API calls, same as th
 
 **Interfaces:**
 - Consumes: `services/wishlist.js` (Task 8), `store.getDealsForItadIds` (Task 9).
-- Produces: mounted under `/api/me` — `GET /wishlist`, `POST /wishlist/:itadId`, `DELETE /wishlist/:itadId`, `GET /owned`, `POST /owned/:itadId`, `DELETE /owned/:itadId`. `GET` responses: `{games: [dealEntry, ...]}`.
+- Produces: mounted under `/api/me` — `GET /wishlist`, `POST /wishlist/:itadId`, `DELETE /wishlist/:itadId`, `GET /owned`, `POST /owned/:itadId`, `DELETE /owned/:itadId`, `GET /hidden`, `POST /hidden/:itadId`, `DELETE /hidden/:itadId`. `GET /wishlist` and `GET /owned` responses: `{games: [dealEntry, ...]}`. `GET /hidden` response: `{games: [{itadId, name}, ...]}` (no price lookup — see Task 8's `listHiddenWithTitles`).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1381,6 +1543,35 @@ test('owned: add/list/remove works, and marking owned removes the game from the 
 
   await cleanup(email, itadId);
 });
+
+test('hidden: unauthenticated requests are rejected, authenticated hide/list/unhide works and returns only itadId+name', async () => {
+  const anon = await request(app).get('/api/me/hidden');
+  assert.strictEqual(anon.status, 401);
+
+  const itadId = `itad-hidden-test-${Date.now()}`;
+  await seedGameTitleAndOverview(itadId, '900003');
+
+  const email = `hidden-route-${Date.now()}@example.com`;
+  const agent = request.agent(app);
+  await agent.post('/api/auth/signup').set('X-Forwarded-For', nextTestIp()).send({ email, password: 'password123' }).expect(201);
+
+  // Wishlist it first, to prove hiding it clears the wishlist entry.
+  await agent.post(`/api/me/wishlist/${itadId}`).expect(204);
+
+  await agent.post(`/api/me/hidden/${itadId}`).expect(204);
+  const hidden = await agent.get('/api/me/hidden');
+  assert.strictEqual(hidden.status, 200);
+  assert.deepStrictEqual(hidden.body.games, [{ itadId, name: `Test Wishlist Game ${itadId}` }]);
+
+  const wishlist = await agent.get('/api/me/wishlist');
+  assert.strictEqual(wishlist.body.games.length, 0); // hiding it cleared the wishlist entry
+
+  await agent.delete(`/api/me/hidden/${itadId}`).expect(204);
+  const hiddenAfter = await agent.get('/api/me/hidden');
+  assert.strictEqual(hiddenAfter.body.games.length, 0);
+
+  await cleanup(email, itadId);
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1450,6 +1641,26 @@ router.delete('/owned/:itadId', async (req, res) => {
   await wishlist.removeOwned(req.session.userId, req.params.itadId);
   res.status(204).end();
 });
+
+router.get('/hidden', async (req, res) => {
+  try {
+    const games = await wishlist.listHiddenWithTitles(req.session.userId);
+    res.json({ games });
+  } catch (e) {
+    console.error('[/api/me/hidden]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/hidden/:itadId', async (req, res) => {
+  await wishlist.addHidden(req.session.userId, req.params.itadId);
+  res.status(204).end();
+});
+
+router.delete('/hidden/:itadId', async (req, res) => {
+  await wishlist.removeHidden(req.session.userId, req.params.itadId);
+  res.status(204).end();
+});
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -1458,13 +1669,13 @@ router.delete('/owned/:itadId', async (req, res) => {
 npm test
 ```
 
-Expected: `test/me-wishlist-owned.test.js` passes (2 tests).
+Expected: `test/me-wishlist-owned.test.js` passes (3 tests).
 
 - [ ] **Step 5: Commit**
 
 ```
 git add routes/me.js test/me-wishlist-owned.test.js
-git commit -m "Add wishlist/owned CRUD routes"
+git commit -m "Add wishlist/owned/hidden CRUD routes"
 ```
 
 - [ ] **Step 6: Manually verify the live-network path from Task 9**
@@ -1479,14 +1690,18 @@ Add rows to the existing `## API` table in `README.md` (after the `POST /api/ref
 | `POST /api/auth/signup` | Create an account (params: `email`, `password`) |
 | `POST /api/auth/login` | Log in (params: `email`, `password`) |
 | `POST /api/auth/logout` | Log out |
-| `GET /api/auth/me` | Current user's email + preferences, or `401` |
+| `GET /api/auth/me` | Current user's email + preferences + hideOwnedDefault, or `401` |
 | `PUT /api/me/preferences` | Save filter preferences for the logged-in user |
+| `PUT /api/me/hide-owned-default` | Save the logged-in user's hide-owned-games default |
 | `GET /api/me/wishlist` | Logged-in user's wishlisted games |
 | `POST /api/me/wishlist/:itadId` | Add a game to the wishlist |
 | `DELETE /api/me/wishlist/:itadId` | Remove a game from the wishlist |
 | `GET /api/me/owned` | Logged-in user's owned games |
 | `POST /api/me/owned/:itadId` | Mark a game as owned |
 | `DELETE /api/me/owned/:itadId` | Unmark a game as owned |
+| `GET /api/me/hidden` | Logged-in user's hidden games (title only, no price) |
+| `POST /api/me/hidden/:itadId` | Hide a game |
+| `DELETE /api/me/hidden/:itadId` | Unhide a game |
 ```
 
 - [ ] **Step 8: Commit**
@@ -1498,7 +1713,7 @@ git commit -m "Document account/wishlist/owned API endpoints"
 
 ---
 
-## Task 11: Hide-owned filter on `/api/games`
+## Task 11: Hide-owned filter + unconditional hidden-games exclusion on `/api/games`
 
 **Files:**
 - Create: `services/gameFilters.js`
@@ -1506,9 +1721,11 @@ git commit -m "Document account/wishlist/owned API endpoints"
 - Create: `test/gameFilters.test.js`
 
 **Interfaces:**
-- Produces: `excludeOwned(games, ownedItadIds): games[]` — a pure function, unit-tested directly; wired into the existing `/api/games` handler in `server.js`.
+- Produces: `excludeOwned(games, ownedItadIds): games[]` and `excludeHidden(games, hiddenItadIds): games[]` — both pure functions, unit-tested directly; wired into the existing `/api/games` handler in `server.js`.
 
-Recall from `server.js` that each entry in the `/api/games` response already carries `appId: sg.appId`, and `sg.appId` is the ITAD id (`store.js` sets `appId: titleEntry.id`, where `titleEntry.id` is the resolved ITAD id — regardless of whether it was resolved via the exact Steam-App-ID path or the title-lookup fallback introduced by the exact-correlation rework) — so filtering by the user's owned `itad_id`s against `g.appId` requires no extra join.
+Recall from `server.js` that each entry in the `/api/games` response already carries `appId: sg.appId`, and `sg.appId` is the ITAD id (`store.js` sets `appId: titleEntry.id`, where `titleEntry.id` is the resolved ITAD id — regardless of whether it was resolved via the exact Steam-App-ID path or the title-lookup fallback introduced by the exact-correlation rework) — so filtering by the user's owned or hidden `itad_id`s against `g.appId` requires no extra join.
+
+`excludeOwned` stays opt-in (gated by the `hideOwned=1` query param, since it's a filter the user toggles). `excludeHidden` is unconditional whenever a session exists — per the design spec, a hidden game is invisible everywhere, not an opt-in filter.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1518,7 +1735,7 @@ Create `test/gameFilters.test.js`:
 require('dotenv').config();
 const test = require('node:test');
 const assert = require('node:assert');
-const { excludeOwned } = require('../services/gameFilters');
+const { excludeOwned, excludeHidden } = require('../services/gameFilters');
 
 test('excludeOwned removes games whose appId is in the owned set', () => {
   const games = [{ appId: 'a' }, { appId: 'b' }, { appId: 'c' }];
@@ -1528,6 +1745,16 @@ test('excludeOwned removes games whose appId is in the owned set', () => {
 test('excludeOwned returns the input unchanged when ownedItadIds is empty', () => {
   const games = [{ appId: 'a' }];
   assert.deepStrictEqual(excludeOwned(games, []), games);
+});
+
+test('excludeHidden removes games whose appId is in the hidden set', () => {
+  const games = [{ appId: 'a' }, { appId: 'b' }, { appId: 'c' }];
+  assert.deepStrictEqual(excludeHidden(games, ['a', 'c']).map(g => g.appId), ['b']);
+});
+
+test('excludeHidden returns the input unchanged when hiddenItadIds is empty', () => {
+  const games = [{ appId: 'a' }];
+  assert.deepStrictEqual(excludeHidden(games, []), games);
 });
 ```
 
@@ -1548,7 +1775,13 @@ function excludeOwned(games, ownedItadIds) {
   return games.filter(g => !ownedSet.has(g.appId));
 }
 
-module.exports = { excludeOwned };
+function excludeHidden(games, hiddenItadIds) {
+  if (!hiddenItadIds || !hiddenItadIds.length) return games;
+  const hiddenSet = new Set(hiddenItadIds);
+  return games.filter(g => !hiddenSet.has(g.appId));
+}
+
+module.exports = { excludeOwned, excludeHidden };
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -1557,20 +1790,24 @@ module.exports = { excludeOwned };
 npm test
 ```
 
-Expected: `test/gameFilters.test.js` passes (2 tests).
+Expected: `test/gameFilters.test.js` passes (4 tests).
 
 - [ ] **Step 5: Wire it into the `/api/games` handler in `server.js`**
 
 Add near the other requires at the top of `server.js`:
 
 ```js
-const { excludeOwned } = require('./services/gameFilters');
+const { excludeOwned, excludeHidden } = require('./services/gameFilters');
 const wishlist = require('./services/wishlist');
 ```
 
 In the `/api/games` handler, immediately after the existing `minRating` filter block (the block ending `filtered = filtered.filter(g => g.igdbRating?.igdbRating != null && ...)`), add:
 
 ```js
+    if (req.session?.userId) {
+      const hiddenIds = await wishlist.listHiddenItadIds(req.session.userId);
+      filtered = excludeHidden(filtered, hiddenIds);
+    }
     if (req.session?.userId && req.query.hideOwned === '1') {
       const ownedIds = await wishlist.listOwnedItadIds(req.session.userId);
       filtered = excludeOwned(filtered, ownedIds);
@@ -1579,13 +1816,13 @@ In the `/api/games` handler, immediately after the existing `minRating` filter b
 
 - [ ] **Step 6: Manually verify**
 
-With the dev server running and a logged-in browser session that has at least one owned game marked (once Task 13's UI exists — for now, mark one via `curl`/Postman against `POST /api/me/owned/:itadId`), confirm `GET /api/games?...&hideOwned=1` excludes it and `hideOwned` omitted or `0` includes it.
+With the dev server running and a logged-in browser session, hide a game (once Task 14's UI exists — for now, mark one via `curl`/Postman against `POST /api/me/hidden/:itadId`) and confirm `GET /api/games` excludes it with no query param needed. Then mark a different game owned and confirm `GET /api/games?...&hideOwned=1` excludes it while `hideOwned` omitted or `0` includes it (but the hidden game stays excluded either way).
 
 - [ ] **Step 7: Commit**
 
 ```
 git add services/gameFilters.js server.js test/gameFilters.test.js
-git commit -m "Add hide-owned filter to /api/games"
+git commit -m "Add hide-owned filter and unconditional hidden-games exclusion to /api/games"
 ```
 
 ---
@@ -1599,7 +1836,7 @@ git commit -m "Add hide-owned filter to /api/games"
 - Modify: `public/i18n.js`
 
 **Interfaces:**
-- Produces: `AuthState` object on `window`-scope in `app.js` (`{loggedIn, email, preferences}`), `refreshAuthState()` (calls `GET /api/auth/me`, updates the header UI), `openAuthModal(mode)` / `closeAuthModal()` — consumed by Tasks 13, 14, 15, 16, 17.
+- Produces: `AuthState` object on `window`-scope in `app.js` (`{loggedIn, email, preferences, hideOwnedDefault}`), `refreshAuthState()` (calls `GET /api/auth/me`, updates the header UI), `openAuthModal(mode)` / `closeAuthModal()` — consumed by Tasks 13, 14, 15, 16, 17.
 
 This task has no automated test (no frontend test tooling in this project, and none is being introduced — see Global Constraints). Verify manually via the `run` skill in a browser after each step.
 
@@ -1685,7 +1922,7 @@ Object.assign(api, {
 });
 
 /* ── Auth state ────────────────────────────────────────────────────────────── */
-const authState = { loggedIn: false, email: null, preferences: null };
+const authState = { loggedIn: false, email: null, preferences: null, hideOwnedDefault: false };
 
 async function refreshAuthState() {
   const res = await fetch('/api/auth/me');
@@ -1694,10 +1931,12 @@ async function refreshAuthState() {
     authState.loggedIn = true;
     authState.email = body.email;
     authState.preferences = body.preferences;
+    authState.hideOwnedDefault = body.hideOwnedDefault;
   } else {
     authState.loggedIn = false;
     authState.email = null;
     authState.preferences = null;
+    authState.hideOwnedDefault = false;
   }
   renderAuthMenu();
 }
@@ -1850,7 +2089,7 @@ git commit -m "Add account menu and login/signup modal"
 
 ---
 
-## Task 13: Frontend — wishlist/owned toggle buttons on game cards
+## Task 13: Frontend — wishlist heart + overflow menu (owned/hide) on game cards
 
 **Files:**
 - Modify: `public/app.js`
@@ -1858,10 +2097,12 @@ git commit -m "Add account menu and login/signup modal"
 - Modify: `public/i18n.js`
 
 **Interfaces:**
-- Consumes: `authState` (Task 12), `POST/DELETE /api/me/wishlist/:itadId` and `/api/me/owned/:itadId` (Task 10).
-- Produces: buttons dispatch a custom event `wishlist-changed` / `owned-changed` on `document` — consumed by Task 14 (My Wishlist/My Games view) to know when to refresh.
+- Consumes: `authState` (Task 12), `POST/DELETE /api/me/wishlist/:itadId`, `/api/me/owned/:itadId`, and `/api/me/hidden/:itadId` (Tasks 10, and Task 8's hidden functions via those routes).
+- Produces: `showActionToast(message, actionLabel, onAction, duration = 6000)` (generic toast-with-undo helper, generalized from the existing Konami toast) and `initCardMenus()` (wires the one shared "close open card menus on outside click" listener) — both consumed by nothing outside this task, but `initCardMenus()` must be called once from `init()`. Cards dispatch custom events `wishlist-changed` / `owned-changed` / `hidden-changed` on `document` — `wishlist-changed`/`owned-changed` are consumed by Task 14 (My Wishlist/My Games view); `hidden-changed` is consumed by Task 16's "Manage hidden games" list if open.
 
-- [ ] **Step 1: Add wishlist/owned API helpers**
+This replaces the card footer's previous two-button layout (heart + checkmark) with a heart (wishlist stays a standalone icon) plus a `⋯` overflow button that opens a small dropdown with "Mark as owned"/"Remove from owned" and "Hide this game" — per the design spec's 2026-07-23 amendment.
+
+- [ ] **Step 1: Add wishlist/owned/hidden API helpers**
 
 In `public/app.js`, extend the `Object.assign(api, {...})` block added in Task 12, Step 3:
 
@@ -1870,63 +2111,156 @@ In `public/app.js`, extend the `Object.assign(api, {...})` block added in Task 1
   removeWishlist(itadId) { return fetch(`/api/me/wishlist/${encodeURIComponent(itadId)}`, { method: 'DELETE' }); },
   addOwned(itadId)       { return fetch(`/api/me/owned/${encodeURIComponent(itadId)}`, { method: 'POST' }); },
   removeOwned(itadId)    { return fetch(`/api/me/owned/${encodeURIComponent(itadId)}`, { method: 'DELETE' }); },
+  hideGame(itadId)       { return fetch(`/api/me/hidden/${encodeURIComponent(itadId)}`, { method: 'POST' }); },
+  unhideGame(itadId)     { return fetch(`/api/me/hidden/${encodeURIComponent(itadId)}`, { method: 'DELETE' }); },
 ```
 
-- [ ] **Step 2: Add the buttons to `buildCard()`**
+- [ ] **Step 2: Add a generic action-toast helper**
 
-In `public/app.js`, inside `buildCard(g)` (starting at line 1241), modify the `card-footer` markup to include two toggle buttons before the existing links:
+The Konami-code easter egg (`public/app.js`, currently around line 1548) already has a self-dismissing toast (`.konami-toast` / `.hide` CSS class + `animationend`). Add a small generalization of that pattern, usable by the hide-game flow below. Add this function near the top-level of `public/app.js` (e.g. right after the `escHtml` helper):
+
+```js
+function showActionToast(message, actionLabel, onAction, duration = 6000) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  const text = document.createElement('span');
+  text.textContent = message;
+  const btn = document.createElement('button');
+  btn.className = 'toast-action';
+  btn.textContent = actionLabel;
+  el.append(text, btn);
+  document.body.appendChild(el);
+
+  const dismiss = () => {
+    el.classList.add('hide');
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+  };
+  const timer = setTimeout(dismiss, duration);
+
+  btn.addEventListener('click', () => {
+    clearTimeout(timer);
+    el.remove();
+    onAction();
+  });
+}
+```
+
+- [ ] **Step 3: Add the heart + overflow menu to `buildCard()`**
+
+In `public/app.js`, inside `buildCard(g)` (starting at line 1241), modify the `card-footer` markup:
 
 ```js
     <div class="card-footer">
-      <button class="btn-wishlist${g.isWishlisted ? ' active' : ''}" data-itad-id="${escHtml(g.appId)}" data-kind="wishlist" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>♥</button>
-      <button class="btn-owned${g.isOwned ? ' active' : ''}" data-itad-id="${escHtml(g.appId)}" data-kind="owned" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>✓</button>
+      <button class="btn-wishlist${g.isWishlisted ? ' active' : ''}" data-itad-id="${escHtml(g.appId)}" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>♥</button>
+      <div class="card-menu-wrap">
+        <button class="btn-overflow" data-itad-id="${escHtml(g.appId)}" aria-haspopup="true" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>⋯</button>
+        <div class="card-menu" hidden>
+          <button class="card-menu-item" data-action="toggle-owned">${escHtml(g.isOwned ? t('removeFromOwned') : t('markAsOwned'))}</button>
+          <button class="card-menu-item" data-action="hide">${escHtml(t('hideThisGame'))}</button>
+        </div>
+      </div>
       <a href="${escHtml(g.storeUrl)}" target="_blank" rel="noopener" class="btn-steam">
 ```
 
-(Leave the rest of `card-footer` — the two existing `<a>` links — unchanged.)
+(Leave the rest of `card-footer` — the existing `<a>` links — unchanged.)
 
 After the existing `img.addEventListener('error', ...)` block in `buildCard`, before `return div;`, add the click handlers:
 
 ```js
-  div.querySelectorAll('.btn-wishlist, .btn-owned').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      if (!authState.loggedIn) return;
-      const itadId = btn.dataset.itadId;
-      const kind = btn.dataset.kind;
-      const wasActive = btn.classList.contains('active');
-      btn.classList.toggle('active', !wasActive); // optimistic
+  const wishlistBtn = div.querySelector('.btn-wishlist');
+  wishlistBtn.addEventListener('click', async () => {
+    if (!authState.loggedIn) return;
+    const itadId = wishlistBtn.dataset.itadId;
+    const wasActive = wishlistBtn.classList.contains('active');
+    wishlistBtn.classList.toggle('active', !wasActive); // optimistic
+    try {
+      await (wasActive ? api.removeWishlist(itadId) : api.addWishlist(itadId));
+      document.dispatchEvent(new CustomEvent('wishlist-changed', { detail: { itadId, active: !wasActive } }));
+    } catch {
+      wishlistBtn.classList.toggle('active', wasActive); // revert on failure
+    }
+  });
 
-      // Marking owned always clears the wishlist too (backend enforces this
-      // unconditionally in services/wishlist.js's addOwned) — reflect it
-      // immediately in this card rather than waiting for a refetch.
-      const wishlistBtn = div.querySelector('.btn-wishlist');
-      const wishlistWasActive = wishlistBtn?.classList.contains('active');
-      if (kind === 'owned' && !wasActive && wishlistBtn) {
-        wishlistBtn.classList.remove('active');
-      }
+  const overflowBtn = div.querySelector('.btn-overflow');
+  const menu = div.querySelector('.card-menu');
+  overflowBtn.addEventListener('click', (e) => {
+    if (!authState.loggedIn) return;
+    e.stopPropagation();
+    const wasHidden = menu.hidden;
+    document.querySelectorAll('.card-menu').forEach(m => { m.hidden = true; });
+    menu.hidden = !wasHidden;
+  });
 
-      const call = kind === 'wishlist'
-        ? (wasActive ? api.removeWishlist(itadId) : api.addWishlist(itadId))
-        : (wasActive ? api.removeOwned(itadId) : api.addOwned(itadId));
-      try {
-        await call;
-        document.dispatchEvent(new CustomEvent(`${kind}-changed`, { detail: { itadId, active: !wasActive } }));
-        if (kind === 'owned' && !wasActive && wishlistWasActive) {
-          document.dispatchEvent(new CustomEvent('wishlist-changed', { detail: { itadId, active: false } }));
-        }
-      } catch {
-        btn.classList.toggle('active', wasActive); // revert on failure
-        if (kind === 'owned' && !wasActive && wishlistBtn && wishlistWasActive) {
-          wishlistBtn.classList.add('active'); // revert the wishlist side-effect too
-        }
+  let ownedState = !!g.isOwned;
+  const ownedItem = div.querySelector('[data-action="toggle-owned"]');
+  ownedItem.addEventListener('click', async () => {
+    menu.hidden = true;
+    const itadId = overflowBtn.dataset.itadId;
+    const wasOwned = ownedState;
+    ownedState = !wasOwned;
+    ownedItem.textContent = ownedState ? t('removeFromOwned') : t('markAsOwned');
+
+    // Marking owned always clears the wishlist too (backend enforces this
+    // unconditionally in services/wishlist.js's addOwned) — reflect it
+    // immediately in this card rather than waiting for a refetch.
+    const wishlistWasActive = wishlistBtn.classList.contains('active');
+    if (!wasOwned && wishlistWasActive) wishlistBtn.classList.remove('active');
+
+    try {
+      await (wasOwned ? api.removeOwned(itadId) : api.addOwned(itadId));
+      document.dispatchEvent(new CustomEvent('owned-changed', { detail: { itadId, active: !wasOwned } }));
+      if (!wasOwned && wishlistWasActive) {
+        document.dispatchEvent(new CustomEvent('wishlist-changed', { detail: { itadId, active: false } }));
       }
+    } catch {
+      ownedState = wasOwned;
+      ownedItem.textContent = ownedState ? t('removeFromOwned') : t('markAsOwned');
+      if (!wasOwned && wishlistWasActive) wishlistBtn.classList.add('active'); // revert the wishlist side-effect too
+    }
+  });
+
+  const hideItem = div.querySelector('[data-action="hide"]');
+  hideItem.addEventListener('click', () => {
+    menu.hidden = true;
+    const itadId = overflowBtn.dataset.itadId;
+
+    // Optimistic: fire the hide immediately, fade the card out, and offer undo
+    // via a toast — the POST has already fired by the time the toast expires.
+    const hidePromise = api.hideGame(itadId);
+    document.dispatchEvent(new CustomEvent('hidden-changed', { detail: { itadId, active: true } }));
+
+    div.classList.add('card-hiding');
+    div.addEventListener('animationend', () => {
+      if (div.classList.contains('card-hiding')) div.hidden = true;
+    }, { once: true });
+
+    showActionToast(t('gameHiddenToast'), t('undoBtn'), async () => {
+      await hidePromise;
+      div.hidden = false;
+      div.classList.remove('card-hiding');
+      await api.unhideGame(itadId);
+      document.dispatchEvent(new CustomEvent('hidden-changed', { detail: { itadId, active: false } }));
     });
   });
 ```
 
-- [ ] **Step 3: `g.isWishlisted` / `g.isOwned` on `/api/games` results**
+- [ ] **Step 4: Close open card menus on an outside click**
 
-`buildCard` now reads `g.isWishlisted`/`g.isOwned`, but `/api/games` doesn't return those fields yet. In `server.js`, inside the `/api/games` handler, right after the `hideOwned` block added in Task 11 Step 5, add:
+Add near the other `init*()` functions in `public/app.js`:
+
+```js
+function initCardMenus() {
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.card-menu').forEach(m => { m.hidden = true; });
+  });
+}
+```
+
+In `init()`, add `initCardMenus();` right after `initAuthModal();` (Task 12, Step 4).
+
+- [ ] **Step 5: `g.isWishlisted` / `g.isOwned` on `/api/games` results**
+
+`buildCard` reads `g.isWishlisted`/`g.isOwned`, but `/api/games` doesn't return those fields yet. In `server.js`, inside the `/api/games` handler, right after the `excludeHidden`/`excludeOwned` block added in Task 11 Step 5, add:
 
 ```js
     if (req.session?.userId) {
@@ -1940,20 +2274,28 @@ After the existing `img.addEventListener('error', ...)` block in `buildCard`, be
     }
 ```
 
-- [ ] **Step 4: i18n key**
+(Hidden games never reach this point — `excludeHidden` already removed them from `filtered` — so no `isHidden` field is needed.)
+
+- [ ] **Step 6: i18n keys**
 
 Add to each language object in `public/i18n.js`:
 
 ```js
-    logInToTrack: 'Log in to track this game',
+    logInToTrack:    'Log in to track this game',
+    moreActions:     'More actions',
+    markAsOwned:     'Mark as owned',
+    removeFromOwned: 'Remove from owned',
+    hideThisGame:    'Hide this game',
+    gameHiddenToast: 'Game hidden',
+    undoBtn:         'Undo',
 ```
 
-- [ ] **Step 5: Styles**
+- [ ] **Step 7: Styles**
 
 Append to `public/style.css`:
 
 ```css
-.btn-wishlist, .btn-owned {
+.btn-wishlist, .btn-overflow {
   border: 1px solid var(--border, #444);
   background: transparent;
   color: inherit;
@@ -1962,19 +2304,72 @@ Append to `public/style.css`:
   cursor: pointer;
 }
 .btn-wishlist.active { color: #e05a7a; border-color: #e05a7a; }
-.btn-owned.active { color: #4caf50; border-color: #4caf50; }
-.btn-wishlist:disabled, .btn-owned:disabled { opacity: .35; cursor: not-allowed; }
+.btn-wishlist:disabled, .btn-overflow:disabled { opacity: .35; cursor: not-allowed; }
+
+.card-menu-wrap { position: relative; display: inline-block; }
+.card-menu {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: .25rem;
+  background: var(--bg-elevated, #1e1e1e);
+  border: 1px solid var(--border, #444);
+  border-radius: 8px;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+}
+.card-menu-item {
+  padding: .5rem .75rem;
+  text-align: left;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.card-menu-item:hover { background: rgba(255,255,255,.08); }
+
+.card-hiding { animation: cardHideFade .25s ease forwards; }
+@keyframes cardHideFade {
+  to { opacity: 0; transform: scale(.96); }
+}
+
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-elevated, #1e1e1e);
+  border: 1px solid var(--border, #444);
+  border-radius: 8px;
+  padding: .6rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  z-index: 100;
+}
+.toast.hide { animation: toastFadeOut .3s ease forwards; }
+@keyframes toastFadeOut { to { opacity: 0; transform: translate(-50%, .5rem); } }
+.toast-action {
+  background: none;
+  border: none;
+  color: #6db3f2;
+  font-weight: 600;
+  cursor: pointer;
+}
 ```
 
-- [ ] **Step 6: Manual verification**
+- [ ] **Step 8: Manual verification**
 
-With a logged-in session, click the heart/checkmark on a few cards, reload the page, and confirm the active state persists (comes from `g.isWishlisted`/`g.isOwned` on the next `/api/games` fetch). Log out and confirm both buttons appear greyed out with a tooltip, and clicking them does nothing. Also: wishlist a game, then click its owned button — confirm the heart deactivates immediately in the same card without a reload, and stays deactivated after a reload.
+With a logged-in session: click the heart on a few cards, reload the page, and confirm the active state persists (comes from `g.isWishlisted` on the next `/api/games` fetch). Open the `⋯` menu on a card, click "Mark as owned", confirm the label flips to "Remove from owned" and the heart deactivates if it was wishlisted. Click elsewhere on the page and confirm the menu closes. Wishlist a different game, open its menu, click "Hide this game" — confirm the card fades out immediately, a toast appears with "Undo", clicking Undo brings the card back and its wishlist state is unaffected. Hide another game and let the toast expire — reload the page and confirm that game no longer appears anywhere in the main grid. Log out and confirm the heart and `⋯` button both appear greyed out with a tooltip, and clicking them does nothing.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 9: Commit**
 
 ```
 git add public/app.js public/style.css public/i18n.js server.js
-git commit -m "Add wishlist/owned toggle buttons to game cards"
+git commit -m "Add wishlist heart + owned/hide overflow menu to game cards"
 ```
 
 ---
@@ -2106,7 +2501,7 @@ git commit -m "Add My Wishlist / My Games view"
 
 ---
 
-## Task 15: Frontend — hide-owned filter checkbox
+## Task 15: Frontend — hide-owned filter checkbox, synced to the account
 
 **Files:**
 - Modify: `public/index.html`
@@ -2114,7 +2509,7 @@ git commit -m "Add My Wishlist / My Games view"
 - Modify: `public/i18n.js`
 
 **Interfaces:**
-- Consumes: `hideOwned=1` query param support added to `/api/games` in Task 11.
+- Consumes: `hideOwned=1` query param support added to `/api/games` in Task 11, `authState.hideOwnedDefault` (Task 12), `PUT /api/me/hide-owned-default` (Task 7).
 - Produces: `state.filters.hideOwned` (boolean), read by `readFilters()` and sent by `fetchGames()`.
 
 - [ ] **Step 1: Add the checkbox to the sidebar filters in `public/index.html`**
@@ -2153,15 +2548,49 @@ const params = { ...restFilters, hideOwned: hideOwned ? '1' : undefined };
 
 Use `params` in place of `state.filters` wherever `fetchGames()` currently passes filters to `api.games(...)`.
 
-- [ ] **Step 4: Show/hide the row based on login state**
+- [ ] **Step 4: Show/hide the row and seed it from the account on login**
 
-In `renderAuthMenu()` (added in Task 12, Step 3), add:
+In `renderAuthMenu()` (added in Task 12, Step 3), replace the function body:
 
 ```js
+function renderAuthMenu() {
+  const btn = $('accountMenuBtn');
+  const emailLabel = $('accountEmailLabel');
+  if (authState.loggedIn) {
+    btn.textContent = authState.email;
+    emailLabel.textContent = authState.email;
+    el.hideOwnedCheck.checked = authState.hideOwnedDefault;
+    state.filters.hideOwned = authState.hideOwnedDefault;
+  } else {
+    btn.textContent = t('logIn');
+    emailLabel.textContent = '';
+    el.hideOwnedCheck.checked = false;
+    state.filters.hideOwned = false;
+  }
   el.hideOwnedRow.hidden = !authState.loggedIn;
+}
 ```
 
-- [ ] **Step 5: i18n key**
+This seeds the checkbox from `users.hide_owned_default` every time `refreshAuthState()` runs (page load, login, logout), rather than defaulting to unchecked every session.
+
+- [ ] **Step 5: Push changes to the account when the checkbox is toggled**
+
+Add near the other checkbox listeners in `public/app.js` (wherever `fetchGames()` is already triggered on filter changes — add this alongside that wiring, e.g. in `init()`):
+
+```js
+  el.hideOwnedCheck.addEventListener('change', () => {
+    if (!authState.loggedIn) return;
+    fetch('/api/me/hide-owned-default', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hideOwnedDefault: el.hideOwnedCheck.checked }),
+    });
+  });
+```
+
+This is deliberately a separate `PUT /api/me/hide-owned-default` call, not folded into `PUT /api/me/preferences` (Task 17) — `hide_owned_default` is its own column, not part of the `preferences` JSONB blob, since it has no anonymous/logged-out equivalent (see the design spec's Data model notes).
+
+- [ ] **Step 6: i18n key**
 
 Add to each language object in `public/i18n.js`:
 
@@ -2169,15 +2598,15 @@ Add to each language object in `public/i18n.js`:
     hideOwnedFilter: 'Hide games I own',
 ```
 
-- [ ] **Step 6: Manual verification**
+- [ ] **Step 7: Manual verification**
 
-Log in, mark a game owned, check "Hide games I own", click Apply/search, confirm that game disappears from results. Uncheck and confirm it reappears. Log out and confirm the checkbox row is hidden entirely.
+Log in, mark a game owned, check "Hide games I own", click Apply/search, confirm that game disappears from results. Reload the page and confirm the checkbox is still checked (seeded from the account, not reset). Uncheck it, reload again, and confirm it stays unchecked. Log out and confirm the checkbox row is hidden entirely. Log in as a different account and confirm its own `hideOwnedDefault` is shown, independent of the first account's.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```
 git add public/index.html public/app.js public/i18n.js
-git commit -m "Add hide-owned filter checkbox"
+git commit -m "Sync hide-owned filter checkbox to the account"
 ```
 
 ---
@@ -2194,7 +2623,7 @@ git commit -m "Add hide-owned filter checkbox"
 
 **Interfaces:**
 - Produces backend: `PUT /api/me/password` (`{currentPassword, newPassword}`), `DELETE /api/me` — both under `requireAuth`.
-- Produces frontend: `openAccountSettings()` (referenced from Task 14's dropdown wiring).
+- Produces frontend: `openAccountSettings()` (referenced from Task 14's dropdown wiring), `openHiddenGamesView()` / `closeHiddenGamesView()` (the "Manage hidden games" list, fed by `GET /api/me/hidden` and `DELETE /api/me/hidden/:itadId` from Task 10).
 
 - [ ] **Step 1: Write the failing backend tests**
 
@@ -2350,11 +2779,29 @@ Add right after the `#trackedView` section from Task 14:
   </div>
 
   <div class="settings-block">
+    <h3 data-i18n="hiddenGamesTitle">Hidden games</h3>
+    <button id="settingsManageHidden" data-i18n="manageHiddenGames">Manage hidden games</button>
+  </div>
+
+  <div class="settings-block">
     <h3 data-i18n="dangerZone">Danger zone</h3>
     <button id="settingsDeleteAccount" class="btn-danger" data-i18n="deleteAccount">Delete account</button>
   </div>
 </section>
+
+<!-- Manage Hidden Games (2026-07-23 amendment) -->
+<section id="hiddenGamesView" hidden>
+  <button class="btn-modal-skip" id="hiddenGamesBackBtn" data-i18n="backToSettings">&larr; Back</button>
+  <h2 data-i18n="manageHiddenGames">Manage hidden games</h2>
+  <ul class="hidden-games-list" id="hiddenGamesList"></ul>
+  <div class="state-box" id="hiddenGamesEmpty" hidden>
+    <div class="icon">🎮</div>
+    <p data-i18n="emptyHiddenMsg">You haven't hidden any games.</p>
+  </div>
+</section>
 ```
+
+This is deliberately a plain `<ul>` list, not `buildCard()`/card-grid — per the design spec, the management list has no price/image lookup, so it doesn't need the card layout.
 
 - [ ] **Step 8: Add the frontend logic to `public/app.js`**
 
@@ -2401,6 +2848,8 @@ function initAccountSettings() {
     openPreferredDevicesModal();
   });
 
+  $('settingsManageHidden').addEventListener('click', openHiddenGamesView);
+
   $('settingsDeleteAccount').addEventListener('click', async () => {
     if (!confirm(t('deleteAccountConfirm'))) return;
     await fetch('/api/me', { method: 'DELETE' });
@@ -2409,9 +2858,52 @@ function initAccountSettings() {
     fetchGames(false);
   });
 }
+
+/* ── Manage hidden games (2026-07-23 amendment) ──────────────────────────────── */
+async function renderHiddenGamesList() {
+  const res = await fetch('/api/me/hidden');
+  const body = await res.json();
+  const list = $('hiddenGamesList');
+  list.innerHTML = '';
+  if (!body.games.length) {
+    $('hiddenGamesEmpty').hidden = false;
+    return;
+  }
+  $('hiddenGamesEmpty').hidden = true;
+  body.games.forEach(g => {
+    const li = document.createElement('li');
+    li.className = 'hidden-games-row';
+    const name = document.createElement('span');
+    name.textContent = g.name || g.itadId;
+    const unhideBtn = document.createElement('button');
+    unhideBtn.textContent = t('unhideBtn');
+    unhideBtn.addEventListener('click', async () => {
+      await fetch(`/api/me/hidden/${encodeURIComponent(g.itadId)}`, { method: 'DELETE' });
+      document.dispatchEvent(new CustomEvent('hidden-changed', { detail: { itadId: g.itadId, active: false } }));
+      renderHiddenGamesList();
+    });
+    li.append(name, unhideBtn);
+    list.appendChild(li);
+  });
+}
+
+function openHiddenGamesView() {
+  $('settingsView').hidden = true;
+  $('hiddenGamesView').hidden = false;
+  renderHiddenGamesList();
+}
+
+function closeHiddenGamesView() {
+  $('hiddenGamesView').hidden = true;
+  $('settingsView').hidden = false;
+}
+
+function initHiddenGamesView() {
+  $('hiddenGamesBackBtn').addEventListener('click', closeHiddenGamesView);
+}
 ```
 
-Wire it into `init()`: add `initAccountSettings();` right after `initTrackedView();` (added in Task 14, Step 3).
+Wire it into `init()`: add `initAccountSettings();` and `initHiddenGamesView();` right after `initTrackedView();` (added in Task 14, Step 3).
 
 - [ ] **Step 9: i18n keys**
 
@@ -2425,6 +2917,11 @@ Add to each language object in `public/i18n.js`:
     dangerZone:                'Danger zone',
     deleteAccount:             'Delete account',
     deleteAccountConfirm:      'This permanently deletes your account, wishlist, and owned games. Continue?',
+    hiddenGamesTitle:          'Hidden games',
+    manageHiddenGames:         'Manage hidden games',
+    backToSettings:            '← Back',
+    emptyHiddenMsg:            "You haven't hidden any games.",
+    unhideBtn:                 'Unhide',
 ```
 
 - [ ] **Step 10: Styles**
@@ -2437,17 +2934,35 @@ Append to `public/style.css`:
 .settings-block input { display: block; width: 100%; margin-top: .5rem; }
 .settings-block button { margin-top: .5rem; }
 .btn-danger { background: #b3261e; color: #fff; border: none; padding: .5rem 1rem; border-radius: 6px; cursor: pointer; }
+
+#hiddenGamesView { padding: 1rem; max-width: 480px; }
+.hidden-games-list { list-style: none; padding: 0; margin-top: 1rem; }
+.hidden-games-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .5rem 0;
+  border-bottom: 1px solid var(--border, #444);
+}
+.hidden-games-row button {
+  background: none;
+  border: 1px solid var(--border, #444);
+  color: inherit;
+  border-radius: 6px;
+  padding: .25rem .75rem;
+  cursor: pointer;
+}
 ```
 
 - [ ] **Step 11: Manual verification**
 
-Log in, open Account Settings from the menu, change your password (wrong current password shows an error; correct one succeeds — verify by logging out and back in with the new password), open preferred settings from within the page, and finally delete the account and confirm it logs you out and the account no longer exists (signup with the same email should succeed again).
+Log in, open Account Settings from the menu, change your password (wrong current password shows an error; correct one succeeds — verify by logging out and back in with the new password), open preferred settings from within the page, then open "Manage hidden games" — hide a couple of games from the main grid first (Task 13), confirm they're listed by name, click "Unhide" on one and confirm it disappears from the list and reappears in the main grid on the next search. Finally delete the account and confirm it logs you out and the account no longer exists (signup with the same email should succeed again).
 
 - [ ] **Step 12: Commit**
 
 ```
 git add public/index.html public/app.js public/style.css public/i18n.js
-git commit -m "Add account settings page (password change, delete account)"
+git commit -m "Add account settings page and hidden-games management list"
 ```
 
 ---
@@ -2551,7 +3066,8 @@ git commit -m "Sync filter preferences to the account when logged in"
 
 ## Self-Review Notes
 
-- **Spec coverage:** Every section of `docs/superpowers/specs/2026-07-22-accounts-wishlist-owned-design.md` maps to a task — data model (Tasks 2, 8), auth flow (Tasks 3-6), preferences (Tasks 7, 17), wishlist/owned API (Tasks 8-10), hide-owned filter (Task 11), UI (Tasks 12-16), security (bcrypt cost 12 in Task 3, session cookie flags in Task 5, rate limiting in Task 6, generic login errors in Task 6, session-derived auth in Task 5/7/10).
+- **Spec coverage:** Every section of `docs/superpowers/specs/2026-07-22-accounts-wishlist-owned-design.md` maps to a task — data model (Tasks 2, 8), auth flow (Tasks 3-6), preferences (Tasks 7, 17), wishlist/owned/hidden API (Tasks 8-10), hide-owned filter + unconditional hidden-games exclusion (Task 11), UI (Tasks 12-16), security (bcrypt cost 12 in Task 3, session cookie flags in Task 5, rate limiting in Task 6, generic login errors in Task 6, session-derived auth in Task 5/7/10).
 - **Deferred by design (per spec):** email verification, password reset, price-drop alerts, platform import — none of these have tasks here, matching the spec's explicit scope cut.
-- **Type/name consistency check:** `itad_id` is used consistently as the join key across `services/wishlist.js`, `services/store.js` (`getDealsForItadIds`, `buildItadIdEntry`), and the `/api/games` `g.appId` field (confirmed to already be the ITAD id, not the Steam app id, by reading `services/store.js`'s existing `getDealsForTitles`). `req.session.userId` is the single source of truth for the authenticated user across all `/api/me/*` routes and the hide-owned filter — no route reads a user id from the request body or params.
+- **Type/name consistency check:** `itad_id` is used consistently as the join key across `services/wishlist.js`, `services/store.js` (`getDealsForItadIds`, `buildItadIdEntry`), and the `/api/games` `g.appId` field (confirmed to already be the ITAD id, not the Steam app id, by reading `services/store.js`'s existing `getDealsForTitles`). `req.session.userId` is the single source of truth for the authenticated user across all `/api/me/*` routes and the hide-owned/hidden-games filters — no route reads a user id from the request body or params.
 - **Amendment (post-hoc, from the Steam import spec's brainstorm):** Task 8's `addOwned` and Task 10's owned-route test were updated so marking a game owned always removes any matching wishlist entry, superseding the originally-independent behavior. Task 13's card-button click handler was updated to reflect this in the UI immediately rather than waiting for a refetch. This keeps the accounts spec/plan and the Steam import spec (`docs/superpowers/specs/2026-07-22-steam-import-design.md`) consistent with each other, since the import spec's resync logic relies on this same rule being enforced unconditionally in `services/wishlist.js`, not duplicated in the import code.
+- **Amendment (2026-07-23, Hide Game feature):** Added throughout rather than as new trailing tasks, so each piece lands next to the code it shares a file with and dependency order stays correct for a linear task-by-task executor — `hidden_games` table + `users.hide_owned_default` column (Task 2), `updateHideOwnedDefault`/`hide_owned_default` plumbing (Task 4), `hideOwnedDefault` on signup/login/me responses (Task 6), `PUT /api/me/hide-owned-default` (Task 7), `addHidden`/`removeHidden`/`listHiddenItadIds`/`listHiddenWithTitles` plus `addOwned` now also clearing hidden state (Task 8), `GET/POST/DELETE /api/me/hidden` routes (Task 10), unconditional `excludeHidden` on `/api/games` (Task 11), `hideOwnedDefault` on `authState` (Task 12), the card footer's heart + `⋯` overflow menu (owned/hide) replacing the old two-button layout, plus the undo-toast (Task 13), hide-owned checkbox now synced via its own endpoint instead of resetting each session (Task 15), and the "Manage hidden games" list in Account Settings (Task 16). `hide_owned_default` was deliberately kept out of the `preferences` JSONB blob and given its own column/endpoint — it has no anonymous/logged-out equivalent, matching the existing boundary drawn for `alert_mode` in the email-alerts spec.
