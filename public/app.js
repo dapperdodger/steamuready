@@ -1409,12 +1409,14 @@ function buildCard(g) {
     </div>
 
     <div class="card-footer">
-      <button class="btn-wishlist${g.isWishlisted ? ' active' : ''}" data-itad-id="${escHtml(g.appId)}" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>♥</button>
-      <div class="card-menu-wrap">
-        <button class="btn-overflow" data-itad-id="${escHtml(g.appId)}" aria-haspopup="true" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>⋯</button>
-        <div class="card-menu" hidden>
-          <button class="card-menu-item" data-action="toggle-owned">${escHtml(g.isOwned ? t('removeFromOwned') : t('markAsOwned'))}</button>
-          <button class="card-menu-item" data-action="hide">${escHtml(t('hideThisGame'))}</button>
+      <div class="card-actions-row">
+        <button class="btn-wishlist${g.isWishlisted ? ' active' : ''}" data-itad-id="${escHtml(g.appId)}" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>♥</button>
+        <div class="card-menu-wrap">
+          <button class="btn-overflow" data-itad-id="${escHtml(g.appId)}" aria-haspopup="true" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>⋯</button>
+          <div class="card-menu" hidden>
+            <button class="card-menu-item" data-action="toggle-owned">${escHtml(g.isOwned ? t('removeFromOwned') : t('markAsOwned'))}</button>
+            <button class="card-menu-item" data-action="hide">${escHtml(t('hideThisGame'))}</button>
+          </div>
         </div>
       </div>
       <a href="${escHtml(g.storeUrl)}" target="_blank" rel="noopener" class="btn-steam">

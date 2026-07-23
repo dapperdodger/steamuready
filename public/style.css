@@ -939,6 +939,7 @@ select option { background: var(--card); }
 .auth-error { color: #e57373; margin-top: .5rem; font-size: .85rem; }
 
 /* ── Wishlist / owned / hide card controls ───────────────────────────────────── */
+.card-actions-row { display: flex; gap: 6px; }
 .btn-wishlist, .btn-overflow {
   border: 1px solid var(--border, #444);
   background: transparent;
