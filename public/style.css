@@ -321,7 +321,7 @@ select option { background: var(--card); }
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow: visible;
   display: flex; flex-direction: column;
   transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
   cursor: default;
@@ -334,6 +334,7 @@ select option { background: var(--card); }
 
 .card-img-wrap {
   position: relative; aspect-ratio: 460/215; overflow: hidden;
+  border-top-left-radius: var(--radius-lg); border-top-right-radius: var(--radius-lg);
   background: var(--surface);
   flex-shrink: 0;
 }

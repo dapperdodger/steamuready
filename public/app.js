@@ -1412,7 +1412,7 @@ function buildCard(g) {
       <div class="card-actions-row">
         <button class="btn-wishlist${g.isWishlisted ? ' active' : ''}" data-itad-id="${escHtml(g.appId)}" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>♥</button>
         <div class="card-menu-wrap">
-          <button class="btn-overflow" data-itad-id="${escHtml(g.appId)}" aria-haspopup="true" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>⋯</button>
+          <button class="btn-overflow" data-itad-id="${escHtml(g.appId)}" aria-haspopup="true" aria-label="${escHtml(t('moreActions'))}" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>⋯</button>
           <div class="card-menu" hidden>
             <button class="card-menu-item" data-action="toggle-owned">${escHtml(g.isOwned ? t('removeFromOwned') : t('markAsOwned'))}</button>
             <button class="card-menu-item" data-action="hide">${escHtml(t('hideThisGame'))}</button>
@@ -1500,6 +1500,14 @@ function buildCard(g) {
     // via a toast — the POST has already fired by the time the toast expires.
     const hidePromise = api.hideGame(itadId);
     document.dispatchEvent(new CustomEvent('hidden-changed', { detail: { itadId, active: true } }));
+
+    // Hiding always clears the wishlist server-side (services/wishlist.js's
+    // addHidden), and unhiding never restores it — so the heart stays
+    // inactive even after Undo, matching the server's actual state.
+    if (wishlistBtn.classList.contains('active')) {
+      wishlistBtn.classList.remove('active');
+      document.dispatchEvent(new CustomEvent('wishlist-changed', { detail: { itadId, active: false } }));
+    }
 
     div.classList.add('card-hiding');
     div.addEventListener('animationend', () => {
