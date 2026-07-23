@@ -103,6 +103,12 @@ Object.assign(api, {
   authSignup(email, pw)  { return fetch('/api/auth/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: pw }) }); },
   authLogin(email, pw)   { return fetch('/api/auth/login',  { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: pw }) }); },
   authLogout()           { return fetch('/api/auth/logout', { method: 'POST' }); },
+  addWishlist(itadId)    { return fetch(`/api/me/wishlist/${encodeURIComponent(itadId)}`, { method: 'POST' }); },
+  removeWishlist(itadId) { return fetch(`/api/me/wishlist/${encodeURIComponent(itadId)}`, { method: 'DELETE' }); },
+  addOwned(itadId)       { return fetch(`/api/me/owned/${encodeURIComponent(itadId)}`, { method: 'POST' }); },
+  removeOwned(itadId)    { return fetch(`/api/me/owned/${encodeURIComponent(itadId)}`, { method: 'DELETE' }); },
+  hideGame(itadId)       { return fetch(`/api/me/hidden/${encodeURIComponent(itadId)}`, { method: 'POST' }); },
+  unhideGame(itadId)     { return fetch(`/api/me/hidden/${encodeURIComponent(itadId)}`, { method: 'DELETE' }); },
 });
 
 /* ── Auth state ────────────────────────────────────────────────────────────── */
@@ -207,6 +213,12 @@ function initAuthModal() {
   });
 }
 
+function initCardMenus() {
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.card-menu').forEach(m => { m.hidden = true; });
+  });
+}
+
 /* ── Progress ──────────────────────────────────────────────────────────────── */
 function progress(pct) {
   el.progressBar.style.width = pct + '%';
@@ -256,6 +268,7 @@ async function init() {
     initFilterModeToggle();
     initPreferredDevicesModal();
     initAuthModal();
+    initCardMenus();
     await refreshAuthState();
 
     const isFirstVisit = loadPreferredDeviceIds() === null;
@@ -1396,6 +1409,14 @@ function buildCard(g) {
     </div>
 
     <div class="card-footer">
+      <button class="btn-wishlist${g.isWishlisted ? ' active' : ''}" data-itad-id="${escHtml(g.appId)}" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>♥</button>
+      <div class="card-menu-wrap">
+        <button class="btn-overflow" data-itad-id="${escHtml(g.appId)}" aria-haspopup="true" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>⋯</button>
+        <div class="card-menu" hidden>
+          <button class="card-menu-item" data-action="toggle-owned">${escHtml(g.isOwned ? t('removeFromOwned') : t('markAsOwned'))}</button>
+          <button class="card-menu-item" data-action="hide">${escHtml(t('hideThisGame'))}</button>
+        </div>
+      </div>
       <a href="${escHtml(g.storeUrl)}" target="_blank" rel="noopener" class="btn-steam">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
@@ -1414,6 +1435,82 @@ function buildCard(g) {
   img.addEventListener('error', () => {
     img.style.display = 'none';
     img.nextElementSibling.style.display = 'flex';
+  });
+
+  const wishlistBtn = div.querySelector('.btn-wishlist');
+  wishlistBtn.addEventListener('click', async () => {
+    if (!authState.loggedIn) return;
+    const itadId = wishlistBtn.dataset.itadId;
+    const wasActive = wishlistBtn.classList.contains('active');
+    wishlistBtn.classList.toggle('active', !wasActive); // optimistic
+    try {
+      await (wasActive ? api.removeWishlist(itadId) : api.addWishlist(itadId));
+      document.dispatchEvent(new CustomEvent('wishlist-changed', { detail: { itadId, active: !wasActive } }));
+    } catch {
+      wishlistBtn.classList.toggle('active', wasActive); // revert on failure
+    }
+  });
+
+  const overflowBtn = div.querySelector('.btn-overflow');
+  const menu = div.querySelector('.card-menu');
+  overflowBtn.addEventListener('click', (e) => {
+    if (!authState.loggedIn) return;
+    e.stopPropagation();
+    const wasHidden = menu.hidden;
+    document.querySelectorAll('.card-menu').forEach(m => { m.hidden = true; });
+    menu.hidden = !wasHidden;
+  });
+
+  let ownedState = !!g.isOwned;
+  const ownedItem = div.querySelector('[data-action="toggle-owned"]');
+  ownedItem.addEventListener('click', async () => {
+    menu.hidden = true;
+    const itadId = overflowBtn.dataset.itadId;
+    const wasOwned = ownedState;
+    ownedState = !wasOwned;
+    ownedItem.textContent = ownedState ? t('removeFromOwned') : t('markAsOwned');
+
+    // Marking owned always clears the wishlist too (backend enforces this
+    // unconditionally in services/wishlist.js's addOwned) — reflect it
+    // immediately in this card rather than waiting for a refetch.
+    const wishlistWasActive = wishlistBtn.classList.contains('active');
+    if (!wasOwned && wishlistWasActive) wishlistBtn.classList.remove('active');
+
+    try {
+      await (wasOwned ? api.removeOwned(itadId) : api.addOwned(itadId));
+      document.dispatchEvent(new CustomEvent('owned-changed', { detail: { itadId, active: !wasOwned } }));
+      if (!wasOwned && wishlistWasActive) {
+        document.dispatchEvent(new CustomEvent('wishlist-changed', { detail: { itadId, active: false } }));
+      }
+    } catch {
+      ownedState = wasOwned;
+      ownedItem.textContent = ownedState ? t('removeFromOwned') : t('markAsOwned');
+      if (!wasOwned && wishlistWasActive) wishlistBtn.classList.add('active'); // revert the wishlist side-effect too
+    }
+  });
+
+  const hideItem = div.querySelector('[data-action="hide"]');
+  hideItem.addEventListener('click', () => {
+    menu.hidden = true;
+    const itadId = overflowBtn.dataset.itadId;
+
+    // Optimistic: fire the hide immediately, fade the card out, and offer undo
+    // via a toast — the POST has already fired by the time the toast expires.
+    const hidePromise = api.hideGame(itadId);
+    document.dispatchEvent(new CustomEvent('hidden-changed', { detail: { itadId, active: true } }));
+
+    div.classList.add('card-hiding');
+    div.addEventListener('animationend', () => {
+      if (div.classList.contains('card-hiding')) div.hidden = true;
+    }, { once: true });
+
+    showActionToast(t('gameHiddenToast'), t('undoBtn'), async () => {
+      await hidePromise;
+      div.hidden = false;
+      div.classList.remove('card-hiding');
+      await api.unhideGame(itadId);
+      document.dispatchEvent(new CustomEvent('hidden-changed', { detail: { itadId, active: false } }));
+    });
   });
 
   return div;
@@ -1526,6 +1623,30 @@ function formatShortDate(isoStr) {
 /* ── Utility ────────────────────────────────────────────────────────────────── */
 function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showActionToast(message, actionLabel, onAction, duration = 6000) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  const text = document.createElement('span');
+  text.textContent = message;
+  const btn = document.createElement('button');
+  btn.className = 'toast-action';
+  btn.textContent = actionLabel;
+  el.append(text, btn);
+  document.body.appendChild(el);
+
+  const dismiss = () => {
+    el.classList.add('hide');
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+  };
+  const timer = setTimeout(dismiss, duration);
+
+  btn.addEventListener('click', () => {
+    clearTimeout(timer);
+    el.remove();
+    onAction();
+  });
 }
 
 function debounce(fn, ms) {

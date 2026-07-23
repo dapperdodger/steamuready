@@ -98,6 +98,13 @@ const translations = {
     myWishlist:             'Ma liste de souhaits',
     myGames:                'Mes jeux',
     accountSettings:        'Paramètres du compte',
+    logInToTrack:           'Connecte-toi pour suivre ce jeu',
+    moreActions:            'Plus d\'actions',
+    markAsOwned:            'Marquer comme possédé',
+    removeFromOwned:        'Retirer des jeux possédés',
+    hideThisGame:           'Masquer ce jeu',
+    gameHiddenToast:        'Jeu masqué',
+    undoBtn:                'Annuler',
   },
 
   en: {
@@ -198,6 +205,13 @@ const translations = {
     myWishlist:             'My Wishlist',
     myGames:                'My Games',
     accountSettings:        'Account Settings',
+    logInToTrack:           'Log in to track this game',
+    moreActions:            'More actions',
+    markAsOwned:            'Mark as owned',
+    removeFromOwned:        'Remove from owned',
+    hideThisGame:           'Hide this game',
+    gameHiddenToast:        'Game hidden',
+    undoBtn:                'Undo',
   },
 
   de: {
@@ -298,6 +312,13 @@ const translations = {
     myWishlist:             'Meine Wunschliste',
     myGames:                'Meine Spiele',
     accountSettings:        'Kontoeinstellungen',
+    logInToTrack:           'Melde dich an, um dieses Spiel zu verfolgen',
+    moreActions:            'Weitere Aktionen',
+    markAsOwned:            'Als im Besitz markieren',
+    removeFromOwned:        'Aus Besitz entfernen',
+    hideThisGame:           'Dieses Spiel ausblenden',
+    gameHiddenToast:        'Spiel ausgeblendet',
+    undoBtn:                'Rückgängig',
   },
 
   es: {
@@ -398,6 +419,13 @@ const translations = {
     myWishlist:             'Mi lista de deseos',
     myGames:                'Mis juegos',
     accountSettings:        'Configuración de la cuenta',
+    logInToTrack:           'Inicia sesión para seguir este juego',
+    moreActions:            'Más acciones',
+    markAsOwned:            'Marcar como poseído',
+    removeFromOwned:        'Quitar de poseídos',
+    hideThisGame:           'Ocultar este juego',
+    gameHiddenToast:        'Juego ocultado',
+    undoBtn:                'Deshacer',
   },
 };
 

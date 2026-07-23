@@ -424,6 +424,16 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
       filtered = excludeOwned(filtered, ownedIds);
     }
 
+    if (req.session?.userId) {
+      const [wishlistIds, ownedIds] = await Promise.all([
+        wishlist.listWishlistItadIds(req.session.userId),
+        wishlist.listOwnedItadIds(req.session.userId),
+      ]);
+      const wishlistSet = new Set(wishlistIds);
+      const ownedSet = new Set(ownedIds);
+      filtered = filtered.map(g => ({ ...g, isWishlisted: wishlistSet.has(g.appId), isOwned: ownedSet.has(g.appId) }));
+    }
+
     if (rawCtrl) {
       const ctrlValues = rawCtrl.split(',').filter(v => ['full', 'partial', 'none'].includes(v));
       if (ctrlValues.length) {
