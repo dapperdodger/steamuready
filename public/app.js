@@ -121,10 +121,15 @@ async function refreshAuthState() {
   const res = await fetch('/api/auth/me');
   if (res.status === 200) {
     const body = await res.json();
+    const wasLoggedIn = authState.loggedIn;
     authState.loggedIn = true;
     authState.email = body.email;
     authState.preferences = body.preferences;
     authState.hideOwnedDefault = body.hideOwnedDefault;
+    if (!wasLoggedIn) {
+      const applied = applyPreferencesSnapshot(body.preferences);
+      if (applied) fetchGames();
+    }
   } else {
     authState.loggedIn = false;
     authState.email = null;
@@ -154,6 +159,7 @@ function renderAuthMenu() {
 /* ── Auth modal ────────────────────────────────────────────────────────────── */
 const authEl = {
   modal:     $('authModal'),
+  form:      $('authForm'),
   tabLogin:  $('authTabLogin'),
   tabSignup: $('authTabSignup'),
   email:     $('authEmail'),
@@ -738,6 +744,7 @@ function loadFilterMode() {
 
 function saveFilterMode(mode) {
   localStorage.setItem(PREF_FILTER_MODE_KEY, mode);
+  syncPreferencesToServer();
 }
 
 function applyFilterMode(mode) {
@@ -778,6 +785,7 @@ function loadPreferredDeviceIds() {
 
 function savePreferredDeviceIds(ids) {
   localStorage.setItem(PREF_KEY, JSON.stringify(ids));
+  syncPreferencesToServer();
 }
 
 function applyPreferredDevices() {
@@ -795,6 +803,7 @@ function loadPreferredCompatId() {
 
 function savePreferredCompatId(id) {
   localStorage.setItem(PREF_COMPAT_KEY, id ?? '');
+  syncPreferencesToServer();
 }
 
 function applyPreferredCompat() {
@@ -813,6 +822,7 @@ function loadPreferredRegion() {
 
 function savePreferredRegion(cc) {
   localStorage.setItem(PREF_REGION_KEY, cc ?? 'us');
+  syncPreferencesToServer();
 }
 
 function applyPreferredRegion() {
@@ -830,6 +840,7 @@ function loadPreferredStoreIds() {
 
 function savePreferredStoreIds(ids) {
   localStorage.setItem(PREF_STORES_KEY, JSON.stringify(ids));
+  syncPreferencesToServer();
 }
 
 function applyPreferredStores() {
@@ -849,6 +860,7 @@ function loadPreferredSocIds() {
 
 function savePreferredSocIds(ids) {
   localStorage.setItem(PREF_SOC_KEY, JSON.stringify(ids));
+  syncPreferencesToServer();
 }
 
 function applyPreferredSoc() {
@@ -857,6 +869,45 @@ function applyPreferredSoc() {
   ids.forEach(id => {
     const s = state.socs.find(x => x.id === id);
     if (s && !_selectedSocs.has(s.id)) selectSoc(s);
+  });
+}
+
+/* ── Sync filter preferences to the account ──────────────────────────────────── */
+function currentPreferencesSnapshot() {
+  return {
+    filterMode:   loadFilterMode(),
+    deviceIds:    loadPreferredDeviceIds() || [],
+    socIds:       loadPreferredSocIds() || [],
+    compatId:     loadPreferredCompatId(),
+    region:       loadPreferredRegion(),
+    storeIds:     loadPreferredStoreIds() || [],
+  };
+}
+
+function applyPreferencesSnapshot(prefs) {
+  if (!prefs || Object.keys(prefs).length === 0) return false;
+  if (prefs.filterMode) saveFilterMode(prefs.filterMode);
+  if (prefs.deviceIds) savePreferredDeviceIds(prefs.deviceIds);
+  if (prefs.socIds) savePreferredSocIds(prefs.socIds);
+  if (prefs.compatId != null) savePreferredCompatId(prefs.compatId);
+  if (prefs.region) savePreferredRegion(prefs.region);
+  if (prefs.storeIds) savePreferredStoreIds(prefs.storeIds);
+
+  const filterMode = loadFilterMode();
+  applyFilterMode(filterMode);
+  if (filterMode === 'chipset') applyPreferredSoc(); else applyPreferredDevices();
+  applyPreferredCompat();
+  applyPreferredRegion();
+  applyPreferredStores();
+  return true;
+}
+
+async function syncPreferencesToServer() {
+  if (!authState.loggedIn) return;
+  await fetch('/api/me/preferences', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(currentPreferencesSnapshot()),
   });
 }
 
