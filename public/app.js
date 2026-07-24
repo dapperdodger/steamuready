@@ -191,7 +191,8 @@ function initAuthModal() {
   authEl.tabSignup.addEventListener('click', () => openAuthModal('signup'));
   authEl.cancel.addEventListener('click', closeAuthModal);
 
-  authEl.submit.addEventListener('click', async () => {
+  authEl.form.addEventListener('submit', async (e) => {
+    e.preventDefault();
     const email = authEl.email.value.trim();
     const password = authEl.password.value;
     authEl.error.hidden = true;
