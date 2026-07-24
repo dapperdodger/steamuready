@@ -162,7 +162,7 @@ body {
 .toggle-switch:hover .toggle-track { border: 1px solid var(--border-light); }
 
 /* Selects */
-select, input[type="text"], input[type="number"] {
+select, input[type="text"], input[type="number"], input[type="password"], input[type="email"] {
   background: var(--card);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
@@ -911,56 +911,73 @@ select option { background: var(--card); }
 .account-menu { position: relative; }
 .account-menu-btn {
   background: transparent;
-  border: 1px solid var(--border, #444);
-  color: inherit;
-  padding: .35rem .75rem;
-  border-radius: 6px;
+  border: 1px solid var(--border-light);
+  color: var(--text);
+  padding: 7px 16px;
+  border-radius: var(--radius-sm);
+  font-size: .82rem;
   cursor: pointer;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: border-color var(--transition);
 }
+.account-menu-btn:hover { border-color: var(--text); }
 .account-dropdown {
   position: absolute;
   right: 0;
   top: 100%;
-  margin-top: .35rem;
-  background: var(--bg-elevated, #1e1e1e);
-  border: 1px solid var(--border, #444);
-  border-radius: 8px;
+  margin-top: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
   min-width: 180px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   z-index: 50;
 }
 .account-dropdown[hidden] { display: none; }
 .account-dropdown button, .account-email {
-  padding: .5rem .75rem;
+  padding: 8px 12px;
   text-align: left;
   background: none;
   border: none;
-  color: inherit;
+  color: var(--text);
+  font-size: .82rem;
   cursor: pointer;
 }
-.account-email { opacity: .7; font-size: .85rem; cursor: default; }
-.account-dropdown button:hover { background: rgba(255,255,255,.08); }
+.account-email {
+  opacity: .7; font-size: .78rem; cursor: default;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.account-dropdown button:hover { background: var(--card-hover); }
 .auth-tabs { display: flex; gap: .5rem; margin-bottom: .75rem; }
-.auth-error { color: #e57373; margin-top: .5rem; font-size: .85rem; }
+.auth-error { color: var(--red); margin-top: .5rem; font-size: .85rem; }
 
 /* ── Wishlist / owned / hide card controls ───────────────────────────────────── */
-.card-actions-row { display: flex; gap: 6px; }
+.card-actions-row { display: flex; justify-content: space-between; }
 .btn-wishlist, .btn-overflow {
-  border: 1px solid var(--border, #444);
+  border: 1px solid var(--border-light);
   background: transparent;
-  color: inherit;
-  border-radius: 6px;
-  padding: .25rem .5rem;
+  color: var(--muted);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: .85rem;
   cursor: pointer;
+  transition: all var(--transition);
 }
+.btn-wishlist:hover, .btn-overflow:hover { border-color: var(--text); color: var(--text); }
 .btn-wishlist.active { color: #e05a7a; border-color: #e05a7a; }
 .btn-wishlist:disabled, .btn-overflow:disabled { opacity: .35; cursor: not-allowed; }
 
 .card-menu-wrap { position: relative; display: inline-block; }
 .card-menu {
   position: absolute;
-  left: 0;
+  right: 0;
   top: 100%;
   margin-top: .25rem;
   background: var(--bg-elevated, #1e1e1e);
@@ -1031,3 +1048,59 @@ select option { background: var(--card); }
     gap: 10px;
   }
 }
+
+/* ── Account settings ─────────────────────────────────────────────────────── */
+#settingsView, #hiddenGamesView {
+  max-width: 480px;
+  margin: 24px auto;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+#settingsView[hidden], #hiddenGamesView[hidden] { display: none; }
+#settingsView h2, #hiddenGamesView h2 { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 1rem; }
+.settings-block {
+  padding-top: 1rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.settings-block:first-of-type { padding-top: 0; margin-top: 0; border-top: none; }
+.settings-block h3 { font-size: .82rem; font-weight: 600; color: var(--text); margin-bottom: .6rem; }
+.settings-block input { display: block; width: 100%; margin-top: .5rem; }
+.settings-block button { margin-top: .6rem; }
+.btn-danger {
+  background: transparent;
+  color: var(--red);
+  border: 1px solid var(--red);
+  border-radius: var(--radius-sm);
+  padding: 7px 16px;
+  font-size: .82rem; font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.btn-danger:hover { background: rgba(248,81,73,.12); }
+
+/* ── Manage hidden games ──────────────────────────────────────────────────── */
+.hidden-games-list { list-style: none; padding: 0; margin-top: 1rem; }
+.hidden-games-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.hidden-games-row:last-child { border-bottom: none; }
+.hidden-games-row span { font-size: .85rem; color: var(--text); }
+.hidden-games-row button {
+  background: transparent;
+  border: 1px solid var(--border-light);
+  color: var(--muted);
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  font-size: .78rem;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.hidden-games-row button:hover { border-color: var(--text); color: var(--text); }

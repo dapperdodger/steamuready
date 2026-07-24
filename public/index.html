@@ -384,6 +384,51 @@
   </div>
 </section>
 
+<!-- Account settings -->
+<section id="settingsView" hidden>
+  <button class="btn-modal-skip" id="settingsBackBtn" data-i18n="backToSearch">&larr; Back</button>
+  <h2 data-i18n="accountSettings">Account Settings</h2>
+
+  <div class="settings-block">
+    <label class="filter-label" data-i18n="authEmailLabel">Email</label>
+    <div id="settingsEmail"></div>
+  </div>
+
+  <div class="settings-block">
+    <h3 data-i18n="changePassword">Change password</h3>
+    <input type="password" id="settingsCurrentPw" data-i18n-placeholder="currentPasswordPlaceholder" placeholder="Current password" autocomplete="current-password" />
+    <input type="password" id="settingsNewPw" data-i18n-placeholder="newPasswordPlaceholder" placeholder="New password" autocomplete="new-password" />
+    <button class="btn-modal-save" id="settingsSavePw" data-i18n="saveBtn">Save</button>
+    <div id="settingsPwError" class="auth-error" hidden></div>
+  </div>
+
+  <div class="settings-block">
+    <h3 data-i18n="preferredSettingsTitle">Preferred Settings</h3>
+    <button class="btn-modal-skip" id="settingsEditPrefs" data-i18n="editPreferences">Edit preferred settings</button>
+  </div>
+
+  <div class="settings-block">
+    <h3 data-i18n="hiddenGamesTitle">Hidden games</h3>
+    <button class="btn-modal-skip" id="settingsManageHidden" data-i18n="manageHiddenGames">Manage hidden games</button>
+  </div>
+
+  <div class="settings-block">
+    <h3 data-i18n="dangerZone">Danger zone</h3>
+    <button id="settingsDeleteAccount" class="btn-danger" data-i18n="deleteAccount">Delete account</button>
+  </div>
+</section>
+
+<!-- Manage Hidden Games -->
+<section id="hiddenGamesView" hidden>
+  <button class="btn-modal-skip" id="hiddenGamesBackBtn" data-i18n="backToSettings">&larr; Back</button>
+  <h2 data-i18n="manageHiddenGames">Manage hidden games</h2>
+  <ul class="hidden-games-list" id="hiddenGamesList"></ul>
+  <div class="state-box" id="hiddenGamesEmpty" hidden>
+    <div class="icon">🎮</div>
+    <p data-i18n="emptyHiddenMsg">You haven't hidden any games.</p>
+  </div>
+</section>
+
 <footer class="attribution">
   Compatibility data from <a href="https://emuready.com" target="_blank" rel="noopener">EmuReady</a> ·
   Prices provided by <a href="https://isthereanydeal.com" target="_blank" rel="noopener">IsThereAnyDeal</a> ·

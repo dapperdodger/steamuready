@@ -232,6 +232,8 @@ function initCardMenus() {
 async function openTrackedView(kind) {
   $('accountDropdown').hidden = true;
   document.querySelector('.layout').hidden = true;
+  $('settingsView').hidden = true;
+  $('hiddenGamesView').hidden = true;
   $('trackedView').hidden = false;
   $('trackedView').dataset.kind = kind;
   $('trackedViewTitle').textContent = kind === 'wishlist' ? t('myWishlist') : t('myGames');
@@ -288,6 +290,107 @@ function initTrackedView() {
   });
 }
 
+/* ── Account settings ─────────────────────────────────────────────────────── */
+function openAccountSettings() {
+  $('accountDropdown').hidden = true;
+  document.querySelector('.layout').hidden = true;
+  $('trackedView').hidden = true;
+  delete $('trackedView').dataset.kind;
+  $('settingsView').hidden = false;
+  $('settingsEmail').textContent = authState.email;
+  $('settingsCurrentPw').value = '';
+  $('settingsNewPw').value = '';
+  $('settingsPwError').hidden = true;
+}
+
+function closeAccountSettings() {
+  $('settingsView').hidden = true;
+  document.querySelector('.layout').hidden = false;
+}
+
+function initAccountSettings() {
+  $('settingsBackBtn').addEventListener('click', closeAccountSettings);
+
+  $('settingsSavePw').addEventListener('click', async () => {
+    const currentPassword = $('settingsCurrentPw').value;
+    const newPassword = $('settingsNewPw').value;
+    const res = await fetch('/api/me/password', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    if (res.ok) {
+      $('settingsCurrentPw').value = '';
+      $('settingsNewPw').value = '';
+      $('settingsPwError').hidden = true;
+      return;
+    }
+    const body = await res.json().catch(() => ({}));
+    $('settingsPwError').textContent = body.error || t('authInvalidCreds');
+    $('settingsPwError').hidden = false;
+  });
+
+  $('settingsEditPrefs').addEventListener('click', () => {
+    closeAccountSettings();
+    openPreferredDevicesModal();
+  });
+
+  $('settingsManageHidden').addEventListener('click', openHiddenGamesView);
+
+  $('settingsDeleteAccount').addEventListener('click', async () => {
+    if (!confirm(t('deleteAccountConfirm'))) return;
+    await fetch('/api/me', { method: 'DELETE' });
+    closeAccountSettings();
+    await refreshAuthState();
+    fetchGames(false);
+  });
+}
+
+/* ── Manage hidden games ──────────────────────────────────────────────────── */
+async function renderHiddenGamesList() {
+  const res = await fetch('/api/me/hidden');
+  const body = await res.json();
+  const list = $('hiddenGamesList');
+  list.innerHTML = '';
+  if (!body.games.length) {
+    $('hiddenGamesEmpty').hidden = false;
+    return;
+  }
+  $('hiddenGamesEmpty').hidden = true;
+  body.games.forEach(g => {
+    const li = document.createElement('li');
+    li.className = 'hidden-games-row';
+    const name = document.createElement('span');
+    name.textContent = g.name || g.itadId;
+    const unhideBtn = document.createElement('button');
+    unhideBtn.textContent = t('unhideBtn');
+    unhideBtn.addEventListener('click', async () => {
+      const res = await fetch(`/api/me/hidden/${encodeURIComponent(g.itadId)}`, { method: 'DELETE' });
+      if (res.ok) {
+        document.dispatchEvent(new CustomEvent('hidden-changed', { detail: { itadId: g.itadId, active: false } }));
+      }
+      renderHiddenGamesList();
+    });
+    li.append(name, unhideBtn);
+    list.appendChild(li);
+  });
+}
+
+function openHiddenGamesView() {
+  $('settingsView').hidden = true;
+  $('hiddenGamesView').hidden = false;
+  renderHiddenGamesList();
+}
+
+function closeHiddenGamesView() {
+  $('hiddenGamesView').hidden = true;
+  $('settingsView').hidden = false;
+}
+
+function initHiddenGamesView() {
+  $('hiddenGamesBackBtn').addEventListener('click', closeHiddenGamesView);
+}
+
 /* ── Progress ──────────────────────────────────────────────────────────────── */
 function progress(pct) {
   el.progressBar.style.width = pct + '%';
@@ -338,6 +441,8 @@ async function init() {
     initPreferredDevicesModal();
     initAuthModal();
     initTrackedView();
+    initAccountSettings();
+    initHiddenGamesView();
     initCardMenus();
     await refreshAuthState();
 
@@ -1481,16 +1586,6 @@ function buildCard(g) {
     </div>
 
     <div class="card-footer">
-      <div class="card-actions-row">
-        <button class="btn-wishlist${g.isWishlisted ? ' active' : ''}" data-itad-id="${escHtml(g.appId)}" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>♥</button>
-        <div class="card-menu-wrap">
-          <button class="btn-overflow" data-itad-id="${escHtml(g.appId)}" aria-haspopup="true" aria-label="${escHtml(t('moreActions'))}" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>⋯</button>
-          <div class="card-menu" hidden>
-            <button class="card-menu-item" data-action="toggle-owned">${escHtml(g.isOwned ? t('removeFromOwned') : t('markAsOwned'))}</button>
-            <button class="card-menu-item" data-action="hide">${escHtml(t('hideThisGame'))}</button>
-          </div>
-        </div>
-      </div>
       <a href="${escHtml(g.storeUrl)}" target="_blank" rel="noopener" class="btn-steam">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
@@ -1503,6 +1598,16 @@ function buildCard(g) {
         </svg>
         ${t('viewOnEmuReady')}
       </a>` : ''}
+      <div class="card-actions-row">
+        <button class="btn-wishlist${g.isWishlisted ? ' active' : ''}" data-itad-id="${escHtml(g.appId)}" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>${g.isWishlisted ? '♥' : '♡'}</button>
+        <div class="card-menu-wrap">
+          <button class="btn-overflow" data-itad-id="${escHtml(g.appId)}" aria-haspopup="true" aria-label="${escHtml(t('moreActions'))}" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>⋯</button>
+          <div class="card-menu" hidden>
+            <button class="card-menu-item" data-action="toggle-owned">${escHtml(g.isOwned ? t('removeFromOwned') : t('markAsOwned'))}</button>
+            <button class="card-menu-item" data-action="hide">${escHtml(t('hideThisGame'))}</button>
+          </div>
+        </div>
+      </div>
     </div>`;
 
   const img = div.querySelector('.card-img');
@@ -1512,16 +1617,20 @@ function buildCard(g) {
   });
 
   const wishlistBtn = div.querySelector('.btn-wishlist');
+  const setWishlistActive = (active) => {
+    wishlistBtn.classList.toggle('active', active);
+    wishlistBtn.textContent = active ? '♥' : '♡';
+  };
   wishlistBtn.addEventListener('click', async () => {
     if (!authState.loggedIn) return;
     const itadId = wishlistBtn.dataset.itadId;
     const wasActive = wishlistBtn.classList.contains('active');
-    wishlistBtn.classList.toggle('active', !wasActive); // optimistic
+    setWishlistActive(!wasActive); // optimistic
     try {
       await (wasActive ? api.removeWishlist(itadId) : api.addWishlist(itadId));
       document.dispatchEvent(new CustomEvent('wishlist-changed', { detail: { itadId, active: !wasActive } }));
     } catch {
-      wishlistBtn.classList.toggle('active', wasActive); // revert on failure
+      setWishlistActive(wasActive); // revert on failure
     }
   });
 
@@ -1548,7 +1657,7 @@ function buildCard(g) {
     // unconditionally in services/wishlist.js's addOwned) — reflect it
     // immediately in this card rather than waiting for a refetch.
     const wishlistWasActive = wishlistBtn.classList.contains('active');
-    if (!wasOwned && wishlistWasActive) wishlistBtn.classList.remove('active');
+    if (!wasOwned && wishlistWasActive) setWishlistActive(false);
 
     try {
       await (wasOwned ? api.removeOwned(itadId) : api.addOwned(itadId));
@@ -1559,7 +1668,7 @@ function buildCard(g) {
     } catch {
       ownedState = wasOwned;
       ownedItem.textContent = ownedState ? t('removeFromOwned') : t('markAsOwned');
-      if (!wasOwned && wishlistWasActive) wishlistBtn.classList.add('active'); // revert the wishlist side-effect too
+      if (!wasOwned && wishlistWasActive) setWishlistActive(true); // revert the wishlist side-effect too
     }
   });
 
@@ -1577,7 +1686,7 @@ function buildCard(g) {
     // addHidden), and unhiding never restores it — so the heart stays
     // inactive even after Undo, matching the server's actual state.
     if (wishlistBtn.classList.contains('active')) {
-      wishlistBtn.classList.remove('active');
+      setWishlistActive(false);
       document.dispatchEvent(new CustomEvent('wishlist-changed', { detail: { itadId, active: false } }));
     }
 
