@@ -29,9 +29,10 @@
 - [x] German Language Support
 - [x] swtich to DB for longer lived things like controller support (investiagte what all could use it)
 - [ ] Optional Account for the following
-  - [ ] Wishlist
+  - [x] Wishlist
   - [ ] Set desired price for game with alert when it goes below threshold
-  - [ ] Mark owned games
-  - [ ] Hide Games
+  - [x] Mark owned games
+  - [x] Hide Games
 - [ ] Portugese(BR) Language Support
 - [x] use fixed bulk endpoints (https://github.com/Producdevity/EmuReady/pull/342)
+- [ ] Move to React or angular for front end
