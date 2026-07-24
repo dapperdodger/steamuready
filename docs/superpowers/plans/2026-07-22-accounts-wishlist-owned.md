@@ -845,9 +845,14 @@ router.post('/logout', (req, res) => {
 
 router.get('/me', async (req, res) => {
   if (!req.session?.userId) return res.status(401).json({ error: 'Not logged in' });
-  const user = await auth.findUserById(req.session.userId);
-  if (!user) return res.status(401).json({ error: 'Not logged in' });
-  res.json({ email: user.email, preferences: user.preferences, hideOwnedDefault: user.hide_owned_default });
+  try {
+    const user = await auth.findUserById(req.session.userId);
+    if (!user) return res.status(401).json({ error: 'Not logged in' });
+    res.json({ email: user.email, preferences: user.preferences, hideOwnedDefault: user.hide_owned_default });
+  } catch (e) {
+    console.error('[/api/auth/me]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 module.exports = router;
@@ -1612,13 +1617,23 @@ router.get('/wishlist', async (req, res) => {
 });
 
 router.post('/wishlist/:itadId', async (req, res) => {
-  await wishlist.addWishlistItem(req.session.userId, req.params.itadId);
-  res.status(204).end();
+  try {
+    await wishlist.addWishlistItem(req.session.userId, req.params.itadId);
+    res.status(204).end();
+  } catch (e) {
+    console.error('[POST /api/me/wishlist/:itadId]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 router.delete('/wishlist/:itadId', async (req, res) => {
-  await wishlist.removeWishlistItem(req.session.userId, req.params.itadId);
-  res.status(204).end();
+  try {
+    await wishlist.removeWishlistItem(req.session.userId, req.params.itadId);
+    res.status(204).end();
+  } catch (e) {
+    console.error('[DELETE /api/me/wishlist/:itadId]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 router.get('/owned', async (req, res) => {
@@ -1633,13 +1648,23 @@ router.get('/owned', async (req, res) => {
 });
 
 router.post('/owned/:itadId', async (req, res) => {
-  await wishlist.addOwned(req.session.userId, req.params.itadId);
-  res.status(204).end();
+  try {
+    await wishlist.addOwned(req.session.userId, req.params.itadId);
+    res.status(204).end();
+  } catch (e) {
+    console.error('[POST /api/me/owned/:itadId]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 router.delete('/owned/:itadId', async (req, res) => {
-  await wishlist.removeOwned(req.session.userId, req.params.itadId);
-  res.status(204).end();
+  try {
+    await wishlist.removeOwned(req.session.userId, req.params.itadId);
+    res.status(204).end();
+  } catch (e) {
+    console.error('[DELETE /api/me/owned/:itadId]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 router.get('/hidden', async (req, res) => {
@@ -1653,13 +1678,23 @@ router.get('/hidden', async (req, res) => {
 });
 
 router.post('/hidden/:itadId', async (req, res) => {
-  await wishlist.addHidden(req.session.userId, req.params.itadId);
-  res.status(204).end();
+  try {
+    await wishlist.addHidden(req.session.userId, req.params.itadId);
+    res.status(204).end();
+  } catch (e) {
+    console.error('[POST /api/me/hidden/:itadId]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 router.delete('/hidden/:itadId', async (req, res) => {
-  await wishlist.removeHidden(req.session.userId, req.params.itadId);
-  res.status(204).end();
+  try {
+    await wishlist.removeHidden(req.session.userId, req.params.itadId);
+    res.status(204).end();
+  } catch (e) {
+    console.error('[DELETE /api/me/hidden/:itadId]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 ```
 
@@ -2713,13 +2748,18 @@ router.put('/password', async (req, res) => {
   if (typeof currentPassword !== 'string' || typeof newPassword !== 'string' || newPassword.length < 8) {
     return res.status(400).json({ error: 'currentPassword and a newPassword of at least 8 characters are required' });
   }
-  const currentHash = await findPasswordHashById(req.session.userId);
-  const valid = currentHash ? await verifyPassword(currentPassword, currentHash) : false;
-  if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
+  try {
+    const currentHash = await findPasswordHashById(req.session.userId);
+    const valid = currentHash ? await verifyPassword(currentPassword, currentHash) : false;
+    if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
 
-  const newHash = await hashPassword(newPassword);
-  await updatePasswordHash(req.session.userId, newHash);
-  res.json({ ok: true });
+    const newHash = await hashPassword(newPassword);
+    await updatePasswordHash(req.session.userId, newHash);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[PUT /api/me/password]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 router.delete('/', async (req, res) => {
@@ -2729,9 +2769,14 @@ router.delete('/', async (req, res) => {
       console.error('[DELETE /api/me]', err);
       return res.status(500).json({ error: 'Internal server error' });
     }
-    res.clearCookie('connect.sid');
-    await deleteUser(userId);
-    res.json({ ok: true });
+    try {
+      res.clearCookie('connect.sid');
+      await deleteUser(userId);
+      res.json({ ok: true });
+    } catch (e) {
+      console.error('[DELETE /api/me]', e);
+      res.status(500).json({ error: 'Internal server error' });
+    }
   });
 });
 ```

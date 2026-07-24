@@ -88,6 +88,37 @@ async function init() {
       critic_rating     REAL,
       updated_at        TIMESTAMPTZ DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      email              TEXT UNIQUE NOT NULL,
+      password_hash      TEXT NOT NULL,
+      preferences        JSONB DEFAULT '{}',
+      hide_owned_default BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at         TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS wishlist_items (
+      user_id    UUID REFERENCES users(id) ON DELETE CASCADE,
+      itad_id    TEXT NOT NULL,
+      added_at   TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (user_id, itad_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS owned_games (
+      user_id    UUID REFERENCES users(id) ON DELETE CASCADE,
+      itad_id    TEXT NOT NULL,
+      source     TEXT DEFAULT 'manual',
+      added_at   TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (user_id, itad_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS hidden_games (
+      user_id    UUID REFERENCES users(id) ON DELETE CASCADE,
+      itad_id    TEXT NOT NULL,
+      added_at   TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (user_id, itad_id)
+    );
   `);
   console.log('[DB] schema ready');
 }

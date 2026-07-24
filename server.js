@@ -9,6 +9,11 @@ const epic = require('./services/epic');
 const steamcontroller = require('./services/steamcontroller');
 const { redis, delPattern } = require('./services/cache');
 const db = require('./services/db');
+const { sessionMiddleware } = require('./middleware/session');
+const authRouter = require('./routes/auth');
+const meRouter = require('./routes/me');
+const { excludeOwned, excludeHidden } = require('./services/gameFilters');
+const wishlist = require('./services/wishlist');
 
 const app = express();
 let ctrlCacheReady = false;
@@ -22,6 +27,9 @@ app.use(helmet({
   },
 }));
 app.use(express.json({ limit: '16kb' }));
+app.use(sessionMiddleware);
+app.use('/api/auth', authRouter);
+app.use('/api/me', meRouter);
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Devices ─────────────────────────────────────────────────────────────────
@@ -407,6 +415,25 @@ app.get('/api/games', gamesRateLimiter, async (req, res) => {
       filtered = filtered.filter(g => g.igdbRating?.igdbRating != null && g.igdbRating.igdbRating >= minRating);
     }
 
+    if (req.session?.userId) {
+      const hiddenIds = await wishlist.listHiddenItadIds(req.session.userId);
+      filtered = excludeHidden(filtered, hiddenIds);
+    }
+    if (req.session?.userId && req.query.hideOwned === '1') {
+      const ownedIds = await wishlist.listOwnedItadIds(req.session.userId);
+      filtered = excludeOwned(filtered, ownedIds);
+    }
+
+    if (req.session?.userId) {
+      const [wishlistIds, ownedIds] = await Promise.all([
+        wishlist.listWishlistItadIds(req.session.userId),
+        wishlist.listOwnedItadIds(req.session.userId),
+      ]);
+      const wishlistSet = new Set(wishlistIds);
+      const ownedSet = new Set(ownedIds);
+      filtered = filtered.map(g => ({ ...g, isWishlisted: wishlistSet.has(g.appId), isOwned: ownedSet.has(g.appId) }));
+    }
+
     if (rawCtrl) {
       const ctrlValues = rawCtrl.split(',').filter(v => ['full', 'partial', 'none'].includes(v));
       if (ctrlValues.length) {
@@ -544,22 +571,26 @@ async function warmCaches() {
   });
 }
 
-const PORT = process.env.PORT || 3000;
-db.init().then(() => {
-  const server = app.listen(PORT, () => {
-    console.log(`\n🎮  SteamUReady Running`);
-    warmCaches();
-  });
-
-  // ── Graceful shutdown (ECS/ALB task draining) ───────────────────────────────
-  process.on('SIGTERM', () => {
-    console.log('[shutdown] SIGTERM received — draining connections…');
-    server.close(() => {
-      console.log('[shutdown] all connections closed, exiting');
-      process.exit(0);
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  db.init().then(() => {
+    const server = app.listen(PORT, () => {
+      console.log(`\n🎮  SteamUReady Running`);
+      warmCaches();
     });
+
+    // ── Graceful shutdown (ECS/ALB task draining) ───────────────────────────────
+    process.on('SIGTERM', () => {
+      console.log('[shutdown] SIGTERM received — draining connections…');
+      server.close(() => {
+        console.log('[shutdown] all connections closed, exiting');
+        process.exit(0);
+      });
+    });
+  }).catch(e => {
+    console.error('[DB] init failed:', e.message);
+    process.exit(1);
   });
-}).catch(e => {
-  console.error('[DB] init failed:', e.message);
-  process.exit(1);
-});
+}
+
+module.exports = app;

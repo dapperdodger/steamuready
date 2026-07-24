@@ -21,6 +21,7 @@ const state = {
     minDiscount:   0,
     minRating:     0,
     histLow:       false,
+    hideOwned:     false,
     newAge:           '',
     controllerSupport: '',
     search:        '',
@@ -64,6 +65,8 @@ const el = {
   appList:      $('appList'),
   storeList:    $('storeList'),
   histLowCheck:  $('histLowCheck'),
+  hideOwnedCheck: $('hideOwnedCheck'),
+  hideOwnedRow:   $('hideOwnedRow'),
   newAgeButtons: $('newAgeButtons'),
   ratingButtons:     $('ratingButtons'),
   controllerButtons:     $('controllerButtons'),
@@ -97,6 +100,303 @@ const api = {
   refresh()       { return fetch('/api/refresh', { method: 'POST' }).then(r => r.json()); },
   status()        { return api.json('/api/status'); },
 };
+
+Object.assign(api, {
+  authMe()               { return api.json('/api/auth/me').catch(() => null); },
+  authSignup(email, pw)  { return fetch('/api/auth/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: pw }) }); },
+  authLogin(email, pw)   { return fetch('/api/auth/login',  { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: pw }) }); },
+  authLogout()           { return fetch('/api/auth/logout', { method: 'POST' }); },
+  addWishlist(itadId)    { return fetch(`/api/me/wishlist/${encodeURIComponent(itadId)}`, { method: 'POST' }); },
+  removeWishlist(itadId) { return fetch(`/api/me/wishlist/${encodeURIComponent(itadId)}`, { method: 'DELETE' }); },
+  addOwned(itadId)       { return fetch(`/api/me/owned/${encodeURIComponent(itadId)}`, { method: 'POST' }); },
+  removeOwned(itadId)    { return fetch(`/api/me/owned/${encodeURIComponent(itadId)}`, { method: 'DELETE' }); },
+  hideGame(itadId)       { return fetch(`/api/me/hidden/${encodeURIComponent(itadId)}`, { method: 'POST' }); },
+  unhideGame(itadId)     { return fetch(`/api/me/hidden/${encodeURIComponent(itadId)}`, { method: 'DELETE' }); },
+});
+
+/* ── Auth state ────────────────────────────────────────────────────────────── */
+const authState = { loggedIn: false, email: null, preferences: null, hideOwnedDefault: false };
+
+async function refreshAuthState() {
+  const res = await fetch('/api/auth/me');
+  if (res.status === 200) {
+    const body = await res.json();
+    const wasLoggedIn = authState.loggedIn;
+    authState.loggedIn = true;
+    authState.email = body.email;
+    authState.preferences = body.preferences;
+    authState.hideOwnedDefault = body.hideOwnedDefault;
+    if (!wasLoggedIn) {
+      const applied = applyPreferencesSnapshot(body.preferences);
+      if (applied) fetchGames();
+    }
+  } else {
+    authState.loggedIn = false;
+    authState.email = null;
+    authState.preferences = null;
+    authState.hideOwnedDefault = false;
+  }
+  renderAuthMenu();
+}
+
+function renderAuthMenu() {
+  const btn = $('accountMenuBtn');
+  const emailLabel = $('accountEmailLabel');
+  if (authState.loggedIn) {
+    btn.textContent = authState.email;
+    emailLabel.textContent = authState.email;
+    el.hideOwnedCheck.checked = authState.hideOwnedDefault;
+    state.filters.hideOwned = authState.hideOwnedDefault;
+  } else {
+    btn.textContent = t('logIn');
+    emailLabel.textContent = '';
+    el.hideOwnedCheck.checked = false;
+    state.filters.hideOwned = false;
+  }
+  el.hideOwnedRow.hidden = !authState.loggedIn;
+}
+
+/* ── Auth modal ────────────────────────────────────────────────────────────── */
+const authEl = {
+  modal:     $('authModal'),
+  form:      $('authForm'),
+  tabLogin:  $('authTabLogin'),
+  tabSignup: $('authTabSignup'),
+  email:     $('authEmail'),
+  password:  $('authPassword'),
+  error:     $('authError'),
+  submit:    $('authSubmit'),
+  cancel:    $('authCancel'),
+};
+let authMode = 'login';
+
+function openAuthModal(mode = 'login') {
+  authMode = mode;
+  authEl.error.hidden = true;
+  authEl.email.value = '';
+  authEl.password.value = '';
+  authEl.tabLogin.classList.toggle('active', mode === 'login');
+  authEl.tabSignup.classList.toggle('active', mode === 'signup');
+  authEl.submit.textContent = mode === 'login' ? t('authSubmitLogin') : t('authSubmitSignup');
+  authEl.modal.hidden = false;
+  authEl.email.focus();
+}
+
+function closeAuthModal() {
+  authEl.modal.hidden = true;
+}
+
+function initAuthModal() {
+  authEl.tabLogin.addEventListener('click', () => openAuthModal('login'));
+  authEl.tabSignup.addEventListener('click', () => openAuthModal('signup'));
+  authEl.cancel.addEventListener('click', closeAuthModal);
+
+  authEl.form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = authEl.email.value.trim();
+    const password = authEl.password.value;
+    authEl.error.hidden = true;
+
+    const res = authMode === 'login'
+      ? await api.authLogin(email, password)
+      : await api.authSignup(email, password);
+
+    if (res.status === 200 || res.status === 201) {
+      await refreshAuthState();
+      closeAuthModal();
+      fetchGames(false);
+      return;
+    }
+    const body = await res.json().catch(() => ({}));
+    authEl.error.textContent = body.error || t('authInvalidCreds');
+    authEl.error.hidden = false;
+  });
+
+  $('accountMenuBtn').addEventListener('click', () => {
+    if (authState.loggedIn) {
+      $('accountDropdown').hidden = !$('accountDropdown').hidden;
+    } else {
+      openAuthModal('login');
+    }
+  });
+
+  $('logoutBtn').addEventListener('click', async () => {
+    await api.authLogout();
+    $('accountDropdown').hidden = true;
+    closeTrackedView(); // the account dropdown stays reachable while the tracked view is open, so logging out from there must not leave it showing stale data behind a hidden .layout
+    await refreshAuthState();
+    fetchGames(false);
+  });
+}
+
+function initCardMenus() {
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.card-menu').forEach(m => { m.hidden = true; });
+  });
+}
+
+/* ── Tracked view (My Wishlist / My Games) ───────────────────────────────────── */
+async function openTrackedView(kind) {
+  $('accountDropdown').hidden = true;
+  document.querySelector('.layout').hidden = true;
+  $('settingsView').hidden = true;
+  $('hiddenGamesView').hidden = true;
+  $('trackedView').hidden = false;
+  $('trackedView').dataset.kind = kind;
+  $('trackedViewTitle').textContent = kind === 'wishlist' ? t('myWishlist') : t('myGames');
+
+  const res = await fetch(kind === 'wishlist' ? '/api/me/wishlist' : '/api/me/owned');
+  if (!res.ok) { closeTrackedView(); return; }
+  const body = await res.json();
+  const grid = $('trackedGrid');
+  grid.innerHTML = '';
+  if (!body.games.length) {
+    $('trackedEmpty').hidden = false;
+    $('trackedEmptyMsg').textContent = kind === 'wishlist' ? t('emptyWishlistMsg') : t('emptyOwnedMsg');
+    return;
+  }
+  $('trackedEmpty').hidden = true;
+  body.games.forEach(g => grid.appendChild(buildCard({
+    ...g,
+    gameName: g.name,
+    // /api/me/wishlist and /api/me/owned return the raw deal entry (no
+    // isWishlisted/isOwned flags — those are only computed for /api/games).
+    // Every game returned by these endpoints is, by definition, in that
+    // list, so set the flag from `kind` rather than leaving it undefined
+    // (which would render an inactive heart for an already-wishlisted game).
+    isWishlisted: kind === 'wishlist',
+    isOwned:      kind === 'owned',
+  })));
+}
+
+function closeTrackedView() {
+  $('trackedView').hidden = true;
+  delete $('trackedView').dataset.kind;
+  document.querySelector('.layout').hidden = false;
+}
+
+function initTrackedView() {
+  $('trackedBackBtn').addEventListener('click', closeTrackedView);
+
+  document.querySelectorAll('#accountDropdown button[data-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const view = btn.dataset.view;
+      if (view === 'settings') { openAccountSettings(); return; }
+      openTrackedView(view);
+    });
+  });
+
+  // Compare the open view's kind via a data attribute, not translated text —
+  // t('myWishlist') can change out from under a stored string if the user
+  // switches language while the view is open.
+  document.addEventListener('wishlist-changed', () => {
+    if (!$('trackedView').hidden && $('trackedView').dataset.kind === 'wishlist') openTrackedView('wishlist');
+  });
+  document.addEventListener('owned-changed', () => {
+    if (!$('trackedView').hidden && $('trackedView').dataset.kind === 'owned') openTrackedView('owned');
+  });
+}
+
+/* ── Account settings ─────────────────────────────────────────────────────── */
+function openAccountSettings() {
+  $('accountDropdown').hidden = true;
+  document.querySelector('.layout').hidden = true;
+  $('trackedView').hidden = true;
+  delete $('trackedView').dataset.kind;
+  $('settingsView').hidden = false;
+  $('settingsEmail').textContent = authState.email;
+  $('settingsCurrentPw').value = '';
+  $('settingsNewPw').value = '';
+  $('settingsPwError').hidden = true;
+}
+
+function closeAccountSettings() {
+  $('settingsView').hidden = true;
+  document.querySelector('.layout').hidden = false;
+}
+
+function initAccountSettings() {
+  $('settingsBackBtn').addEventListener('click', closeAccountSettings);
+
+  $('settingsSavePw').addEventListener('click', async () => {
+    const currentPassword = $('settingsCurrentPw').value;
+    const newPassword = $('settingsNewPw').value;
+    const res = await fetch('/api/me/password', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    if (res.ok) {
+      $('settingsCurrentPw').value = '';
+      $('settingsNewPw').value = '';
+      $('settingsPwError').hidden = true;
+      return;
+    }
+    const body = await res.json().catch(() => ({}));
+    $('settingsPwError').textContent = body.error || t('authInvalidCreds');
+    $('settingsPwError').hidden = false;
+  });
+
+  $('settingsEditPrefs').addEventListener('click', () => {
+    closeAccountSettings();
+    openPreferredDevicesModal();
+  });
+
+  $('settingsManageHidden').addEventListener('click', openHiddenGamesView);
+
+  $('settingsDeleteAccount').addEventListener('click', async () => {
+    if (!confirm(t('deleteAccountConfirm'))) return;
+    await fetch('/api/me', { method: 'DELETE' });
+    closeAccountSettings();
+    await refreshAuthState();
+    fetchGames(false);
+  });
+}
+
+/* ── Manage hidden games ──────────────────────────────────────────────────── */
+async function renderHiddenGamesList() {
+  const res = await fetch('/api/me/hidden');
+  const body = await res.json();
+  const list = $('hiddenGamesList');
+  list.innerHTML = '';
+  if (!body.games.length) {
+    $('hiddenGamesEmpty').hidden = false;
+    return;
+  }
+  $('hiddenGamesEmpty').hidden = true;
+  body.games.forEach(g => {
+    const li = document.createElement('li');
+    li.className = 'hidden-games-row';
+    const name = document.createElement('span');
+    name.textContent = g.name || g.itadId;
+    const unhideBtn = document.createElement('button');
+    unhideBtn.textContent = t('unhideBtn');
+    unhideBtn.addEventListener('click', async () => {
+      const res = await fetch(`/api/me/hidden/${encodeURIComponent(g.itadId)}`, { method: 'DELETE' });
+      if (res.ok) {
+        document.dispatchEvent(new CustomEvent('hidden-changed', { detail: { itadId: g.itadId, active: false } }));
+      }
+      renderHiddenGamesList();
+    });
+    li.append(name, unhideBtn);
+    list.appendChild(li);
+  });
+}
+
+function openHiddenGamesView() {
+  $('settingsView').hidden = true;
+  $('hiddenGamesView').hidden = false;
+  renderHiddenGamesList();
+}
+
+function closeHiddenGamesView() {
+  $('hiddenGamesView').hidden = true;
+  $('settingsView').hidden = false;
+}
+
+function initHiddenGamesView() {
+  $('hiddenGamesBackBtn').addEventListener('click', closeHiddenGamesView);
+}
 
 /* ── Progress ──────────────────────────────────────────────────────────────── */
 function progress(pct) {
@@ -146,6 +446,12 @@ async function init() {
     initAppFilter();
     initFilterModeToggle();
     initPreferredDevicesModal();
+    initAuthModal();
+    initTrackedView();
+    initAccountSettings();
+    initHiddenGamesView();
+    initCardMenus();
+    await refreshAuthState();
 
     const isFirstVisit = loadPreferredDeviceIds() === null;
     if (isFirstVisit) {
@@ -439,6 +745,7 @@ function loadFilterMode() {
 
 function saveFilterMode(mode) {
   localStorage.setItem(PREF_FILTER_MODE_KEY, mode);
+  syncPreferencesToServer();
 }
 
 function applyFilterMode(mode) {
@@ -479,6 +786,7 @@ function loadPreferredDeviceIds() {
 
 function savePreferredDeviceIds(ids) {
   localStorage.setItem(PREF_KEY, JSON.stringify(ids));
+  syncPreferencesToServer();
 }
 
 function applyPreferredDevices() {
@@ -496,6 +804,7 @@ function loadPreferredCompatId() {
 
 function savePreferredCompatId(id) {
   localStorage.setItem(PREF_COMPAT_KEY, id ?? '');
+  syncPreferencesToServer();
 }
 
 function applyPreferredCompat() {
@@ -514,6 +823,7 @@ function loadPreferredRegion() {
 
 function savePreferredRegion(cc) {
   localStorage.setItem(PREF_REGION_KEY, cc ?? 'us');
+  syncPreferencesToServer();
 }
 
 function applyPreferredRegion() {
@@ -531,6 +841,7 @@ function loadPreferredStoreIds() {
 
 function savePreferredStoreIds(ids) {
   localStorage.setItem(PREF_STORES_KEY, JSON.stringify(ids));
+  syncPreferencesToServer();
 }
 
 function applyPreferredStores() {
@@ -550,6 +861,7 @@ function loadPreferredSocIds() {
 
 function savePreferredSocIds(ids) {
   localStorage.setItem(PREF_SOC_KEY, JSON.stringify(ids));
+  syncPreferencesToServer();
 }
 
 function applyPreferredSoc() {
@@ -558,6 +870,45 @@ function applyPreferredSoc() {
   ids.forEach(id => {
     const s = state.socs.find(x => x.id === id);
     if (s && !_selectedSocs.has(s.id)) selectSoc(s);
+  });
+}
+
+/* ── Sync filter preferences to the account ──────────────────────────────────── */
+function currentPreferencesSnapshot() {
+  return {
+    filterMode:   loadFilterMode(),
+    deviceIds:    loadPreferredDeviceIds() || [],
+    socIds:       loadPreferredSocIds() || [],
+    compatId:     loadPreferredCompatId(),
+    region:       loadPreferredRegion(),
+    storeIds:     loadPreferredStoreIds() || [],
+  };
+}
+
+function applyPreferencesSnapshot(prefs) {
+  if (!prefs || Object.keys(prefs).length === 0) return false;
+  if (prefs.filterMode) saveFilterMode(prefs.filterMode);
+  if (prefs.deviceIds) savePreferredDeviceIds(prefs.deviceIds);
+  if (prefs.socIds) savePreferredSocIds(prefs.socIds);
+  if (prefs.compatId != null) savePreferredCompatId(prefs.compatId);
+  if (prefs.region) savePreferredRegion(prefs.region);
+  if (prefs.storeIds) savePreferredStoreIds(prefs.storeIds);
+
+  const filterMode = loadFilterMode();
+  applyFilterMode(filterMode);
+  if (filterMode === 'chipset') applyPreferredSoc(); else applyPreferredDevices();
+  applyPreferredCompat();
+  applyPreferredRegion();
+  applyPreferredStores();
+  return true;
+}
+
+async function syncPreferencesToServer() {
+  if (!authState.loggedIn) return;
+  await fetch('/api/me/preferences', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(currentPreferencesSnapshot()),
   });
 }
 
@@ -1124,6 +1475,7 @@ async function fetchGames(resetPage = true, isSettingsChange = false) {
     shops:         state.filters.shops.join(',') || '',
     apps:          state.filters.apps.join(',') || '',
     histLow:           state.filters.histLow ? '1' : '',
+    hideOwned:         state.filters.hideOwned ? '1' : '',
     newAge:            state.filters.newAge,
     controllerSupport: state.filters.controllerSupport,
     page:              state.page,
@@ -1204,6 +1556,7 @@ function readFilters() {
     : [...checkedStores].map(i => i.value);
   state.filters.apps          = [...el.appList.querySelectorAll('input:checked')].map(i => i.value);
   state.filters.histLow       = el.histLowCheck.checked;
+  state.filters.hideOwned     = el.hideOwnedCheck.checked;
   const activeAge = el.newAgeButtons.querySelector('.disc-btn.active');
   state.filters.newAge        = activeAge ? activeAge.dataset.value : '';
 
@@ -1291,18 +1644,116 @@ function buildCard(g) {
         </svg>
         ${t('viewOnStore')(escHtml(g.storeName || 'Store'))}
       </a>
-      <a href="https://www.emuready.com/listings/${encodeURIComponent(g.id)}" target="_blank" rel="noopener" class="btn-emu">
+      ${g.id ? `<a href="https://www.emuready.com/listings/${encodeURIComponent(g.id)}" target="_blank" rel="noopener" class="btn-emu">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01M8 12h.01M16 12h.01"/><path d="M6 10v4"/>
         </svg>
         ${t('viewOnEmuReady')}
-      </a>
+      </a>` : ''}
+      <div class="card-actions-row">
+        <button class="btn-wishlist${g.isWishlisted ? ' active' : ''}" data-itad-id="${escHtml(g.appId)}" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>${g.isWishlisted ? '♥' : '♡'}</button>
+        <div class="card-menu-wrap">
+          <button class="btn-overflow" data-itad-id="${escHtml(g.appId)}" aria-haspopup="true" aria-label="${escHtml(t('moreActions'))}" ${authState.loggedIn ? '' : 'disabled title="' + escHtml(t('logInToTrack')) + '"'}>⋯</button>
+          <div class="card-menu" hidden>
+            <button class="card-menu-item" data-action="toggle-owned">${escHtml(g.isOwned ? t('removeFromOwned') : t('markAsOwned'))}</button>
+            <button class="card-menu-item" data-action="hide">${escHtml(t('hideThisGame'))}</button>
+          </div>
+        </div>
+      </div>
     </div>`;
 
   const img = div.querySelector('.card-img');
   img.addEventListener('error', () => {
     img.style.display = 'none';
     img.nextElementSibling.style.display = 'flex';
+  });
+
+  const wishlistBtn = div.querySelector('.btn-wishlist');
+  const setWishlistActive = (active) => {
+    wishlistBtn.classList.toggle('active', active);
+    wishlistBtn.textContent = active ? '♥' : '♡';
+  };
+  wishlistBtn.addEventListener('click', async () => {
+    if (!authState.loggedIn) return;
+    const itadId = wishlistBtn.dataset.itadId;
+    const wasActive = wishlistBtn.classList.contains('active');
+    setWishlistActive(!wasActive); // optimistic
+    try {
+      await (wasActive ? api.removeWishlist(itadId) : api.addWishlist(itadId));
+      document.dispatchEvent(new CustomEvent('wishlist-changed', { detail: { itadId, active: !wasActive } }));
+    } catch {
+      setWishlistActive(wasActive); // revert on failure
+    }
+  });
+
+  const overflowBtn = div.querySelector('.btn-overflow');
+  const menu = div.querySelector('.card-menu');
+  overflowBtn.addEventListener('click', (e) => {
+    if (!authState.loggedIn) return;
+    e.stopPropagation();
+    const wasHidden = menu.hidden;
+    document.querySelectorAll('.card-menu').forEach(m => { m.hidden = true; });
+    menu.hidden = !wasHidden;
+  });
+
+  let ownedState = !!g.isOwned;
+  const ownedItem = div.querySelector('[data-action="toggle-owned"]');
+  ownedItem.addEventListener('click', async () => {
+    menu.hidden = true;
+    const itadId = overflowBtn.dataset.itadId;
+    const wasOwned = ownedState;
+    ownedState = !wasOwned;
+    ownedItem.textContent = ownedState ? t('removeFromOwned') : t('markAsOwned');
+
+    // Marking owned always clears the wishlist too (backend enforces this
+    // unconditionally in services/wishlist.js's addOwned) — reflect it
+    // immediately in this card rather than waiting for a refetch.
+    const wishlistWasActive = wishlistBtn.classList.contains('active');
+    if (!wasOwned && wishlistWasActive) setWishlistActive(false);
+
+    try {
+      await (wasOwned ? api.removeOwned(itadId) : api.addOwned(itadId));
+      document.dispatchEvent(new CustomEvent('owned-changed', { detail: { itadId, active: !wasOwned } }));
+      if (!wasOwned && wishlistWasActive) {
+        document.dispatchEvent(new CustomEvent('wishlist-changed', { detail: { itadId, active: false } }));
+      }
+    } catch {
+      ownedState = wasOwned;
+      ownedItem.textContent = ownedState ? t('removeFromOwned') : t('markAsOwned');
+      if (!wasOwned && wishlistWasActive) setWishlistActive(true); // revert the wishlist side-effect too
+    }
+  });
+
+  const hideItem = div.querySelector('[data-action="hide"]');
+  hideItem.addEventListener('click', () => {
+    menu.hidden = true;
+    const itadId = overflowBtn.dataset.itadId;
+
+    // Optimistic: fire the hide immediately, fade the card out, and offer undo
+    // via a toast — the POST has already fired by the time the toast expires.
+    const hidePromise = api.hideGame(itadId);
+    document.dispatchEvent(new CustomEvent('hidden-changed', { detail: { itadId, active: true } }));
+
+    // Hiding always clears the wishlist server-side (services/wishlist.js's
+    // addHidden), and unhiding never restores it — so the heart stays
+    // inactive even after Undo, matching the server's actual state.
+    if (wishlistBtn.classList.contains('active')) {
+      setWishlistActive(false);
+      document.dispatchEvent(new CustomEvent('wishlist-changed', { detail: { itadId, active: false } }));
+    }
+
+    div.classList.add('card-hiding');
+    div.addEventListener('animationend', () => {
+      if (div.classList.contains('card-hiding')) div.hidden = true;
+    }, { once: true });
+
+    showActionToast(t('gameHiddenToast'), t('undoBtn'), async () => {
+      await hidePromise;
+      div.hidden = false;
+      div.classList.remove('card-hiding');
+      await api.unhideGame(itadId);
+      document.dispatchEvent(new CustomEvent('hidden-changed', { detail: { itadId, active: false } }));
+    });
   });
 
   return div;
@@ -1417,6 +1868,30 @@ function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function showActionToast(message, actionLabel, onAction, duration = 6000) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  const text = document.createElement('span');
+  text.textContent = message;
+  const btn = document.createElement('button');
+  btn.className = 'toast-action';
+  btn.textContent = actionLabel;
+  el.append(text, btn);
+  document.body.appendChild(el);
+
+  const dismiss = () => {
+    el.classList.add('hide');
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+  };
+  const timer = setTimeout(dismiss, duration);
+
+  btn.addEventListener('click', () => {
+    clearTimeout(timer);
+    el.remove();
+    onAction();
+  });
+}
+
 function debounce(fn, ms) {
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
@@ -1472,6 +1947,17 @@ el.controllerButtons.querySelectorAll('.disc-btn').forEach(btn => {
 // Historical low toggle (instant, Filters)
 el.histLowCheck.addEventListener('change', () => fetchGames(true));
 
+// Hide-owned toggle — persists to the logged-in account and refreshes results (Filters)
+el.hideOwnedCheck.addEventListener('change', () => {
+  fetchGames(true);
+  if (!authState.loggedIn) return;
+  fetch('/api/me/hide-owned-default', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hideOwnedDefault: el.hideOwnedCheck.checked }),
+  });
+});
+
 // Price inputs — debounced (Filters)
 const _debouncedFetch = debounce(() => fetchGames(true), 400);
 el.minPrice.addEventListener('input', _debouncedFetch);
@@ -1513,6 +1999,9 @@ el.resetBtn.addEventListener('click', () => {
 
   // Reset historical low
   el.histLowCheck.checked = false;
+
+  // Reset hide-owned (local view only — does not touch the account's saved default)
+  el.hideOwnedCheck.checked = false;
 
   // Reset deal age
   el.newAgeButtons.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
