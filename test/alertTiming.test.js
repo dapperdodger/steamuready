@@ -26,14 +26,14 @@ test('getTargetLocalHour falls back to a comfortable fixed hour when the noon-Pa
   // Mid-July: Northern summer (Pacific on PDT), Southern winter (Sydney on AEST, no DST) -> ~5am local, uncomfortable.
   const julyAt = new Date('2026-07-15T12:00:00Z');
   const auHour = getTargetLocalHour('au', julyAt);
-  assert.ok(auHour >= 7 && auHour <= 22, `expected a fallback in the comfortable window, got ${auHour}`);
+  assert.strictEqual(auHour, 9, `expected fallback hour 9 in Southern winter, got ${auHour}`);
 });
 
 test('getTargetLocalHour uses the freshest comfortable hour when the noon-Pacific instant lands in daytime (Southern summer)', () => {
   // Mid-January: Southern summer (Sydney on AEDT) -> the noon-Pacific instant lands closer to Sydney's morning.
   const janAt = new Date('2026-01-15T12:00:00Z');
   const auHour = getTargetLocalHour('au', janAt);
-  assert.ok(auHour >= 0 && auHour <= 23);
+  assert.strictEqual(auHour, 7, `expected DST-aware hour 7 in Southern summer, got ${auHour}`);
 });
 
 test('shouldSendNow is true only when the current local hour matches the computed target', () => {
