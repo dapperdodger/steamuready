@@ -231,6 +231,28 @@ resource "aws_iam_role_policy" "task_secrets" {
   })
 }
 
+resource "aws_iam_role_policy" "task_ses" {
+  name = "send-email"
+  role = aws_iam_role.task.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["ses:SendEmail", "ses:SendRawEmail"]
+      Resource = "*"
+    }]
+  })
+}
+
+# Account-level automatic suppression: SES stops sending to any address that
+# hard-bounces or complains, with no application code or SNS webhook needed.
+# This is the bounce/complaint-handling mechanism described in the AWS SES
+# production-access request (see the email-alerts spec's "Deliverability &
+# SES-production-access compliance" section).
+resource "aws_sesv2_account_suppression_attributes" "this" {
+  suppressed_reasons = ["BOUNCE", "COMPLAINT"]
+}
+
 # ── CloudWatch log group (so you can see app logs) ────────────────────────────
 resource "aws_cloudwatch_log_group" "app" {
   name              = "/ecs/${local.app_name}"

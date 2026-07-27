@@ -15,6 +15,7 @@ const meRouter = require('./routes/me');
 const alertsRouter = require('./routes/alerts');
 const { excludeOwned, excludeHidden } = require('./services/gameFilters');
 const wishlist = require('./services/wishlist');
+const priceAlerts = require('./services/priceAlerts');
 
 const app = express();
 let ctrlCacheReady = false;
@@ -579,6 +580,10 @@ if (require.main === module) {
     const server = app.listen(PORT, () => {
       console.log(`\n🎮  SteamUReady Running`);
       warmCaches();
+
+      setInterval(() => {
+        priceAlerts.runTick().catch(e => console.error('[priceAlerts] tick failed:', e.message));
+      }, 60 * 60 * 1000); // hourly; runTick itself only acts once a day per region
     });
 
     // ── Graceful shutdown (ECS/ALB task draining) ───────────────────────────────
