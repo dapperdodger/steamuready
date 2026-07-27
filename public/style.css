@@ -1141,8 +1141,8 @@ select option { background: var(--card); }
 
 /* ── Email verification banner ─────────────────────────────────────────────── */
 .verify-banner {
-  background: #3a3020;
-  color: #f0d080;
+  background: var(--card);
+  color: var(--yellow);
   padding: .5rem 1rem;
   text-align: center;
   font-size: .9rem;
@@ -1150,9 +1150,13 @@ select option { background: var(--card); }
 .verify-banner button {
   margin-left: .75rem;
   background: none;
-  border: 1px solid currentColor;
-  color: inherit;
+  border: 1px solid var(--yellow);
+  color: var(--yellow);
   border-radius: 4px;
   padding: .15rem .5rem;
   cursor: pointer;
+  transition: background var(--transition);
+}
+.verify-banner button:hover {
+  background: rgba(210, 153, 34, 0.12);
 }
