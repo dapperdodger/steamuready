@@ -109,19 +109,29 @@ router.get('/me', async (req, res) => {
 router.get('/verify', async (req, res) => {
   const token = req.query.token;
   if (typeof token !== 'string') return res.redirect('/?emailError=invalid_token');
-  const userId = await emailTokens.consumeToken(token, 'verify');
-  if (!userId) return res.redirect('/?emailError=invalid_token');
-  await auth.setEmailVerified(userId, true);
-  res.redirect('/?emailVerified=1');
+  try {
+    const userId = await emailTokens.consumeToken(token, 'verify');
+    if (!userId) return res.redirect('/?emailError=invalid_token');
+    await auth.setEmailVerified(userId, true);
+    res.redirect('/?emailVerified=1');
+  } catch (e) {
+    console.error('[/api/auth/verify]', e);
+    res.redirect('/?emailError=invalid_token');
+  }
 });
 
 router.post('/resend-verification', requireAuth, authRateLimiter, async (req, res) => {
-  const user = await auth.findUserById(req.session.userId);
-  if (user.email_verified) return res.json({ ok: true, alreadyVerified: true });
-  const token = await emailTokens.createToken(user.id, 'verify', 24 * 60 * 60 * 1000);
-  const baseUrl = `${req.protocol}://${req.get('host')}`;
-  await emailService.sendVerificationEmail(user.email, token, baseUrl);
-  res.json({ ok: true });
+  try {
+    const user = await auth.findUserById(req.session.userId);
+    if (user.email_verified) return res.json({ ok: true, alreadyVerified: true });
+    const token = await emailTokens.createToken(user.id, 'verify', 24 * 60 * 60 * 1000);
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    await emailService.sendVerificationEmail(user.email, token, baseUrl);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[/api/auth/resend-verification]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 module.exports = router;
