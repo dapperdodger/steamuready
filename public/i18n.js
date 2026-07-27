@@ -122,6 +122,10 @@ const translations = {
     backToSettings:         '← Retour',
     emptyHiddenMsg:         "Tu n'as encore masqué aucun jeu.",
     unhideBtn:              'Réafficher',
+    authForgotPassword:     'Mot de passe oublié ?',
+    setNewPasswordTitle:    'Définis un nouveau mot de passe',
+    forgotPasswordSent:     "Si cet email est enregistré, nous avons envoyé un lien de réinitialisation.",
+    passwordResetSuccess:   'Mot de passe mis à jour. Veuillez vous reconnecter.',
   },
 
   en: {
@@ -246,6 +250,10 @@ const translations = {
     backToSettings:         '← Back',
     emptyHiddenMsg:         "You haven't hidden any games.",
     unhideBtn:              'Unhide',
+    authForgotPassword:     'Forgot password?',
+    setNewPasswordTitle:    'Set a new password',
+    forgotPasswordSent:     "If that email is registered, we've sent a reset link.",
+    passwordResetSuccess:   'Password updated. Please log in again.',
   },
 
   de: {
@@ -370,6 +378,10 @@ const translations = {
     backToSettings:         '← Zurück',
     emptyHiddenMsg:         'Du hast noch keine Spiele ausgeblendet.',
     unhideBtn:              'Einblenden',
+    authForgotPassword:     'Passwort vergessen?',
+    setNewPasswordTitle:    'Neues Passwort setzen',
+    forgotPasswordSent:     'Wenn diese E-Mail registriert ist, haben wir einen Reset-Link gesendet.',
+    passwordResetSuccess:   'Passwort aktualisiert. Bitte melden Sie sich erneut an.',
   },
 
   es: {
@@ -494,6 +506,10 @@ const translations = {
     backToSettings:         '← Volver',
     emptyHiddenMsg:         'Todavía no has ocultado ningún juego.',
     unhideBtn:              'Mostrar',
+    authForgotPassword:     '¿Contraseña olvidada?',
+    setNewPasswordTitle:    'Establece una nueva contraseña',
+    forgotPasswordSent:     'Si ese correo está registrado, hemos enviado un enlace de restablecimiento.',
+    passwordResetSuccess:   'Contraseña actualizada. Por favor, inicia sesión de nuevo.',
   },
 };
 

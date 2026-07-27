@@ -123,8 +123,26 @@
       </form>
     </div>
     <div class="modal-footer">
+      <button class="btn-modal-skip" id="authForgotPassword" data-i18n="authForgotPassword">Forgot password?</button>
       <button class="btn-modal-skip" id="authCancel" data-i18n="authCancel">Cancel</button>
       <button type="submit" form="authForm" class="btn-modal-save" id="authSubmit" data-i18n="authSubmitLogin">Log in</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal-overlay" id="resetPasswordModal" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h2 data-i18n="setNewPasswordTitle">Set a new password</h2>
+    </div>
+    <div class="modal-body">
+      <label class="filter-label" data-i18n="authPasswordLabel">Password</label>
+      <input type="password" id="resetNewPassword" minlength="8" style="width:100%;margin-top:.35rem" />
+      <div id="resetPasswordError" class="auth-error" hidden></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal-save" id="resetPasswordSubmit" data-i18n="saveBtn">Save</button>
     </div>
   </div>
 </div>

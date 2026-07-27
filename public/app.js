@@ -106,6 +106,8 @@ Object.assign(api, {
   authSignup(email, pw)  { return fetch('/api/auth/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: pw }) }); },
   authLogin(email, pw)   { return fetch('/api/auth/login',  { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: pw }) }); },
   authLogout()           { return fetch('/api/auth/logout', { method: 'POST' }); },
+  forgotPassword(email)  { return fetch('/api/auth/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }); },
+  resetPassword(token, newPassword) { return fetch('/api/auth/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, newPassword }) }); },
   addWishlist(itadId)    { return fetch(`/api/me/wishlist/${encodeURIComponent(itadId)}`, { method: 'POST' }); },
   removeWishlist(itadId) { return fetch(`/api/me/wishlist/${encodeURIComponent(itadId)}`, { method: 'DELETE' }); },
   addOwned(itadId)       { return fetch(`/api/me/owned/${encodeURIComponent(itadId)}`, { method: 'POST' }); },
@@ -398,6 +400,43 @@ function initHiddenGamesView() {
   $('hiddenGamesBackBtn').addEventListener('click', closeHiddenGamesView);
 }
 
+/* ── Forgot password ───────────────────────────────────────────────────────── */
+function initForgotPassword() {
+  $('authForgotPassword').addEventListener('click', async () => {
+    const email = authEl.email.value.trim();
+    if (!email) {
+      authEl.error.textContent = t('authEmailLabel');
+      authEl.error.hidden = false;
+      return;
+    }
+    await api.forgotPassword(email);
+    closeAuthModal();
+    showToast(t('forgotPasswordSent'));
+  });
+}
+
+function initResetPasswordModal() {
+  const params = new URLSearchParams(location.search);
+  const resetToken = params.get('resetToken');
+  if (!resetToken) return;
+
+  $('resetPasswordModal').hidden = false;
+  history.replaceState(null, '', location.pathname);
+
+  $('resetPasswordSubmit').addEventListener('click', async () => {
+    const newPassword = $('resetNewPassword').value;
+    const res = await api.resetPassword(resetToken, newPassword);
+    if (res.ok) {
+      $('resetPasswordModal').hidden = true;
+      showToast(t('passwordResetSuccess'));
+      return;
+    }
+    const body = await res.json().catch(() => ({}));
+    $('resetPasswordError').textContent = body.error || t('authInvalidCreds');
+    $('resetPasswordError').hidden = false;
+  });
+}
+
 /* ── Progress ──────────────────────────────────────────────────────────────── */
 function progress(pct) {
   el.progressBar.style.width = pct + '%';
@@ -413,6 +452,23 @@ function compatClass(rank) {
   if (rank <= 3) return '3'; // Playable
   if (rank <= 5) return '2'; // Poor / Ingame
   return '1';                 // Intro / Loadable / Nothing
+}
+
+/* ── Toast notifications ───────────────────────────────────────────────────── */
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  // Trigger reflow to enable CSS transition
+  void toast.offsetHeight;
+  toast.classList.add('show');
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }
 
 /* ── Init ──────────────────────────────────────────────────────────────────── */
@@ -447,6 +503,8 @@ async function init() {
     initFilterModeToggle();
     initPreferredDevicesModal();
     initAuthModal();
+    initForgotPassword();
+    initResetPasswordModal();
     initTrackedView();
     initAccountSettings();
     initHiddenGamesView();
