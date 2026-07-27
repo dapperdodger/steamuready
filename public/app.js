@@ -117,7 +117,7 @@ Object.assign(api, {
 });
 
 /* ── Auth state ────────────────────────────────────────────────────────────── */
-const authState = { loggedIn: false, email: null, preferences: null, hideOwnedDefault: false };
+const authState = { loggedIn: false, email: null, preferences: null, hideOwnedDefault: false, emailVerified: null, alertsEnabled: null, alertMode: null };
 
 async function refreshAuthState() {
   const res = await fetch('/api/auth/me');
@@ -128,6 +128,9 @@ async function refreshAuthState() {
     authState.email = body.email;
     authState.preferences = body.preferences;
     authState.hideOwnedDefault = body.hideOwnedDefault;
+    authState.emailVerified = body.emailVerified;
+    authState.alertsEnabled = body.alertsEnabled;
+    authState.alertMode = body.alertMode;
     if (!wasLoggedIn) {
       const applied = applyPreferencesSnapshot(body.preferences);
       if (applied) fetchGames();
@@ -137,6 +140,9 @@ async function refreshAuthState() {
     authState.email = null;
     authState.preferences = null;
     authState.hideOwnedDefault = false;
+    authState.emailVerified = null;
+    authState.alertsEnabled = null;
+    authState.alertMode = null;
   }
   renderAuthMenu();
 }
@@ -156,6 +162,7 @@ function renderAuthMenu() {
     state.filters.hideOwned = false;
   }
   el.hideOwnedRow.hidden = !authState.loggedIn;
+  $('verifyBanner').hidden = !(authState.loggedIn && authState.emailVerified === false);
 }
 
 /* ── Auth modal ────────────────────────────────────────────────────────────── */
@@ -438,6 +445,13 @@ function initResetPasswordModal() {
   });
 }
 
+function initVerifyBanner() {
+  $('verifyBannerResendBtn').addEventListener('click', async () => {
+    const res = await fetch('/api/auth/resend-verification', { method: 'POST' });
+    if (res.ok) showToast(t('verificationEmailSent'));
+  });
+}
+
 /* ── Progress ──────────────────────────────────────────────────────────────── */
 function progress(pct) {
   el.progressBar.style.width = pct + '%';
@@ -506,11 +520,21 @@ async function init() {
     initAuthModal();
     initForgotPassword();
     initResetPasswordModal();
+    initVerifyBanner();
     initTrackedView();
     initAccountSettings();
     initHiddenGamesView();
     initCardMenus();
     await refreshAuthState();
+
+    if (new URLSearchParams(location.search).get('emailVerified') === '1') {
+      showToast(t('emailVerifiedToast'));
+      history.replaceState(null, '', location.pathname);
+    }
+    if (new URLSearchParams(location.search).get('unsubscribed') === '1') {
+      showToast(t('unsubscribedToast'));
+      history.replaceState(null, '', location.pathname);
+    }
 
     const isFirstVisit = loadPreferredDeviceIds() === null;
     if (isFirstVisit) {

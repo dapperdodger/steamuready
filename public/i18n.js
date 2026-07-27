@@ -126,6 +126,11 @@ const translations = {
     setNewPasswordTitle:    'Définis un nouveau mot de passe',
     forgotPasswordSent:     "Si cet email est enregistré, nous avons envoyé un lien de réinitialisation.",
     passwordResetSuccess:   'Mot de passe mis à jour. Veuillez vous reconnecter.',
+    verifyBannerMsg:        'Veuillez vérifier votre email pour recevoir les alertes de baisse de prix.',
+    resendVerification:     'Renvoyer un email de vérification',
+    verificationEmailSent:  'Email de vérification envoyé.',
+    emailVerifiedToast:     'Email vérifié !',
+    unsubscribedToast:      "Vous vous êtes désabonné des alertes de prix — gérez cela à tout moment dans les paramètres du compte.",
   },
 
   en: {
@@ -254,6 +259,11 @@ const translations = {
     setNewPasswordTitle:    'Set a new password',
     forgotPasswordSent:     "If that email is registered, we've sent a reset link.",
     passwordResetSuccess:   'Password updated. Please log in again.',
+    verifyBannerMsg:        'Please verify your email to receive price-drop alerts.',
+    resendVerification:     'Resend verification email',
+    verificationEmailSent:  'Verification email sent.',
+    emailVerifiedToast:     'Email verified!',
+    unsubscribedToast:      "You've been unsubscribed from price alerts — manage this anytime in Account Settings.",
   },
 
   de: {
@@ -382,6 +392,11 @@ const translations = {
     setNewPasswordTitle:    'Neues Passwort setzen',
     forgotPasswordSent:     'Wenn diese E-Mail registriert ist, haben wir einen Reset-Link gesendet.',
     passwordResetSuccess:   'Passwort aktualisiert. Bitte melden Sie sich erneut an.',
+    verifyBannerMsg:        'Bitte bestätigen Sie Ihre E-Mail, um Preisabfallwarnungen zu erhalten.',
+    resendVerification:     'Bestätigungsmail erneut senden',
+    verificationEmailSent:  'Bestätigungsmail gesendet.',
+    emailVerifiedToast:     'E-Mail verifiziert!',
+    unsubscribedToast:      "Sie haben sich von Preisbenachrichtigungen abgemeldet — verwalten Sie dies jederzeit in den Kontoeinstellungen.",
   },
 
   es: {
@@ -510,6 +525,11 @@ const translations = {
     setNewPasswordTitle:    'Establece una nueva contraseña',
     forgotPasswordSent:     'Si ese correo está registrado, hemos enviado un enlace de restablecimiento.',
     passwordResetSuccess:   'Contraseña actualizada. Por favor, inicia sesión de nuevo.',
+    verifyBannerMsg:        'Por favor, verifica tu correo electrónico para recibir alertas de caída de precios.',
+    resendVerification:     'Reenviar correo de verificación',
+    verificationEmailSent:  'Correo de verificación enviado.',
+    emailVerifiedToast:     '¡Correo verificado!',
+    unsubscribedToast:      "Has sido desuscrito de las alertas de precios — gestiona esto en cualquier momento en la Configuración de la cuenta.",
   },
 };
 

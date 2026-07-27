@@ -1138,3 +1138,21 @@ select option { background: var(--card); }
   transition: all var(--transition);
 }
 .hidden-games-row button:hover { border-color: var(--text); color: var(--text); }
+
+/* ── Email verification banner ─────────────────────────────────────────────── */
+.verify-banner {
+  background: #3a3020;
+  color: #f0d080;
+  padding: .5rem 1rem;
+  text-align: center;
+  font-size: .9rem;
+}
+.verify-banner button {
+  margin-left: .75rem;
+  background: none;
+  border: 1px solid currentColor;
+  color: inherit;
+  border-radius: 4px;
+  padding: .15rem .5rem;
+  cursor: pointer;
+}
