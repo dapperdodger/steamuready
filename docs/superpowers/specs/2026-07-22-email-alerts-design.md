@@ -179,9 +179,13 @@ skips. This is the same mechanism that would otherwise need a separate
 
 - `services/email.js` wraps `@aws-sdk/client-ses` (same AWS SDK v3 family
   already used for Secrets Manager). Requires a verified sender identity in
-  SES (e.g. `alerts@steamuready.com`) and a new `ses:SendEmail`/
-  `ses:SendRawEmail` IAM permission added to the existing ECS task role in
-  `infra/main.tf` (which already has `secretsmanager:GetSecretValue`).
+  SES — **`no-reply@steamuready.com`**, not a monitored inbox — and a new
+  `ses:SendEmail`/`ses:SendRawEmail` IAM permission added to the existing ECS
+  task role in `infra/main.tf` (which already has
+  `secretsmanager:GetSecretValue`).
+- Every email sets **`Reply-To: support@steamuready.com`** so a reply to a
+  no-reply address still reaches a monitored inbox instead of silently
+  bouncing or vanishing.
 - `EMAIL_DRY_RUN=true` logs the composed email (subject + body) to the
   console instead of calling SES — mirrors the existing `SKIP_CTRL_WARM`
   escape hatch, since real sends can't easily be tested locally without
@@ -193,6 +197,77 @@ skips. This is the same mechanism that would otherwise need a separate
   footer with the support email, Discord link, and Ko-fi link already used
   on the site (`public/index.html`): `support@steamuready.com`,
   `https://discord.gg/XAt8awGUMM`, `https://ko-fi.com/dapperdodger`.
+
+### Raw MIME sending (needed for custom headers)
+
+SES's simple `SendEmailCommand` API cannot set arbitrary headers —
+`Reply-To` has a dedicated field, but `List-Unsubscribe` (see below) does
+not. `services/email.js` therefore builds a raw MIME message (a
+`multipart/alternative` string with `text/plain` and `text/html` parts, via
+plain template literals — no new dependency, e.g. no `nodemailer`) and sends
+it with `SendRawEmailCommand` for every email, not just the digest. This
+keeps one send code path instead of branching between simple and raw
+sending depending on message type.
+
+## Deliverability & SES-production-access compliance
+
+AWS reviews every SES production-access request (moving off the sandbox,
+which can otherwise only send to pre-verified addresses) against a short,
+predictable checklist: how you obtain consent, how you handle bounces and
+complaints, and whether there's a working unsubscribe. Addressing all three
+up front is the whole point of this section — it avoids a round trip with
+AWS support after the fact.
+
+- **Unsubscribe (price-alert digest only — verification/reset are
+  transactional, not marketing, and carry no unsubscribe link):**
+  - `services/unsubscribeTokens.js` exports `generateUnsubscribeToken(userId)`
+    / `verifyUnsubscribeToken(userId, token)`, an **HMAC-SHA256 token keyed
+    by a new `UNSUBSCRIBE_SECRET` env var**, not a database row. It's
+    stateless (nothing to store or garbage-collect) and non-expiring,
+    appropriate because the only action it can ever trigger is flipping
+    `alerts_enabled` to `false` — a low-stakes, fully reversible action the
+    user can undo in Account Settings, not something that needs per-token
+    revocation.
+  - Every digest email includes both a human-readable unsubscribe link in
+    the body and, per **RFC 8058 (one-click unsubscribe)**, a
+    `List-Unsubscribe: <https://.../api/alerts/unsubscribe?u=<userId>&token=...>`
+    header plus `List-Unsubscribe-Post: List-Unsubscribe=One-Click`. Mailbox
+    providers (Gmail, Outlook, etc.) surface this as a native "Unsubscribe"
+    button next to the sender and issue an automated `POST` — this is now a
+    de facto deliverability requirement for bulk senders, not just an AWS
+    ask.
+  - New route `routes/alerts.js`: `GET|POST /api/alerts/unsubscribe` — no
+    auth required (that's the point of one-click). `POST` handles the
+    mailbox provider's automated request per RFC 8058 and responds `200`
+    with an empty body. `GET` handles a human clicking the link inside the
+    email body and redirects to `/?unsubscribed=1`. Both set
+    `alerts_enabled = false` for the token's user via the same
+    `updateAlertSettings`-adjacent DB call.
+- **Bounce/complaint handling:** rather than building a custom SNS
+  webhook, this relies on **SES's built-in account-level automatic
+  suppression list**, enabled via Terraform
+  (`aws_sesv2_account_suppression_attributes` with
+  `suppressed_reasons = ["BOUNCE", "COMPLAINT"]` in `infra/main.tf`,
+  alongside the new IAM permission). SES then stops sending to any address
+  that hard-bounces or complains, automatically, with no new application
+  code or infrastructure. This is committed as code rather than a manual
+  SES-console setting so it isn't a step someone has to remember when
+  standing up a new environment.
+- **Consent model:** alerts are on by default once a user wishlists a game
+  (see Scope above) and gated on `email_verified` — verification itself is
+  the proof of a working, user-controlled address. Combined with the
+  one-click unsubscribe and the master toggle in Account Settings, this is
+  the consent story to describe on the SES production-access request form.
+- **Known compliance gap, explicitly not addressed by this pass:** CAN-SPAM
+  requires a valid physical postal address in commercial email footers, and
+  the price-alert digest (it promotes third-party stores' products, even
+  though SteamUReady doesn't profit from the sale) plausibly qualifies as
+  commercial email under CAN-SPAM's primary-purpose test regardless of who
+  benefits financially. **This implementation ships without a physical
+  address in the footer** — deliberately deferred, not an oversight. A PO
+  box or similar mailing address must be obtained and added to the digest
+  footer (not the verify/reset footer) before this feature is considered
+  fully compliant for production use.
 
 ## Routes
 
@@ -213,6 +288,13 @@ Extending `routes/me.js`: `PUT /api/me/alert-settings {alertsEnabled,
 alertMode}` — `requireAuth`, validates `alertMode` against the three-value
 enum.
 
+New `routes/alerts.js`:
+
+| Endpoint | Behavior |
+|---|---|
+| `GET /api/alerts/unsubscribe?u=&token=` | No auth. Verifies the HMAC token, sets `alerts_enabled = false`, redirects to `/?unsubscribed=1`. |
+| `POST /api/alerts/unsubscribe?u=&token=` | No auth. Same verification/effect as `GET`, but responds `200` with an empty body per RFC 8058 one-click unsubscribe (no redirect — the caller is a mailbox provider, not a browser). |
+
 ## Frontend UI
 
 - **Login modal**: "Forgot password?" link switches to a reset-request mode
@@ -224,6 +306,9 @@ enum.
   on `/?emailVerified=1`.
 - **Account Settings**: new "Email Alerts" section — master on/off toggle
   and a 3-way selector for `alert_mode`.
+- **Unsubscribe toast**: a toast on `/?unsubscribed=1` ("You've been
+  unsubscribed from price alerts — manage this anytime in Account
+  Settings"), same mechanism as the existing `emailVerified` toast.
 
 ## Security
 
@@ -233,14 +318,23 @@ enum.
 - Forgot-password never reveals whether an email is registered.
 - AWS credentials for SES are the existing ECS task role — no new secret
   material introduced beyond one new IAM permission.
+- The unsubscribe HMAC token is scoped to a single, low-privilege effect
+  (setting `alerts_enabled = false`); it cannot be used to read or change
+  anything else about the account, so it deliberately doesn't need the
+  hashed-at-rest/single-use/expiring properties the verify/reset tokens have.
+- `UNSUBSCRIBE_SECRET` is a new required env var (distinct from
+  `SESSION_SECRET`), added to `.env.example`.
 
 ## Testing
 
 Pure/DB logic gets full `node:test` coverage: token generation/hashing/
 expiry, the three `alert_mode` decision functions (against synthetic price
-data, no network), and the per-region local-hour/fallback computation
-(against fixed timezone inputs). Live SES sends and the actual scheduled job
-loop are verified manually via `EMAIL_DRY_RUN` plus one real send —
-consistent with this codebase's established pattern (pure logic automated,
-live network calls manual) already used in the accounts and Steam import
-specs.
+data, no network), the per-region local-hour/fallback computation (against
+fixed timezone inputs), the unsubscribe HMAC token
+generation/verification, and the raw-MIME builder (asserting the
+`List-Unsubscribe`/`List-Unsubscribe-Post`/`Reply-To` headers are present in
+the composed message, via `EMAIL_DRY_RUN`'s captured output). Live SES
+sends and the actual scheduled job loop are verified manually via
+`EMAIL_DRY_RUN` plus one real send — consistent with this codebase's
+established pattern (pure logic automated, live network calls manual)
+already used in the accounts and Steam import specs.
