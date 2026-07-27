@@ -131,6 +131,12 @@ const translations = {
     verificationEmailSent:  'Email de vérification envoyé.',
     emailVerifiedToast:     'Email vérifié !',
     unsubscribedToast:      "Vous vous êtes désabonné des alertes de prix — gérez cela à tout moment dans les paramètres du compte.",
+    emailAlertsTitle:       'Alertes email',
+    alertsEnabledLabel:     'M\'envoyer un email quand le prix d\'un jeu de ma liste de souhaits baisse',
+    alertModeLabel:         'Fréquence',
+    alertModePriceDrop:     'Chaque fois que le prix baisse davantage',
+    alertModeSalePeriod:    'Une fois par vente',
+    alertModeHistoricalLow: 'Seulement au prix historiquement bas',
   },
 
   en: {
@@ -264,6 +270,12 @@ const translations = {
     verificationEmailSent:  'Verification email sent.',
     emailVerifiedToast:     'Email verified!',
     unsubscribedToast:      "You've been unsubscribed from price alerts — manage this anytime in Account Settings.",
+    emailAlertsTitle:       'Email Alerts',
+    alertsEnabledLabel:     'Email me when a wishlisted game drops in price',
+    alertModeLabel:         'How often',
+    alertModePriceDrop:     'Every time the price drops further',
+    alertModeSalePeriod:    'Once per sale',
+    alertModeHistoricalLow: 'Only at an all-time low price',
   },
 
   de: {
@@ -397,6 +409,12 @@ const translations = {
     verificationEmailSent:  'Bestätigungsmail gesendet.',
     emailVerifiedToast:     'E-Mail verifiziert!',
     unsubscribedToast:      "Sie haben sich von Preisbenachrichtigungen abgemeldet — verwalten Sie dies jederzeit in den Kontoeinstellungen.",
+    emailAlertsTitle:       'Email-Benachrichtigungen',
+    alertsEnabledLabel:     'E-Mail mir, wenn der Preis eines Wunschlistenspiels sinkt',
+    alertModeLabel:         'Wie oft',
+    alertModePriceDrop:     'Jedes Mal, wenn der Preis weiter sinkt',
+    alertModeSalePeriod:    'Einmal pro Verkauf',
+    alertModeHistoricalLow: 'Nur bei Allzeit-Tiefstpreis',
   },
 
   es: {
@@ -530,6 +548,12 @@ const translations = {
     verificationEmailSent:  'Correo de verificación enviado.',
     emailVerifiedToast:     '¡Correo verificado!',
     unsubscribedToast:      "Has sido desuscrito de las alertas de precios — gestiona esto en cualquier momento en la Configuración de la cuenta.",
+    emailAlertsTitle:       'Alertas de correo electrónico',
+    alertsEnabledLabel:     'Enviarme un correo cuando el precio de un juego deseado baje',
+    alertModeLabel:         'Con qué frecuencia',
+    alertModePriceDrop:     'Cada vez que el precio baja más',
+    alertModeSalePeriod:    'Una vez por venta',
+    alertModeHistoricalLow: 'Solo en el precio más bajo de la historia',
   },
 };
 

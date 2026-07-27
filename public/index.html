@@ -434,6 +434,22 @@
   </div>
 
   <div class="settings-block">
+    <h3 data-i18n="emailAlertsTitle">Email Alerts</h3>
+    <label>
+      <input type="checkbox" id="alertsEnabledCheck" />
+      <span data-i18n="alertsEnabledLabel">Email me when a wishlisted game drops in price</span>
+    </label>
+    <div style="margin-top:.75rem">
+      <label class="filter-label" data-i18n="alertModeLabel">How often</label>
+      <select id="alertModeSelect" style="width:100%;margin-top:.35rem">
+        <option value="price_drop" data-i18n="alertModePriceDrop">Every time the price drops further</option>
+        <option value="sale_period" data-i18n="alertModeSalePeriod">Once per sale</option>
+        <option value="historical_low" data-i18n="alertModeHistoricalLow">Only at an all-time low price</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="settings-block">
     <h3 data-i18n="hiddenGamesTitle">Hidden games</h3>
     <button class="btn-modal-skip" id="settingsManageHidden" data-i18n="manageHiddenGames">Manage hidden games</button>
   </div>

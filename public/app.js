@@ -114,6 +114,12 @@ Object.assign(api, {
   removeOwned(itadId)    { return fetch(`/api/me/owned/${encodeURIComponent(itadId)}`, { method: 'DELETE' }); },
   hideGame(itadId)       { return fetch(`/api/me/hidden/${encodeURIComponent(itadId)}`, { method: 'POST' }); },
   unhideGame(itadId)     { return fetch(`/api/me/hidden/${encodeURIComponent(itadId)}`, { method: 'DELETE' }); },
+  updateAlertSettings(alertsEnabled, alertMode) {
+    return fetch('/api/me/alert-settings', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alertsEnabled, alertMode }),
+    });
+  },
 });
 
 /* ── Auth state ────────────────────────────────────────────────────────────── */
@@ -317,6 +323,7 @@ function openAccountSettings() {
   $('settingsCurrentPw').value = '';
   $('settingsNewPw').value = '';
   $('settingsPwError').hidden = true;
+  renderAlertSettings();
 }
 
 function closeAccountSettings() {
@@ -360,6 +367,24 @@ function initAccountSettings() {
     await refreshAuthState();
     fetchGames(false);
   });
+}
+
+function initAlertSettings() {
+  $('alertsEnabledCheck').addEventListener('change', saveAlertSettings);
+  $('alertModeSelect').addEventListener('change', saveAlertSettings);
+}
+
+function renderAlertSettings() {
+  $('alertsEnabledCheck').checked = authState.alertsEnabled;
+  $('alertModeSelect').value = authState.alertMode;
+}
+
+async function saveAlertSettings() {
+  const alertsEnabled = $('alertsEnabledCheck').checked;
+  const alertMode = $('alertModeSelect').value;
+  await api.updateAlertSettings(alertsEnabled, alertMode);
+  authState.alertsEnabled = alertsEnabled;
+  authState.alertMode = alertMode;
 }
 
 /* ── Manage hidden games ──────────────────────────────────────────────────── */
@@ -523,6 +548,7 @@ async function init() {
     initVerifyBanner();
     initTrackedView();
     initAccountSettings();
+    initAlertSettings();
     initHiddenGamesView();
     initCardMenus();
     await refreshAuthState();
