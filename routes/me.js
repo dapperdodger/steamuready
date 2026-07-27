@@ -1,6 +1,7 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/session');
 const auth = require('../services/auth');
+const { updateAlertSettings } = require('../services/auth');
 const wishlist = require('../services/wishlist');
 const store = require('../services/store');
 
@@ -168,6 +169,17 @@ router.delete('/', async (req, res) => {
       res.status(500).json({ error: 'Internal server error' });
     }
   });
+});
+
+const VALID_ALERT_MODES = ['price_drop', 'sale_period', 'historical_low'];
+
+router.put('/alert-settings', async (req, res) => {
+  const { alertsEnabled, alertMode } = req.body ?? {};
+  if (typeof alertsEnabled !== 'boolean' || !VALID_ALERT_MODES.includes(alertMode)) {
+    return res.status(400).json({ error: 'alertsEnabled (boolean) and a valid alertMode are required' });
+  }
+  await updateAlertSettings(req.session.userId, alertsEnabled, alertMode);
+  res.json({ ok: true });
 });
 
 module.exports = router;
