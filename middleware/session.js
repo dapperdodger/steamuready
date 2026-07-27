@@ -22,4 +22,22 @@ function requireAuth(req, res, next) {
   next();
 }
 
-module.exports = { sessionMiddleware, requireAuth };
+// Scans the session keyspace (same SCAN pattern as delPattern in
+// services/cache.js) and deletes every session belonging to userId — used
+// after a password reset so a compromised session doesn't survive it.
+async function invalidateUserSessions(userId) {
+  let cursor = '0';
+  do {
+    const [next, keys] = await redis.scan(cursor, 'MATCH', 'sess:*', 'COUNT', 100);
+    cursor = next;
+    for (const key of keys) {
+      const raw = await redis.get(key);
+      if (!raw) continue;
+      try {
+        if (JSON.parse(raw).userId === userId) await redis.del(key);
+      } catch { /* malformed session data — skip */ }
+    }
+  } while (cursor !== '0');
+}
+
+module.exports = { sessionMiddleware, requireAuth, invalidateUserSessions };

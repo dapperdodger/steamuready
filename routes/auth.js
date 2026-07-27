@@ -3,7 +3,7 @@ const auth = require('../services/auth');
 const { redis } = require('../services/cache');
 const emailTokens = require('../services/emailTokens');
 const emailService = require('../services/email');
-const { requireAuth } = require('../middleware/session');
+const { requireAuth, invalidateUserSessions } = require('../middleware/session');
 
 const router = express.Router();
 
@@ -130,6 +130,49 @@ router.post('/resend-verification', requireAuth, authRateLimiter, async (req, re
     res.json({ ok: true });
   } catch (e) {
     console.error('[/api/auth/resend-verification]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/forgot-password', authRateLimiter, async (req, res) => {
+  try {
+    const GENERIC = { ok: true, message: 'If that email is registered, a reset link has been sent.' };
+    const { email: rawEmail } = req.body ?? {};
+    if (typeof rawEmail !== 'string' || !EMAIL_RE.test(rawEmail)) return res.json(GENERIC);
+
+    const user = await auth.findUserByEmail(rawEmail.toLowerCase());
+    if (user) {
+      const token = await emailTokens.createToken(user.id, 'reset', 60 * 60 * 1000);
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      emailService.sendPasswordResetEmail(user.email, token, baseUrl)
+        .catch(e => console.error('[forgot-password] reset email failed:', e.message));
+    }
+    res.json(GENERIC);
+  } catch (e) {
+    console.error('[/api/auth/forgot-password]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body ?? {};
+    if (typeof token !== 'string' || typeof newPassword !== 'string' || newPassword.length < 8) {
+      return res.status(400).json({ error: 'A token and a newPassword of at least 8 characters are required' });
+    }
+    const userId = await emailTokens.consumeToken(token, 'reset');
+    if (!userId) return res.status(400).json({ error: 'Invalid or expired reset link' });
+
+    const newHash = await auth.hashPassword(newPassword);
+    await auth.updatePasswordHash(userId, newHash);
+    await invalidateUserSessions(userId);
+
+    req.session.destroy(() => {
+      res.clearCookie('connect.sid');
+      res.json({ ok: true });
+    });
+  } catch (e) {
+    console.error('[/api/auth/reset-password]', e);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
