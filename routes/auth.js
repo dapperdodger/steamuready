@@ -150,7 +150,7 @@ router.post('/forgot-password', authRateLimiter, async (req, res) => {
       // Timing equalization: non-existent-user branch must also incur a DB
       // round-trip to prevent attackers from inferring whether an email is
       // registered based on response latency (see /login's DUMMY_HASH pattern).
-      await emailTokens.consumeDbRoundTrip();
+      await emailTokens.simulateTokenLookupCost();
     }
     res.json(GENERIC);
   } catch (e) {

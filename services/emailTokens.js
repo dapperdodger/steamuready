@@ -25,12 +25,17 @@ async function consumeToken(token, purpose) {
   return rows[0]?.user_id ?? null;
 }
 
-// No-op DB round-trip to equalize response timing regardless of query outcome.
-// Used in /forgot-password to prevent timing side-channels that reveal whether
-// an email is registered: both the existent-user branch (createToken INSERT) and
-// non-existent-user branch (this query) each incur one DB round-trip.
-async function consumeDbRoundTrip() {
-  await pool.query('SELECT 1');
+// Equalize response timing in /forgot-password regardless of whether a user exists.
+// Mimics createToken's cost profile without side effects: generates a random token,
+// hashes it (same CPU cost as createToken), then does an indexed lookup against
+// email_tokens using that hash (matching the index-access pattern of INSERT's
+// unique-index maintenance). Since the hash is freshly random, this always returns
+// zero rows — that's expected; we're approximating the query execution cost, not
+// the result. Must be a pure read: no rows inserted/left behind.
+async function simulateTokenLookupCost() {
+  const token = crypto.randomBytes(32).toString('hex');
+  const hash = hashToken(token);
+  await pool.query('SELECT 1 FROM email_tokens WHERE token = $1', [hash]);
 }
 
-module.exports = { hashToken, createToken, consumeToken, consumeDbRoundTrip };
+module.exports = { hashToken, createToken, consumeToken, simulateTokenLookupCost };
