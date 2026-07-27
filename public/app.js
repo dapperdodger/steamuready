@@ -423,7 +423,8 @@ function initResetPasswordModal() {
   $('resetPasswordModal').hidden = false;
   history.replaceState(null, '', location.pathname);
 
-  $('resetPasswordSubmit').addEventListener('click', async () => {
+  $('resetPasswordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
     const newPassword = $('resetNewPassword').value;
     const res = await api.resetPassword(resetToken, newPassword);
     if (res.ok) {
