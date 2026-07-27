@@ -73,6 +73,10 @@ async function setEmailVerified(id, verified) {
   await pool.query('UPDATE users SET email_verified = $1 WHERE id = $2', [verified, id]);
 }
 
+async function setAlertsEnabled(id, enabled) {
+  await pool.query('UPDATE users SET alerts_enabled = $1 WHERE id = $2', [enabled, id]);
+}
+
 async function updateAlertSettings(id, alertsEnabled, alertMode) {
   await pool.query(
     'UPDATE users SET alerts_enabled = $1, alert_mode = $2 WHERE id = $3',
@@ -83,5 +87,5 @@ async function updateAlertSettings(id, alertsEnabled, alertMode) {
 module.exports = {
   hashPassword, verifyPassword,
   createUser, findUserByEmail, findUserById,
-  updatePasswordHash, findPasswordHashById, updatePreferences, updateHideOwnedDefault, deleteUser, setEmailVerified, updateAlertSettings,
+  updatePasswordHash, findPasswordHashById, updatePreferences, updateHideOwnedDefault, deleteUser, setEmailVerified, setAlertsEnabled, updateAlertSettings,
 };

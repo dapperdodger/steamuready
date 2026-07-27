@@ -12,6 +12,7 @@ const db = require('./services/db');
 const { sessionMiddleware } = require('./middleware/session');
 const authRouter = require('./routes/auth');
 const meRouter = require('./routes/me');
+const alertsRouter = require('./routes/alerts');
 const { excludeOwned, excludeHidden } = require('./services/gameFilters');
 const wishlist = require('./services/wishlist');
 
@@ -30,6 +31,7 @@ app.use(express.json({ limit: '16kb' }));
 app.use(sessionMiddleware);
 app.use('/api/auth', authRouter);
 app.use('/api/me', meRouter);
+app.use('/api/alerts', alertsRouter);
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Devices ─────────────────────────────────────────────────────────────────
