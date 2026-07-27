@@ -146,6 +146,11 @@ router.post('/forgot-password', authRateLimiter, async (req, res) => {
       const baseUrl = `${req.protocol}://${req.get('host')}`;
       emailService.sendPasswordResetEmail(user.email, token, baseUrl)
         .catch(e => console.error('[forgot-password] reset email failed:', e.message));
+    } else {
+      // Timing equalization: non-existent-user branch must also incur a DB
+      // round-trip to prevent attackers from inferring whether an email is
+      // registered based on response latency (see /login's DUMMY_HASH pattern).
+      await emailTokens.consumeDbRoundTrip();
     }
     res.json(GENERIC);
   } catch (e) {
@@ -167,7 +172,11 @@ router.post('/reset-password', async (req, res) => {
     await auth.updatePasswordHash(userId, newHash);
     await invalidateUserSessions(userId);
 
-    req.session.destroy(() => {
+    req.session.destroy(err => {
+      if (err) {
+        console.error('[/api/auth/reset-password]', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
       res.clearCookie('connect.sid');
       res.json({ ok: true });
     });

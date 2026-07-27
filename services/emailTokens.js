@@ -25,4 +25,12 @@ async function consumeToken(token, purpose) {
   return rows[0]?.user_id ?? null;
 }
 
-module.exports = { hashToken, createToken, consumeToken };
+// No-op DB round-trip to equalize response timing regardless of query outcome.
+// Used in /forgot-password to prevent timing side-channels that reveal whether
+// an email is registered: both the existent-user branch (createToken INSERT) and
+// non-existent-user branch (this query) each incur one DB round-trip.
+async function consumeDbRoundTrip() {
+  await pool.query('SELECT 1');
+}
+
+module.exports = { hashToken, createToken, consumeToken, consumeDbRoundTrip };
