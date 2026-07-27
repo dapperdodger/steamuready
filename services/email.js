@@ -27,7 +27,7 @@ function buildRawMime({ to, subject, html, text, extraHeaders = {} }) {
     'Reply-To: support@steamuready.com',
     `Subject: ${sanitizeHeaderValue(subject)}`,
     'MIME-Version: 1.0',
-    ...Object.entries(extraHeaders).map(([name, value]) => `${name}: ${value}`),
+    ...Object.entries(extraHeaders).map(([name, value]) => `${name}: ${sanitizeHeaderValue(value)}`),
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
   ];
   const body = [

@@ -64,3 +64,22 @@ test('the price-alert digest includes the unsubscribe link and RFC 8058 one-clic
   assert.strictEqual(verifySent.headers['List-Unsubscribe'], undefined);
   assert.doesNotMatch(verifySent.raw, /List-Unsubscribe:/);
 });
+
+test('extraHeaders values are sanitized against header injection (CRLF removal)', async () => {
+  const injectionUrl = 'http://example.com\r\nX-Injected: malicious';
+  await email.sendPriceAlertDigest('user@example.com', [
+    { gameName: 'Portal 2', price: 4.99, discountPercent: 50, storeUrl: 'x' },
+  ], injectionUrl);
+  const sent = email._getLastDryRunEmail();
+  const raw = sent.raw;
+  // Split headers from body at the double CRLF
+  const [headersSection] = raw.split('\r\n\r\n');
+  const headerLines = headersSection.split('\r\n');
+  // Verify no line in headers starts with the injected header name
+  const hasInjectedHeaderLine = headerLines.some(line => line.startsWith('X-Injected:'));
+  assert.strictEqual(hasInjectedHeaderLine, false, 'No line starting with X-Injected: in headers');
+  // Verify the List-Unsubscribe header line contains the sanitized URL (CRLF replaced with spaces)
+  const listUnsubLine = headerLines.find(line => line.startsWith('List-Unsubscribe:'));
+  assert.ok(listUnsubLine, 'List-Unsubscribe header exists');
+  assert.match(listUnsubLine, /http:\/\/example\.com  X-Injected: malicious/, 'CRLF replaced with spaces in value');
+});
