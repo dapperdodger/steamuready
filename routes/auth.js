@@ -1,6 +1,9 @@
 const express = require('express');
 const auth = require('../services/auth');
 const { redis } = require('../services/cache');
+const emailTokens = require('../services/emailTokens');
+const emailService = require('../services/email');
+const { requireAuth } = require('../middleware/session');
 
 const router = express.Router();
 
@@ -40,6 +43,10 @@ router.post('/signup', authRateLimiter, async (req, res) => {
     const passwordHash = await auth.hashPassword(password);
     const user = await auth.createUser(email.toLowerCase(), passwordHash);
     req.session.userId = user.id;
+    const verifyToken = await emailTokens.createToken(user.id, 'verify', 24 * 60 * 60 * 1000);
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    emailService.sendVerificationEmail(user.email, verifyToken, baseUrl)
+      .catch(e => console.error('[signup] verification email failed:', e.message));
     res.status(201).json({ email: user.email, preferences: user.preferences, hideOwnedDefault: user.hide_owned_default });
   } catch (e) {
     if (e.code === '23505') {
@@ -85,11 +92,36 @@ router.get('/me', async (req, res) => {
   try {
     const user = await auth.findUserById(req.session.userId);
     if (!user) return res.status(401).json({ error: 'Not logged in' });
-    res.json({ email: user.email, preferences: user.preferences, hideOwnedDefault: user.hide_owned_default });
+    res.json({
+      email: user.email,
+      preferences: user.preferences,
+      hideOwnedDefault: user.hide_owned_default,
+      emailVerified: user.email_verified,
+      alertsEnabled: user.alerts_enabled,
+      alertMode: user.alert_mode,
+    });
   } catch (e) {
     console.error('[/api/auth/me]', e);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+router.get('/verify', async (req, res) => {
+  const token = req.query.token;
+  if (typeof token !== 'string') return res.redirect('/?emailError=invalid_token');
+  const userId = await emailTokens.consumeToken(token, 'verify');
+  if (!userId) return res.redirect('/?emailError=invalid_token');
+  await auth.setEmailVerified(userId, true);
+  res.redirect('/?emailVerified=1');
+});
+
+router.post('/resend-verification', requireAuth, authRateLimiter, async (req, res) => {
+  const user = await auth.findUserById(req.session.userId);
+  if (user.email_verified) return res.json({ ok: true, alreadyVerified: true });
+  const token = await emailTokens.createToken(user.id, 'verify', 24 * 60 * 60 * 1000);
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  await emailService.sendVerificationEmail(user.email, token, baseUrl);
+  res.json({ ok: true });
 });
 
 module.exports = router;

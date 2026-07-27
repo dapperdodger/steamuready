@@ -30,7 +30,7 @@ async function findUserByEmail(email) {
 
 async function findUserById(id) {
   const { rows } = await pool.query(
-    'SELECT id, email, preferences, hide_owned_default, created_at FROM users WHERE id = $1',
+    'SELECT id, email, preferences, hide_owned_default, created_at, email_verified, alerts_enabled, alert_mode FROM users WHERE id = $1',
     [id]
   );
   return rows[0] || null;
@@ -69,8 +69,12 @@ async function deleteUser(id) {
   await pool.query('DELETE FROM users WHERE id = $1', [id]);
 }
 
+async function setEmailVerified(id, verified) {
+  await pool.query('UPDATE users SET email_verified = $1 WHERE id = $2', [verified, id]);
+}
+
 module.exports = {
   hashPassword, verifyPassword,
   createUser, findUserByEmail, findUserById,
-  updatePasswordHash, findPasswordHashById, updatePreferences, updateHideOwnedDefault, deleteUser,
+  updatePasswordHash, findPasswordHashById, updatePreferences, updateHideOwnedDefault, deleteUser, setEmailVerified,
 };
