@@ -178,8 +178,13 @@ router.put('/alert-settings', async (req, res) => {
   if (typeof alertsEnabled !== 'boolean' || !VALID_ALERT_MODES.includes(alertMode)) {
     return res.status(400).json({ error: 'alertsEnabled (boolean) and a valid alertMode are required' });
   }
-  await updateAlertSettings(req.session.userId, alertsEnabled, alertMode);
-  res.json({ ok: true });
+  try {
+    await updateAlertSettings(req.session.userId, alertsEnabled, alertMode);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[PUT /api/me/alert-settings]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 module.exports = router;
