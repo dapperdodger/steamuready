@@ -119,6 +119,27 @@ async function init() {
       added_at   TIMESTAMPTZ DEFAULT NOW(),
       PRIMARY KEY (user_id, itad_id)
     );
+
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS alerts_enabled BOOLEAN DEFAULT TRUE;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS alert_mode TEXT DEFAULT 'sale_period';
+    ALTER TABLE wishlist_items ADD COLUMN IF NOT EXISTS last_alerted_price NUMERIC;
+    ALTER TABLE wishlist_items ADD COLUMN IF NOT EXISTS last_alerted_deal_since TIMESTAMPTZ;
+
+    CREATE TABLE IF NOT EXISTS email_tokens (
+      token       TEXT PRIMARY KEY,
+      user_id     UUID REFERENCES users(id) ON DELETE CASCADE,
+      purpose     TEXT NOT NULL CHECK (purpose IN ('verify', 'reset')),
+      expires_at  TIMESTAMPTZ NOT NULL,
+      created_at  TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    DO $$ BEGIN
+      ALTER TABLE users ADD CONSTRAINT users_alert_mode_check
+        CHECK (alert_mode IN ('price_drop', 'sale_period', 'historical_low'));
+    EXCEPTION
+      WHEN duplicate_object THEN NULL;
+    END $$;
   `);
   console.log('[DB] schema ready');
 }
