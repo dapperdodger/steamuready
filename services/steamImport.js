@@ -1,6 +1,7 @@
 const { pool } = require('./db');
 const steamApi = require('./steamApi');
 const store = require('./store');
+const { addOwned, listOwnedItadIds } = require('./wishlist');
 
 // The exact-correlation plan already implements and manually-verifies this
 // exact ITAD /lookup/id/shop/61/v1 call in services/store.js — reused here
@@ -21,13 +22,9 @@ async function resyncOwnedFromSteam(userId, itadIds) {
     );
   }
   for (const itadId of itadIds) {
-    await pool.query(
-      `INSERT INTO owned_games (user_id, itad_id, source) VALUES ($1, $2, 'steam')
-       ON CONFLICT (user_id, itad_id) DO NOTHING`,
-      [userId, itadId]
-    );
-    // Owning it always clears any wishlist entry, regardless of source (accounts plan's rule).
-    await pool.query('DELETE FROM wishlist_items WHERE user_id = $1 AND itad_id = $2', [userId, itadId]);
+    // addOwned handles insert (ON CONFLICT DO NOTHING) and clears both the
+    // wishlist and hidden_games entries for this game (accounts plan's rule).
+    await addOwned(userId, itadId, 'steam');
   }
 }
 
@@ -66,7 +63,10 @@ async function runImport(userId, steamId) {
   const wishlistItadIds = [...new Set(wishlistAppIds.map(id => itadMap.get(id)).filter(Boolean))];
 
   await resyncOwnedFromSteam(userId, ownedItadIds);
-  await resyncWishlistFromSteam(userId, wishlistItadIds, ownedItadIds);
+  // Use the full owned set (all sources), not just Steam's, so a game owned
+  // via another source never gets re-added to the wishlist by this resync.
+  const allOwnedItadIds = await listOwnedItadIds(userId);
+  await resyncWishlistFromSteam(userId, wishlistItadIds, allOwnedItadIds);
 
   const { rows: ownedRows } = await pool.query('SELECT COUNT(*) FROM owned_games WHERE user_id = $1', [userId]);
   const { rows: wishlistRows } = await pool.query('SELECT COUNT(*) FROM wishlist_items WHERE user_id = $1', [userId]);
