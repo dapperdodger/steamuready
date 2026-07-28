@@ -4,6 +4,7 @@ const auth = require('../services/auth');
 const { updateAlertSettings } = require('../services/auth');
 const wishlist = require('../services/wishlist');
 const store = require('../services/store');
+const steamLibraryCompat = require('../services/steamLibraryCompat');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -76,7 +77,11 @@ router.delete('/wishlist/:itadId', async (req, res) => {
 router.get('/owned', async (req, res) => {
   try {
     const itadIds = await wishlist.listOwnedItadIds(req.session.userId);
-    const games = await listWithCards(itadIds, req.query.cc || 'us');
+    // Owned games show compatibility info (device/emulator/rank + an
+    // EmuReady link), not price/deal data — there's no reason to show sale
+    // prices for something you already own. My Wishlist keeps the
+    // price-focused listWithCards path above, unchanged.
+    const games = await steamLibraryCompat.getOwnedGamesCompat(req.session.userId, itadIds);
     res.json({ games });
   } catch (e) {
     console.error('[/api/me/owned]', e);

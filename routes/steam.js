@@ -4,16 +4,17 @@ const steamAuth = require('../services/steamAuth');
 const steamApi = require('../services/steamApi');
 const steamImport = require('../services/steamImport');
 const auth = require('../services/auth');
-const steamLibraryCompat = require('../services/steamLibraryCompat');
 const { redis } = require('../services/cache');
 
 // Non-fatal: a cache-delete failure shouldn't break the unlink/link
-// operation itself — log and continue.
-async function clearLibraryCompatCache(userId) {
+// operation itself — log and continue. Guards against a previously-linked
+// Steam account's owned-games compatibility data leaking into a
+// newly-linked (different) account within the cache's TTL.
+async function clearOwnedGamesCompatCache(userId) {
   try {
-    await redis.del(`steam-library-compat:${userId}`);
+    await redis.del(`owned-games-compat:${userId}`);
   } catch (e) {
-    console.error('[/api/steam] failed to clear library-compat cache:', e.message);
+    console.error('[/api/steam] failed to clear owned-games-compat cache:', e.message);
   }
 }
 
@@ -51,7 +52,7 @@ router.get('/callback', async (req, res) => {
     await auth.linkSteamAccount(req.session.userId, steamId, personaName);
     // Stale cache guard: if the user previously linked a different Steam
     // account, don't let their old library data leak into the new link.
-    await clearLibraryCompatCache(req.session.userId);
+    await clearOwnedGamesCompatCache(req.session.userId);
     res.redirect('/?steamLinked=1');
   } catch (e) {
     console.error('[/api/steam/callback]', e.message);
@@ -62,7 +63,7 @@ router.get('/callback', async (req, res) => {
 router.post('/unlink', async (req, res) => {
   try {
     await auth.unlinkSteamAccount(req.session.userId);
-    await clearLibraryCompatCache(req.session.userId);
+    await clearOwnedGamesCompatCache(req.session.userId);
     res.json({ ok: true });
   } catch (e) {
     console.error('[/api/steam/unlink]', e.message);
@@ -94,19 +95,6 @@ router.post('/import', async (req, res) => {
     // message instead of the generic one used for unexpected failures.
     if (e.steamPrivacyGuard) return res.status(400).json({ error: e.message });
     res.status(500).json({ error: 'Import failed' });
-  }
-});
-
-router.get('/library-compat', async (req, res) => {
-  try {
-    const status = await auth.getSteamLinkStatus(req.session.userId);
-    if (!status.steamId) return res.status(400).json({ error: 'No Steam account linked' });
-
-    const games = await steamLibraryCompat.getLibraryCompat(req.session.userId, status.steamId);
-    res.json({ games });
-  } catch (e) {
-    console.error('[/api/steam/library-compat]', e.message);
-    res.status(500).json({ error: 'Failed to load library compatibility' });
   }
 });
 

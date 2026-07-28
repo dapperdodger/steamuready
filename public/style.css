@@ -598,6 +598,14 @@ select option { background: var(--card); }
 .state-box h3 { color: var(--text); font-size: 1rem; }
 .state-box p  { font-size: .85rem; max-width: 320px; line-height: 1.6; }
 
+.spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+
 .skeleton {
   background: linear-gradient(90deg, var(--card) 25%, var(--card-hover) 50%, var(--card) 75%);
   background-size: 200% 100%;
@@ -1102,7 +1110,7 @@ select option { background: var(--card); }
 }
 .settings-block:first-of-type { padding-top: 0; margin-top: 0; border-top: none; }
 .settings-block h3 { font-size: .82rem; font-weight: 600; color: var(--text); margin-bottom: .6rem; }
-.settings-block input { display: block; width: 100%; margin-top: .5rem; }
+.settings-block input:not([type="checkbox"]) { display: block; width: 100%; margin-top: .5rem; }
 .settings-block button { margin-top: .6rem; }
 .settings-hint { font-size: .85rem; opacity: .75; margin: .5rem 0; }
 .btn-danger {

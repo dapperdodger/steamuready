@@ -184,7 +184,6 @@
           <div class="account-email" id="accountEmailLabel"></div>
           <button data-view="wishlist" data-i18n="myWishlist">My Wishlist</button>
           <button data-view="owned" data-i18n="myGames">My Games</button>
-          <button data-view="library-compat" id="libraryCompatMenuBtn" hidden data-i18n="myLibraryCompat">My Library Compatibility</button>
           <button data-view="settings" data-i18n="accountSettings">Account Settings</button>
           <button id="logoutBtn" data-i18n="logOut">Log out</button>
         </div>
@@ -404,6 +403,10 @@
 <section id="trackedView" hidden>
   <button class="btn-modal-skip" id="trackedBackBtn" data-i18n="backToSearch">&larr; Back</button>
   <h2 id="trackedViewTitle"></h2>
+  <div class="state-box" id="trackedLoading">
+    <div class="spinner"></div>
+    <p data-i18n="loading">Loading…</p>
+  </div>
   <div class="grid" id="trackedGrid"></div>
   <div class="state-box" id="trackedEmpty" hidden>
     <div class="icon">🎮</div>
@@ -436,7 +439,7 @@
 
   <div class="settings-block">
     <h3 data-i18n="emailAlertsTitle">Email Alerts</h3>
-    <label>
+    <label class="filter-checkbox">
       <input type="checkbox" id="alertsEnabledCheck" />
       <span data-i18n="alertsEnabledLabel">Email me when a wishlisted game drops in price</span>
     </label>
@@ -462,7 +465,10 @@
     </div>
     <div id="steamLinked" hidden>
       <div id="steamPersonaLabel"></div>
-      <button id="steamImportBtn" data-i18n="importFromSteam">Import from Steam</button>
+      <p class="settings-hint" data-i18n="steamImportDescription">
+        Imports your Steam-owned games and wishlist into My Games / My Wishlist. Re-importing keeps them in sync — anything no longer in your Steam library or wishlist is removed.
+      </p>
+      <button id="steamImportBtn" class="btn-modal-save" data-i18n="importFromSteam">Import from Steam</button>
       <p class="settings-hint" data-i18n="steamPrivacyHint">
         Requires your Steam profile's game details and wishlist to be set to Public — check steamcommunity.com/my/edit/settings.
       </p>
@@ -488,16 +494,6 @@
   </div>
 </section>
 
-<!-- My Library Compatibility -->
-<section id="libraryCompatView" hidden>
-  <button class="btn-modal-skip" id="libraryCompatBackBtn" data-i18n="backToSearch">&larr; Back</button>
-  <h2 data-i18n="myLibraryCompat">My Library Compatibility</h2>
-  <div class="grid" id="libraryCompatGrid"></div>
-  <div class="state-box" id="libraryCompatEmpty" hidden>
-    <div class="icon">🎮</div>
-    <p data-i18n="libraryCompatEmptyMsg">No games from your Steam library have EmuReady compatibility info yet, or your Steam privacy settings aren't set to Public.</p>
-  </div>
-</section>
 
 <footer class="attribution">
   Compatibility data from <a href="https://emuready.com" target="_blank" rel="noopener">EmuReady</a> ·

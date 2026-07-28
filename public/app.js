@@ -123,7 +123,6 @@ Object.assign(api, {
   steamStatus()  { return api.json('/api/steam/status'); },
   steamUnlink()  { return fetch('/api/steam/unlink', { method: 'POST' }); },
   steamImport()  { return fetch('/api/steam/import', { method: 'POST' }); },
-  steamLibraryCompat() { return api.json('/api/steam/library-compat'); },
 });
 
 /* ── Auth state ────────────────────────────────────────────────────────────── */
@@ -155,13 +154,10 @@ async function refreshAuthState() {
     authState.alertMode = null;
   }
   renderAuthMenu();
-  // Keep the Steam-linked UI (the "My Library Compatibility" account-menu
-  // button) in sync with auth state — a guaranteed-401 network call is
-  // pointless when logged out, so just hide it directly instead.
+  // Keep the Steam-linked UI in sync with auth state — a guaranteed-401
+  // network call is pointless when logged out, so just skip it.
   if (authState.loggedIn) {
     await refreshSteamStatus();
-  } else {
-    $('libraryCompatMenuBtn').hidden = true;
   }
 }
 
@@ -251,7 +247,6 @@ function initAuthModal() {
     await api.authLogout();
     $('accountDropdown').hidden = true;
     closeTrackedView(); // the account dropdown stays reachable while the tracked view is open, so logging out from there must not leave it showing stale data behind a hidden .layout
-    closeLibraryCompatView(); // same reasoning — an open Library Compatibility view must not linger with the previous user's data
     await refreshAuthState();
     fetchGames(false);
   });
@@ -269,33 +264,46 @@ async function openTrackedView(kind) {
   document.querySelector('.layout').hidden = true;
   $('settingsView').hidden = true;
   $('hiddenGamesView').hidden = true;
-  $('libraryCompatView').hidden = true;
   $('trackedView').hidden = false;
   $('trackedView').dataset.kind = kind;
   $('trackedViewTitle').textContent = kind === 'wishlist' ? t('myWishlist') : t('myGames');
 
-  const res = await fetch(kind === 'wishlist' ? '/api/me/wishlist' : '/api/me/owned');
-  if (!res.ok) { closeTrackedView(); return; }
-  const body = await res.json();
   const grid = $('trackedGrid');
   grid.innerHTML = '';
-  if (!body.games.length) {
-    $('trackedEmpty').hidden = false;
-    $('trackedEmptyMsg').textContent = kind === 'wishlist' ? t('emptyWishlistMsg') : t('emptyOwnedMsg');
-    return;
-  }
   $('trackedEmpty').hidden = true;
-  body.games.forEach(g => grid.appendChild(buildCard({
-    ...g,
-    gameName: g.name,
-    // /api/me/wishlist and /api/me/owned return the raw deal entry (no
-    // isWishlisted/isOwned flags — those are only computed for /api/games).
-    // Every game returned by these endpoints is, by definition, in that
-    // list, so set the flag from `kind` rather than leaving it undefined
-    // (which would render an inactive heart for an already-wishlisted game).
-    isWishlisted: kind === 'wishlist',
-    isOwned:      kind === 'owned',
-  })));
+  $('trackedLoading').hidden = false;
+
+  try {
+    const res = await fetch(kind === 'wishlist' ? '/api/me/wishlist' : '/api/me/owned');
+    if (!res.ok) { closeTrackedView(); return; }
+    const body = await res.json();
+    if (!body.games.length) {
+      $('trackedEmpty').hidden = false;
+      $('trackedEmptyMsg').textContent = kind === 'wishlist' ? t('emptyWishlistMsg') : t('emptyOwnedMsg');
+      return;
+    }
+    if (kind === 'owned') {
+      // Owned games show compatibility info (device/emulator/rank + an
+      // EmuReady link) via the same card style the old Library
+      // Compatibility view used — there's no reason to show sale prices
+      // for something you already own.
+      body.games.forEach(g => grid.appendChild(buildCompatCard(g)));
+    } else {
+      body.games.forEach(g => grid.appendChild(buildCard({
+        ...g,
+        gameName: g.name,
+        // /api/me/wishlist returns the raw deal entry (no isWishlisted
+        // flag — that's only computed for /api/games). Every game returned
+        // here is, by definition, on the wishlist, so set it directly
+        // rather than leaving it undefined (which would render an
+        // inactive heart for an already-wishlisted game).
+        isWishlisted: true,
+        isOwned:      false,
+      })));
+    }
+  } finally {
+    $('trackedLoading').hidden = true;
+  }
 }
 
 function closeTrackedView() {
@@ -323,40 +331,18 @@ function buildCompatCard(g) {
         ${g.compatibility?.deviceName ? `<span class="tag">${escHtml(g.compatibility.deviceName)}</span>` : ''}
         ${g.compatibility?.emulatorName ? `<span class="tag">${escHtml(g.compatibility.emulatorName)}</span>` : ''}
       </div>
-    </div>`;
+    </div>
+    ${g.listingId ? `<div class="card-footer">
+      <a href="https://www.emuready.com/listings/${encodeURIComponent(g.listingId)}" target="_blank" rel="noopener" class="btn-emu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01M8 12h.01M16 12h.01"/><path d="M6 10v4"/>
+        </svg>
+        ${t('viewOnEmuReady')}
+      </a>
+    </div>` : ''}`;
   const img = div.querySelector('.card-img');
   img.addEventListener('error', () => { img.style.display = 'none'; img.nextElementSibling.style.display = 'flex'; });
   return div;
-}
-
-async function openLibraryCompatView() {
-  $('accountDropdown').hidden = true;
-  document.querySelector('.layout').hidden = true;
-  $('trackedView').hidden = true;
-  delete $('trackedView').dataset.kind;
-  $('settingsView').hidden = true;
-  $('hiddenGamesView').hidden = true;
-  $('libraryCompatView').hidden = false;
-
-  const body = await api.steamLibraryCompat().catch(() => ({ games: [] }));
-  const grid = $('libraryCompatGrid');
-  grid.innerHTML = '';
-  if (!body.games?.length) {
-    $('libraryCompatEmpty').hidden = false;
-    return;
-  }
-  $('libraryCompatEmpty').hidden = true;
-  body.games.forEach(g => grid.appendChild(buildCompatCard(g)));
-}
-
-function closeLibraryCompatView() {
-  $('libraryCompatView').hidden = true;
-  document.querySelector('.layout').hidden = false;
-}
-
-function initLibraryCompatView() {
-  $('libraryCompatBackBtn').addEventListener('click', closeLibraryCompatView);
-  $('libraryCompatMenuBtn').addEventListener('click', openLibraryCompatView);
 }
 
 function initTrackedView() {
@@ -366,9 +352,6 @@ function initTrackedView() {
     btn.addEventListener('click', () => {
       const view = btn.dataset.view;
       if (view === 'settings') { openAccountSettings(); return; }
-      // 'library-compat' has its own dedicated click listener (initLibraryCompatView)
-      // since it isn't a wishlist/owned kind openTrackedView understands.
-      if (view === 'library-compat') return;
       openTrackedView(view);
     });
   });
@@ -390,7 +373,6 @@ function openAccountSettings() {
   document.querySelector('.layout').hidden = true;
   $('trackedView').hidden = true;
   delete $('trackedView').dataset.kind;
-  $('libraryCompatView').hidden = true;
   $('settingsView').hidden = false;
   $('settingsEmail').textContent = authState.email;
   $('settingsCurrentPw').value = '';
@@ -448,7 +430,6 @@ async function refreshSteamStatus() {
   const status = await api.steamStatus().catch(() => ({ linked: false, personaName: null }));
   $('steamNotLinked').hidden = status.linked;
   $('steamLinked').hidden = !status.linked;
-  $('libraryCompatMenuBtn').hidden = !status.linked;
   if (status.linked) {
     $('steamPersonaLabel').textContent = t('linkedAsSteam')(status.personaName || 'Steam User');
   }
@@ -457,15 +438,25 @@ async function refreshSteamStatus() {
 
 function initSteamSettings() {
   $('steamImportBtn').addEventListener('click', async () => {
-    $('steamImportBtn').disabled = true;
-    const res = await api.steamImport();
-    $('steamImportBtn').disabled = false;
-    if (!res.ok) {
+    const btn = $('steamImportBtn');
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = t('steamImporting');
+    $('steamImportSummary').textContent = t('steamImporting');
+    try {
+      const res = await api.steamImport();
+      if (!res.ok) {
+        $('steamImportSummary').textContent = t('steamImportFailed');
+        return;
+      }
+      const body = await res.json();
+      $('steamImportSummary').textContent = t('steamImportSummary')(body.ownedCount, body.wishlistCount);
+    } catch {
       $('steamImportSummary').textContent = t('steamImportFailed');
-      return;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
     }
-    const body = await res.json();
-    $('steamImportSummary').textContent = t('steamImportSummary')(body.ownedCount, body.wishlistCount);
   });
 
   $('steamUnlinkBtn').addEventListener('click', async () => {
@@ -659,7 +650,6 @@ async function init() {
     // auth state is known), rather than unconditionally here — calling it
     // before auth state is known would fire a guaranteed-401 request on
     // every anonymous page load.
-    initLibraryCompatView();
     initAlertSettings();
     initHiddenGamesView();
     initCardMenus();
@@ -668,6 +658,7 @@ async function init() {
     const params = new URLSearchParams(location.search);
     if (params.get('steamLinked') === '1') {
       showToast(t('steamLinkedToast'));
+      openAccountSettings();
       history.replaceState(null, '', location.pathname);
     } else if (params.get('steamError')) {
       const errorKey = { already_linked: 'steamErrorAlreadyLinked', verification_failed: 'steamErrorVerification', link_failed: 'steamErrorGeneric' }[params.get('steamError')] || 'steamErrorGeneric';

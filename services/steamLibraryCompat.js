@@ -1,6 +1,5 @@
 const cache = require('./cache');
 const { pool } = require('./db');
-const steamApi = require('./steamApi');
 const emuready = require('./emuready');
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // matches EmuReady's own ~5 min cache on batchBySteamAppIds
@@ -18,61 +17,76 @@ function pickBestListing(listings, preferredDeviceIds = [], preferredSocIds = []
   }, null);
 }
 
-// EmuReady has no listing for a not-found game, or (defensively) an
-// EmuReady game entry with zero listings — both mean nothing to show.
-function buildCompatEntry(result, ownedSet, wishlistSet, preferredDeviceIds, preferredSocIds) {
-  if (!result.game || !result.game.listings?.length) return null;
-
-  const best = pickBestListing(result.game.listings, preferredDeviceIds, preferredSocIds);
-  if (!best) return null;
+// Builds a display entry for a game the user already owns. Unlike the old
+// Library Compatibility view's buildCompatEntry, this NEVER returns null —
+// "My Games" shows every owned game regardless of whether EmuReady has
+// anything on it; compatibility fields are simply left empty when there's
+// no (Windows-capable) listing, and buildCompatCard on the frontend already
+// renders those as absent rather than placeholder text.
+function buildOwnedCompatEntry(itadId, titleRow, batchResult, preferredDeviceIds, preferredSocIds) {
+  const listings = (batchResult?.game?.listings ?? []).filter(emuready.isAllowedEmulator);
+  const best = pickBestListing(listings, preferredDeviceIds, preferredSocIds);
+  const steamAppId = titleRow?.steam_app_id ?? null;
 
   return {
-    steamAppId: result.steamAppId,
-    gameName: result.game.title,
-    // Build from Steam's own CDN (same convention as store.js's buildExactEntry)
-    // rather than EmuReady's boxartUrl/imageUrl — those come from hosts
-    // (media.rawg.io, cdn.thegamesdb.net, images.igdb.com) not in this app's
-    // CSP img-src allowlist, so every card would silently fall back to the
-    // placeholder.
-    imageUrl: `https://cdn.akamai.steamstatic.com/steam/apps/${result.steamAppId}/header.jpg`,
-    owned: ownedSet.has(result.steamAppId),
-    wishlisted: wishlistSet.has(result.steamAppId),
-    compatibility: {
+    itadId,
+    gameName: titleRow?.match_title || batchResult?.game?.title || '',
+    // Steam's own CDN when we know the Steam App ID (CSP-allowed, matches
+    // store.js's buildExactEntry convention); otherwise whatever image_url
+    // game_titles already has on file (e.g. resolved via the ITAD title
+    // fallback, which has no Steam App ID to build a CDN URL from).
+    imageUrl: steamAppId
+      ? `https://cdn.akamai.steamstatic.com/steam/apps/${steamAppId}/header.jpg`
+      : (titleRow?.image_url || ''),
+    listingId: best?.id ?? null,
+    compatibility: best ? {
       rank: best.performance?.rank ?? null,
       label: best.performance?.label ?? '',
       deviceName: best.device?.modelName ?? '',
       socName: best.device?.soc?.name ?? '',
       emulatorName: best.emulator?.name ?? '',
-    },
+    } : null,
   };
 }
 
-async function getLibraryCompat(userId, steamId) {
-  const cacheKey = `steam-library-compat:${userId}`;
+// Compatibility info for a user's owned games (all sources — manual and
+// Steam-imported alike), sourced from this app's own DB rather than a live
+// Steam API call (unlike the old Library Compatibility view, which read
+// straight from Steam's API). Games with no known Steam App ID (e.g.
+// resolved only via the ITAD title-lookup fallback) simply get no
+// compatibility data, same as one EmuReady has never heard of.
+async function getOwnedGamesCompat(userId, itadIds) {
+  if (!itadIds.length) return [];
+
+  const cacheKey = `owned-games-compat:${userId}`;
   const cached = await cache.get(cacheKey);
   if (cached) return cached;
 
-  const [ownedAppIds, wishlistAppIds, userRow] = await Promise.all([
-    steamApi.getOwnedGameAppIds(steamId),
-    steamApi.getWishlistAppIds(steamId),
+  const [titleRes, userRes] = await Promise.all([
+    pool.query(
+      'SELECT itad_id, steam_app_id, match_title, image_url FROM game_titles WHERE itad_id = ANY($1)',
+      [itadIds]
+    ),
     pool.query('SELECT preferences FROM users WHERE id = $1', [userId]),
   ]);
 
-  const ownedSet = new Set(ownedAppIds);
-  const wishlistSet = new Set(wishlistAppIds);
-  const allAppIds = [...new Set([...ownedAppIds, ...wishlistAppIds])];
-
-  const preferences = userRow.rows[0]?.preferences ?? {};
+  const titleByItadId = new Map(titleRes.rows.map(r => [r.itad_id, r]));
+  const preferences = userRes.rows[0]?.preferences ?? {};
   const preferredDeviceIds = preferences.deviceIds ?? [];
   const preferredSocIds = preferences.socIds ?? [];
 
-  const results = allAppIds.length ? await emuready.batchBySteamAppIds(allAppIds) : [];
-  const games = results
-    .map(r => buildCompatEntry(r, ownedSet, wishlistSet, preferredDeviceIds, preferredSocIds))
-    .filter(Boolean);
+  const steamAppIds = [...new Set(titleRes.rows.map(r => r.steam_app_id).filter(Boolean))];
+  const batchResults = steamAppIds.length ? await emuready.batchBySteamAppIds(steamAppIds) : [];
+  const resultBySteamAppId = new Map(batchResults.map(r => [r.steamAppId, r]));
+
+  const games = itadIds.map(itadId => {
+    const titleRow = titleByItadId.get(itadId) ?? null;
+    const batchResult = titleRow?.steam_app_id ? resultBySteamAppId.get(titleRow.steam_app_id) : null;
+    return buildOwnedCompatEntry(itadId, titleRow, batchResult, preferredDeviceIds, preferredSocIds);
+  });
 
   await cache.set(cacheKey, games, CACHE_TTL_MS);
   return games;
 }
 
-module.exports = { pickBestListing, buildCompatEntry, getLibraryCompat };
+module.exports = { pickBestListing, buildOwnedCompatEntry, getOwnedGamesCompat };
