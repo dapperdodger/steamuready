@@ -260,6 +260,7 @@ async function openTrackedView(kind) {
   document.querySelector('.layout').hidden = true;
   $('settingsView').hidden = true;
   $('hiddenGamesView').hidden = true;
+  $('libraryCompatView').hidden = true;
   $('trackedView').hidden = false;
   $('trackedView').dataset.kind = kind;
   $('trackedViewTitle').textContent = kind === 'wishlist' ? t('myWishlist') : t('myGames');
@@ -380,6 +381,7 @@ function openAccountSettings() {
   document.querySelector('.layout').hidden = true;
   $('trackedView').hidden = true;
   delete $('trackedView').dataset.kind;
+  $('libraryCompatView').hidden = true;
   $('settingsView').hidden = false;
   $('settingsEmail').textContent = authState.email;
   $('settingsCurrentPw').value = '';

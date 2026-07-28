@@ -1064,20 +1064,20 @@ select option { background: var(--card); }
 }
 
 /* ── Tracked view (My Wishlist / My Games) ────────────────────────────────── */
-#trackedView { padding: 1rem; }
-#trackedView h2 { margin-bottom: 1rem; }
+#trackedView, #libraryCompatView { padding: 1rem; }
+#trackedView h2, #libraryCompatView h2 { margin-bottom: 1rem; }
 #trackedView[hidden] { display: none; }
 #trackedView #trackedBackBtn { margin-bottom: 1rem; }
 /* .grid isn't defined anywhere else in this file — reuses .games-grid's
    layout so tracked cards render in the same responsive grid, not stacked. */
-#trackedView .grid {
+#trackedView .grid, #libraryCompatView .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 14px;
 }
 
 @media (max-width: 768px) {
-  #trackedView .grid {
+  #trackedView .grid, #libraryCompatView .grid {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 10px;
   }
@@ -1165,12 +1165,11 @@ select option { background: var(--card); }
 /* ── Library compatibility view ────────────────────────────────────────────── */
 .owned-badge, .wishlisted-badge {
   position: absolute;
-  top: .5rem;
   font-size: .75rem;
   padding: .15rem .5rem;
   border-radius: 4px;
   background: rgba(0,0,0,.6);
   color: #fff;
 }
-.owned-badge { left: .5rem; }
-.wishlisted-badge { left: .5rem; top: 2rem; }
+.owned-badge { top: 8px; right: 8px; }
+.wishlisted-badge { top: 2.25rem; right: 8px; }
