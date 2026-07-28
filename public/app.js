@@ -123,6 +123,7 @@ Object.assign(api, {
   steamStatus()  { return api.json('/api/steam/status'); },
   steamUnlink()  { return fetch('/api/steam/unlink', { method: 'POST' }); },
   steamImport()  { return fetch('/api/steam/import', { method: 'POST' }); },
+  steamLibraryCompat() { return api.json('/api/steam/library-compat'); },
 });
 
 /* ── Auth state ────────────────────────────────────────────────────────────── */
@@ -293,6 +294,61 @@ function closeTrackedView() {
   document.querySelector('.layout').hidden = false;
 }
 
+/* ── Library compatibility view ──────────────────────────────────────────── */
+function buildCompatCard(g) {
+  const div = document.createElement('div');
+  div.className = 'card';
+  const rankClass = compatClass(g.compatibility?.rank);
+  div.innerHTML = `
+    <div class="card-img-wrap">
+      <img class="card-img" src="${escHtml(g.imageUrl)}" alt="${escHtml(g.gameName)}" />
+      <div class="card-img-placeholder" style="display:none">🎮</div>
+      <span class="compat-badge compat-${rankClass}">${escHtml(g.compatibility?.label || '')}</span>
+      ${g.owned ? `<span class="owned-badge" data-i18n="ownedBadge">Owned</span>` : ''}
+      ${g.wishlisted ? `<span class="wishlisted-badge" data-i18n="wishlistedBadge">Wishlisted</span>` : ''}
+    </div>
+    <div class="card-body">
+      <div class="card-game-name">${escHtml(g.gameName)}</div>
+      <div class="card-meta">
+        ${g.compatibility?.deviceName ? `<span class="tag">${escHtml(g.compatibility.deviceName)}</span>` : ''}
+        ${g.compatibility?.emulatorName ? `<span class="tag">${escHtml(g.compatibility.emulatorName)}</span>` : ''}
+      </div>
+    </div>`;
+  const img = div.querySelector('.card-img');
+  img.addEventListener('error', () => { img.style.display = 'none'; img.nextElementSibling.style.display = 'flex'; });
+  return div;
+}
+
+async function openLibraryCompatView() {
+  $('accountDropdown').hidden = true;
+  document.querySelector('.layout').hidden = true;
+  $('trackedView').hidden = true;
+  delete $('trackedView').dataset.kind;
+  $('settingsView').hidden = true;
+  $('hiddenGamesView').hidden = true;
+  $('libraryCompatView').hidden = false;
+
+  const body = await api.steamLibraryCompat().catch(() => ({ games: [] }));
+  const grid = $('libraryCompatGrid');
+  grid.innerHTML = '';
+  if (!body.games?.length) {
+    $('libraryCompatEmpty').hidden = false;
+    return;
+  }
+  $('libraryCompatEmpty').hidden = true;
+  body.games.forEach(g => grid.appendChild(buildCompatCard(g)));
+}
+
+function closeLibraryCompatView() {
+  $('libraryCompatView').hidden = true;
+  document.querySelector('.layout').hidden = false;
+}
+
+function initLibraryCompatView() {
+  $('libraryCompatBackBtn').addEventListener('click', closeLibraryCompatView);
+  $('libraryCompatMenuBtn').addEventListener('click', openLibraryCompatView);
+}
+
 function initTrackedView() {
   $('trackedBackBtn').addEventListener('click', closeTrackedView);
 
@@ -300,6 +356,9 @@ function initTrackedView() {
     btn.addEventListener('click', () => {
       const view = btn.dataset.view;
       if (view === 'settings') { openAccountSettings(); return; }
+      // 'library-compat' has its own dedicated click listener (initLibraryCompatView)
+      // since it isn't a wishlist/owned kind openTrackedView understands.
+      if (view === 'library-compat') return;
       openTrackedView(view);
     });
   });
@@ -378,6 +437,7 @@ async function refreshSteamStatus() {
   const status = await api.steamStatus().catch(() => ({ linked: false, personaName: null }));
   $('steamNotLinked').hidden = status.linked;
   $('steamLinked').hidden = !status.linked;
+  $('libraryCompatMenuBtn').hidden = !status.linked;
   if (status.linked) {
     $('steamPersonaLabel').textContent = t('linkedAsSteam')(status.personaName || 'Steam User');
   }
@@ -584,6 +644,8 @@ async function init() {
     initTrackedView();
     initAccountSettings();
     initSteamSettings();
+    await refreshSteamStatus();
+    initLibraryCompatView();
     initAlertSettings();
     initHiddenGamesView();
     initCardMenus();

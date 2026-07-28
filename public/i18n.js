@@ -150,6 +150,10 @@ const translations = {
     steamErrorAlreadyLinked: 'Ce compte Steam est déjà lié à un autre compte SteamUReady.',
     steamErrorVerification:  "La connexion Steam n'a pas pu être vérifiée. Réessaie.",
     steamErrorGeneric:       "Une erreur s'est produite lors de la liaison de ton compte Steam. Réessaie.",
+    myLibraryCompat:         'Compatibilité de ma bibliothèque',
+    libraryCompatEmptyMsg:   "Aucun jeu de ta bibliothèque Steam n'a encore d'info de compatibilité EmuReady, ou tes paramètres de confidentialité Steam ne sont pas réglés sur Public.",
+    ownedBadge:              'Possédé',
+    wishlistedBadge:         'Liste de souhaits',
   },
 
   en: {
@@ -302,6 +306,10 @@ const translations = {
     steamErrorAlreadyLinked: 'That Steam account is already linked to a different SteamUReady account.',
     steamErrorVerification:  'Steam sign-in could not be verified. Please try again.',
     steamErrorGeneric:       'Something went wrong linking your Steam account. Please try again.',
+    myLibraryCompat:         'My Library Compatibility',
+    libraryCompatEmptyMsg:   "No games from your Steam library have EmuReady compatibility info yet, or your Steam privacy settings aren't set to Public.",
+    ownedBadge:              'Owned',
+    wishlistedBadge:         'Wishlisted',
   },
 
   de: {
@@ -454,6 +462,10 @@ const translations = {
     steamErrorAlreadyLinked: 'Dieses Steam-Konto ist bereits mit einem anderen SteamUReady-Konto verknüpft.',
     steamErrorVerification:  'Die Steam-Anmeldung konnte nicht verifiziert werden. Bitte versuche es erneut.',
     steamErrorGeneric:       'Beim Verknüpfen deines Steam-Kontos ist etwas schiefgelaufen. Bitte versuche es erneut.',
+    myLibraryCompat:         'Meine Bibliothekskompatibilität',
+    libraryCompatEmptyMsg:   'Für keins der Spiele aus deiner Steam-Bibliothek liegen bisher EmuReady-Kompatibilitätsinfos vor, oder deine Steam-Datenschutzeinstellungen sind nicht auf Öffentlich gesetzt.',
+    ownedBadge:              'Im Besitz',
+    wishlistedBadge:         'Auf der Wunschliste',
   },
 
   es: {
@@ -606,6 +618,10 @@ const translations = {
     steamErrorAlreadyLinked: 'Esa cuenta de Steam ya está vinculada a otra cuenta de SteamUReady.',
     steamErrorVerification:  'No se pudo verificar el inicio de sesión de Steam. Inténtalo de nuevo.',
     steamErrorGeneric:       'Algo salió mal al vincular tu cuenta de Steam. Inténtalo de nuevo.',
+    myLibraryCompat:         'Compatibilidad de mi biblioteca',
+    libraryCompatEmptyMsg:   'Ningún juego de tu biblioteca de Steam tiene todavía información de compatibilidad de EmuReady, o tu configuración de privacidad de Steam no está establecida como Público.',
+    ownedBadge:              'Poseído',
+    wishlistedBadge:         'En lista de deseos',
   },
 };
 

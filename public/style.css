@@ -1161,3 +1161,16 @@ select option { background: var(--card); }
 .verify-banner button:hover {
   background: rgba(210, 153, 34, 0.12);
 }
+
+/* ── Library compatibility view ────────────────────────────────────────────── */
+.owned-badge, .wishlisted-badge {
+  position: absolute;
+  top: .5rem;
+  font-size: .75rem;
+  padding: .15rem .5rem;
+  border-radius: 4px;
+  background: rgba(0,0,0,.6);
+  color: #fff;
+}
+.owned-badge { left: .5rem; }
+.wishlisted-badge { left: .5rem; top: 2rem; }

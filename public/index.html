@@ -184,6 +184,7 @@
           <div class="account-email" id="accountEmailLabel"></div>
           <button data-view="wishlist" data-i18n="myWishlist">My Wishlist</button>
           <button data-view="owned" data-i18n="myGames">My Games</button>
+          <button data-view="library-compat" id="libraryCompatMenuBtn" hidden data-i18n="myLibraryCompat">My Library Compatibility</button>
           <button data-view="settings" data-i18n="accountSettings">Account Settings</button>
           <button id="logoutBtn" data-i18n="logOut">Log out</button>
         </div>
@@ -484,6 +485,17 @@
   <div class="state-box" id="hiddenGamesEmpty" hidden>
     <div class="icon">🎮</div>
     <p data-i18n="emptyHiddenMsg">You haven't hidden any games.</p>
+  </div>
+</section>
+
+<!-- My Library Compatibility -->
+<section id="libraryCompatView" hidden>
+  <button class="btn-modal-skip" id="libraryCompatBackBtn" data-i18n="backToSearch">&larr; Back</button>
+  <h2 data-i18n="myLibraryCompat">My Library Compatibility</h2>
+  <div class="grid" id="libraryCompatGrid"></div>
+  <div class="state-box" id="libraryCompatEmpty" hidden>
+    <div class="icon">🎮</div>
+    <p data-i18n="libraryCompatEmptyMsg">No games from your Steam library have EmuReady compatibility info yet, or your Steam privacy settings aren't set to Public.</p>
   </div>
 </section>
 
