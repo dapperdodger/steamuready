@@ -13,6 +13,7 @@ const { sessionMiddleware } = require('./middleware/session');
 const authRouter = require('./routes/auth');
 const meRouter = require('./routes/me');
 const alertsRouter = require('./routes/alerts');
+const steamRouter = require('./routes/steam');
 const { excludeOwned, excludeHidden } = require('./services/gameFilters');
 const wishlist = require('./services/wishlist');
 const priceAlerts = require('./services/priceAlerts');
@@ -32,6 +33,7 @@ app.use(express.json({ limit: '16kb' }));
 app.use(sessionMiddleware);
 app.use('/api/auth', authRouter);
 app.use('/api/me', meRouter);
+app.use('/api/steam', steamRouter);
 app.use('/api/alerts', alertsRouter);
 app.use(express.static(path.join(__dirname, 'public')));
 
