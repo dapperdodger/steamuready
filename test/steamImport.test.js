@@ -6,7 +6,7 @@ const {
   addWishlistItem, addOwned, listWishlistItadIds, listOwnedItadIds,
   addHidden, listHiddenItadIds,
 } = require('../services/wishlist');
-const { resyncOwnedFromSteam, resyncWishlistFromSteam, filterImportableResults } = require('../services/steamImport');
+const { resyncOwnedFromSteam, resyncWishlistFromSteam, filterImportableResults, assertSafeToResync } = require('../services/steamImport');
 const { isAllowedEmulator } = require('../services/emuready');
 const store = require('../services/store');
 const { pool } = require('../services/db');
@@ -77,6 +77,52 @@ test('filterImportableResults keeps only results with at least one allowed-emula
 
 test('filterImportableResults returns an empty array for an empty input', () => {
   assert.deepStrictEqual(filterImportableResults([], isAllowedEmulator), []);
+});
+
+// ── assertSafeToResync (final-review Fix: an empty Steam response for a
+// profile whose game-details/wishlist privacy has been flipped away from
+// Public looks identical, at HTTP 200, to a genuinely empty library/wishlist
+// — refuse to resync-to-empty if we already have steam-sourced rows on file)
+test('assertSafeToResync rejects when owned is empty but the user already has steam-sourced owned_games', async () => {
+  const user = await makeTestUser('assert-safe-owned');
+  await addOwned(user.id, 'itad-existing-owned', 'steam');
+
+  await assert.rejects(() => assertSafeToResync(user.id, [], ['some-wishlist-appid']));
+
+  await deleteUser(user.id);
+});
+
+test('assertSafeToResync rejects when wishlist is empty but the user already has steam-sourced wishlist_items', async () => {
+  const user = await makeTestUser('assert-safe-wishlist');
+  await pool.query(
+    `INSERT INTO wishlist_items (user_id, itad_id, source) VALUES ($1, $2, 'steam')`,
+    [user.id, 'itad-existing-wish']
+  );
+
+  await assert.rejects(() => assertSafeToResync(user.id, ['some-owned-appid'], []));
+
+  await deleteUser(user.id);
+});
+
+test('assertSafeToResync resolves for a user with no existing steam-sourced rows even when both are empty (legitimate first-time empty import)', async () => {
+  const user = await makeTestUser('assert-safe-first-import');
+
+  await assert.doesNotReject(() => assertSafeToResync(user.id, [], []));
+
+  await deleteUser(user.id);
+});
+
+test('assertSafeToResync resolves when the new response is non-empty, regardless of existing rows', async () => {
+  const user = await makeTestUser('assert-safe-nonempty');
+  await addOwned(user.id, 'itad-existing-owned-2', 'steam');
+  await pool.query(
+    `INSERT INTO wishlist_items (user_id, itad_id, source) VALUES ($1, $2, 'steam')`,
+    [user.id, 'itad-existing-wish-2']
+  );
+
+  await assert.doesNotReject(() => assertSafeToResync(user.id, ['some-appid'], ['some-appid']));
+
+  await deleteUser(user.id);
 });
 
 // ── persistGameTitles plumbing (Fix C: Steam import persists game_titles

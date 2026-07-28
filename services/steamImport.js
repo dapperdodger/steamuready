@@ -63,11 +63,48 @@ async function resyncWishlistFromSteam(userId, itadIds, ownedItadIds) {
   }
 }
 
+// A Steam profile can go from "public and imported" to "empty response" for
+// reasons that have nothing to do with actually owning/wishlisting nothing
+// (game-details or wishlist privacy flipped to non-Public, an account
+// issue, etc.) — Steam's API returns HTTP 200 with an empty body in that
+// case, indistinguishable from a genuinely empty library. Treating that as
+// "resync to empty" would silently delete previously-imported data. Refuse
+// to proceed if Steam reports nothing AND we already have steam-sourced
+// rows on file — but a genuinely first-time empty import (no existing rows)
+// is unremarkable and must still be allowed to succeed. Checked
+// independently per table since game-details and wishlist privacy are
+// separate Steam settings.
+async function assertSafeToResync(userId, ownedAppIds, wishlistAppIds) {
+  if (ownedAppIds.length === 0) {
+    const { rows } = await pool.query(
+      "SELECT 1 FROM owned_games WHERE user_id = $1 AND source = 'steam' LIMIT 1",
+      [userId]
+    );
+    if (rows.length) {
+      const err = new Error("Steam reported no owned games, which would delete your previously-imported library — check that your Steam profile's game-details privacy is still set to Public, then try again.");
+      err.steamPrivacyGuard = true; // known, actionable condition — routes/steam.js surfaces this message directly instead of the generic 500
+      throw err;
+    }
+  }
+  if (wishlistAppIds.length === 0) {
+    const { rows } = await pool.query(
+      "SELECT 1 FROM wishlist_items WHERE user_id = $1 AND source = 'steam' LIMIT 1",
+      [userId]
+    );
+    if (rows.length) {
+      const err = new Error("Steam reported an empty wishlist, which would delete your previously-imported wishlist — check that your Steam profile's wishlist privacy is still set to Public, then try again.");
+      err.steamPrivacyGuard = true;
+      throw err;
+    }
+  }
+}
+
 async function runImport(userId, steamId) {
   const [ownedAppIds, wishlistAppIds] = await Promise.all([
     steamApi.getOwnedGameAppIds(steamId),
     steamApi.getWishlistAppIds(steamId),
   ]);
+  await assertSafeToResync(userId, ownedAppIds, wishlistAppIds);
   const allAppIds = [...new Set([...ownedAppIds, ...wishlistAppIds])];
   const batchResults = allAppIds.length ? await emuready.batchBySteamAppIdsStrict(allAppIds) : [];
   const importable = filterImportableResults(batchResults, emuready.isAllowedEmulator);
@@ -103,4 +140,4 @@ async function runImport(userId, steamId) {
   return { ownedCount: Number(ownedRows[0].count), wishlistCount: Number(wishlistRows[0].count) };
 }
 
-module.exports = { resolveAppIdsToItadIds, resyncOwnedFromSteam, resyncWishlistFromSteam, runImport, filterImportableResults };
+module.exports = { resolveAppIdsToItadIds, resyncOwnedFromSteam, resyncWishlistFromSteam, assertSafeToResync, runImport, filterImportableResults };

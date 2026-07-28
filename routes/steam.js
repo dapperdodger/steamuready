@@ -89,6 +89,10 @@ router.post('/import', async (req, res) => {
     res.json(summary);
   } catch (e) {
     console.error('[/api/steam/import]', e.message);
+    // A steamPrivacyGuard error is a known, actionable condition (Steam
+    // profile privacy setting likely changed) — surface its specific
+    // message instead of the generic one used for unexpected failures.
+    if (e.steamPrivacyGuard) return res.status(400).json({ error: e.message });
     res.status(500).json({ error: 'Import failed' });
   }
 });
