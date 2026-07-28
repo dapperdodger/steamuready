@@ -84,8 +84,30 @@ async function updateAlertSettings(id, alertsEnabled, alertMode) {
   );
 }
 
+async function findUserBySteamId(steamId) {
+  const { rows } = await pool.query('SELECT id FROM users WHERE steam_id = $1', [steamId]);
+  return rows[0] || null;
+}
+
+async function linkSteamAccount(userId, steamId, personaName) {
+  await pool.query(
+    'UPDATE users SET steam_id = $1, steam_persona_name = $2 WHERE id = $3',
+    [steamId, personaName, userId]
+  );
+}
+
+async function unlinkSteamAccount(userId) {
+  await pool.query('UPDATE users SET steam_id = NULL, steam_persona_name = NULL WHERE id = $1', [userId]);
+}
+
+async function getSteamLinkStatus(userId) {
+  const { rows } = await pool.query('SELECT steam_id, steam_persona_name FROM users WHERE id = $1', [userId]);
+  return { steamId: rows[0]?.steam_id ?? null, personaName: rows[0]?.steam_persona_name ?? null };
+}
+
 module.exports = {
   hashPassword, verifyPassword,
   createUser, findUserByEmail, findUserById,
   updatePasswordHash, findPasswordHashById, updatePreferences, updateHideOwnedDefault, deleteUser, setEmailVerified, setAlertsEnabled, updateAlertSettings,
+  findUserBySteamId, linkSteamAccount, unlinkSteamAccount, getSteamLinkStatus,
 };

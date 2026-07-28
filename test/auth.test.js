@@ -69,3 +69,31 @@ test('createUser rejects a duplicate email with a Postgres unique_violation', as
 
   await deleteUser(first.id);
 });
+
+const {
+  findUserBySteamId, linkSteamAccount, unlinkSteamAccount, getSteamLinkStatus,
+} = require('../services/auth');
+
+test('linkSteamAccount / getSteamLinkStatus / findUserBySteamId / unlinkSteamAccount', async () => {
+  const email = `steam-link-${Date.now()}@example.com`;
+  const user = await createUser(email, await hashPassword('password123'));
+
+  const before = await getSteamLinkStatus(user.id);
+  assert.deepStrictEqual(before, { steamId: null, personaName: null });
+
+  const steamId = `7656119${Date.now()}`.slice(0, 17);
+  await linkSteamAccount(user.id, steamId, 'CoolGamer42');
+
+  const after = await getSteamLinkStatus(user.id);
+  assert.deepStrictEqual(after, { steamId, personaName: 'CoolGamer42' });
+
+  const found = await findUserBySteamId(steamId);
+  assert.strictEqual(found.id, user.id);
+
+  await unlinkSteamAccount(user.id);
+  const afterUnlink = await getSteamLinkStatus(user.id);
+  assert.deepStrictEqual(afterUnlink, { steamId: null, personaName: null });
+  assert.strictEqual(await findUserBySteamId(steamId), null);
+
+  await deleteUser(user.id);
+});
