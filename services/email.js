@@ -36,6 +36,18 @@ function encodePartBody(content) {
   return (b64.match(/.{1,76}/g) || ['']).join('\r\n');
 }
 
+// Game names/store URLs come from ITAD's catalog, not from our own trusted
+// templates — escape before interpolating into HTML so a title containing
+// `<`, `&`, `"`, etc. can't break the markup.
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function buildRawMime({ to, subject, html, text, extraHeaders = {} }) {
   const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const headerLines = [
@@ -90,20 +102,69 @@ async function sendPasswordResetEmail(to, token, baseUrl) {
   await sendEmail(to, 'Reset your SteamUReady password', html, text);
 }
 
+// Mirrors the app's own card styling (public/style.css `:root` tokens, hex'd
+// literally since email clients don't support CSS custom properties):
+// --bg #0d1117, --surface #161b22, --card #1c2333, --border #21262d,
+// --text #e6edf3, --muted #8b949e, --steam-blue #66c0f4 (price-final),
+// discount-badge bg #4c6741 / text #a4d97a, .btn-steam bg #1b2838 / border
+// #2a475e / text #66c0f4. Table-based layout (not flex/grid) for
+// compatibility with clients like Outlook desktop that don't support them.
+function buildDigestItemHtml(i) {
+  const name = escapeHtml(i.gameName);
+  const originalPrice = i.originalPriceFormatted
+    ? `<span style="color:#8b949e;font-size:12px;text-decoration:line-through;margin-right:6px;">${escapeHtml(i.originalPriceFormatted)}</span>`
+    : '';
+  const imageCell = i.imageUrl
+    ? `<td width="120" style="padding:12px;vertical-align:top;">
+         <img src="${escapeHtml(i.imageUrl)}" alt="${name}" width="100" style="display:block;width:100px;height:auto;border-radius:4px;" />
+       </td>`
+    : '';
+  return `
+    <tr>
+      <td style="padding:0 20px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#1c2333;border:1px solid #21262d;border-radius:8px;">
+          <tr>
+            ${imageCell}
+            <td style="padding:12px 12px 12px ${i.imageUrl ? '0' : '12px'};vertical-align:top;">
+              <div style="color:#e6edf3;font-size:14px;font-weight:700;margin-bottom:6px;">${name}</div>
+              <div style="margin-bottom:10px;">
+                ${originalPrice}<span style="color:#66c0f4;font-size:15px;font-weight:800;">${escapeHtml(i.priceFormatted)}</span>
+                <span style="background:#4c6741;color:#a4d97a;font-size:11px;font-weight:800;padding:2px 6px;border-radius:4px;margin-left:6px;">−${i.discountPercent}%</span>
+              </div>
+              <a href="${escapeHtml(i.storeUrl)}" style="display:inline-block;background:#1b2838;border:1px solid #2a475e;color:#66c0f4;font-size:12px;font-weight:600;padding:6px 14px;border-radius:4px;text-decoration:none;">View Deal →</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>`;
+}
+
 async function sendPriceAlertDigest(to, items, unsubscribeUrl) {
   const subject = items.length === 1
     ? `${items[0].gameName} just dropped in price!`
     : `${items.length} games on your wishlist just dropped in price!`;
-  const rowsHtml = items.map(i =>
-    `<li><a href="${i.storeUrl}">${i.gameName}</a> — ${i.priceFormatted} (${i.discountPercent}% off)</li>`
-  ).join('');
+  const intro = items.length === 1
+    ? 'A game on your wishlist just dropped in price:'
+    : `${items.length} games on your wishlist just dropped in price:`;
   const rowsText = items.map(i =>
     `- ${i.gameName}: ${i.priceFormatted} (${i.discountPercent}% off) ${i.storeUrl}`
   ).join('\n');
-  const unsubHtml = `<p style="font-size:12px;color:#888"><a href="${unsubscribeUrl}">Unsubscribe from these emails</a></p>`;
   const unsubText = `\nUnsubscribe from these emails: ${unsubscribeUrl}`;
-  const html = `<ul>${rowsHtml}</ul>${unsubHtml}${FOOTER_HTML}`;
-  const text = `${rowsText}${unsubText}${FOOTER_TEXT}`;
+  const html = `
+    <div style="background:#0d1117;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#161b22;border:1px solid #21262d;border-radius:12px;overflow:hidden;">
+        <tr><td style="padding:20px 20px 4px;">
+          <span style="color:#66c0f4;font-size:18px;font-weight:800;">SteamUReady</span>
+        </td></tr>
+        <tr><td style="padding:0 20px 16px;color:#e6edf3;font-size:15px;">${escapeHtml(intro)}</td></tr>
+        ${items.map(buildDigestItemHtml).join('')}
+        <tr><td style="padding:4px 20px 20px;">
+          <a href="${unsubscribeUrl}" style="color:#8b949e;font-size:12px;">Unsubscribe from these emails</a>
+        </td></tr>
+      </table>
+    </div>
+    ${FOOTER_HTML}`;
+  const text = `${intro}\n\n${rowsText}${unsubText}${FOOTER_TEXT}`;
   await sendEmail(to, subject, html, text, {
     'List-Unsubscribe': `<${unsubscribeUrl}>`,
     'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',

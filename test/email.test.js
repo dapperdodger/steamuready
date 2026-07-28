@@ -55,6 +55,46 @@ test('sendPriceAlertDigest uses a singular subject for one game and a plural sub
   assert.match(email._getLastDryRunEmail().subject, /2 games on your wishlist just dropped in price!/);
 });
 
+test('sendPriceAlertDigest includes the game image with correct src/alt, the discount badge, and a store link, matching the app card layout', async () => {
+  const unsubscribeUrl = 'http://localhost:3000/api/alerts/unsubscribe?u=1&token=x';
+  await email.sendPriceAlertDigest('user@example.com', [
+    {
+      gameName: 'Portal 2', priceFormatted: '$4.99', originalPriceFormatted: '$9.99',
+      discountPercent: 50, storeUrl: 'https://store.steampowered.com/app/620',
+      imageUrl: 'https://cdn.akamai.steamstatic.com/steam/apps/620/header.jpg',
+    },
+  ], unsubscribeUrl);
+  const html = email._getLastDryRunEmail().html;
+  assert.match(html, /<img[^>]+src="https:\/\/cdn\.akamai\.steamstatic\.com\/steam\/apps\/620\/header\.jpg"[^>]*alt="Portal 2"/);
+  assert.match(html, /−50%|-50%/); // discount badge text (allow either minus-sign style)
+  assert.match(html, /\$9\.99/); // original (strikethrough) price still shown
+  assert.match(html, /\$4\.99/); // final price
+  assert.match(html, /href="https:\/\/store\.steampowered\.com\/app\/620"/);
+});
+
+test('sendPriceAlertDigest HTML-escapes game names so special characters cannot break the markup', async () => {
+  const unsubscribeUrl = 'http://localhost:3000/api/alerts/unsubscribe?u=1&token=x';
+  await email.sendPriceAlertDigest('user@example.com', [
+    {
+      gameName: '<script>alert(1)</script> & "Quotes" Game',
+      priceFormatted: '$4.99', discountPercent: 50, storeUrl: 'x', imageUrl: 'y',
+    },
+  ], unsubscribeUrl);
+  const html = email._getLastDryRunEmail().html;
+  assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
+  assert.match(html, /&lt;script&gt;/);
+  assert.match(html, /&amp;/);
+});
+
+test('sendPriceAlertDigest degrades gracefully when imageUrl/originalPriceFormatted are absent', async () => {
+  const unsubscribeUrl = 'http://localhost:3000/api/alerts/unsubscribe?u=1&token=x';
+  await email.sendPriceAlertDigest('user@example.com', [
+    { gameName: 'No Image Game', priceFormatted: '$4.99', discountPercent: 50, storeUrl: 'x' },
+  ], unsubscribeUrl);
+  const sent = email._getLastDryRunEmail();
+  assert.ok(sent.html.includes('No Image Game'));
+});
+
 test('sendPriceAlertDigest uses the region-formatted price string verbatim, not a re-derived USD amount', async () => {
   const unsubscribeUrl = 'http://localhost:3000/api/alerts/unsubscribe?u=1&token=x';
   await email.sendPriceAlertDigest('user@example.com', [
@@ -116,10 +156,12 @@ test('each MIME part declares a Content-Transfer-Encoding matching how its body 
   assert.strictEqual(htmlPart.decoded, sent.html);
 
   // The shared HTML footer already contains · (U+00B7) as a separator, and the
-  // digest's HTML row uses an — (U+2014) em dash; every HTML email sent by this
-  // codebase hits this path, so confirm they survive the round trip.
+  // digest's discount badge/CTA use − (U+2212 minus) and → (U+2192 arrow);
+  // every HTML email sent by this codebase hits this path, so confirm they
+  // survive the round trip.
   assert.match(htmlPart.decoded, /·/);
-  assert.match(htmlPart.decoded, /—/);
+  assert.match(htmlPart.decoded, /−/);
+  assert.match(htmlPart.decoded, /→/);
   assert.match(textPart.decoded, /£3\.99/);
 });
 

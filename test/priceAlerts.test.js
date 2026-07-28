@@ -142,6 +142,37 @@ test('checkRegion persists last_alerted_price/last_alerted_deal_since only after
   }
 });
 
+test('checkRegion forwards imageUrl and originalPriceFormatted into the digest item, not just gameName/price/discount', async () => {
+  const user = await makeEligibleUser('checkregion-fields');
+  const itadId = `itad-checkregion-fields-${Date.now()}`;
+  await pool.query('INSERT INTO wishlist_items (user_id, itad_id) VALUES ($1, $2)', [user.id, itadId]);
+
+  const deal = {
+    name: 'Test Game', price: 9.99, priceFormatted: '$9.99', originalPriceFormatted: '$19.99',
+    imageUrl: 'https://example.com/game.jpg', discountPercent: 50,
+    storeUrl: 'http://example.com/game', dealSince: '2026-07-01T00:00:00.000Z',
+  };
+  const originalGetDeals = store.getDealsForItadIds;
+  const originalSendDigest = email.sendPriceAlertDigest;
+  store.getDealsForItadIds = async () => new Map([[itadId, deal]]);
+  let capturedItems = null;
+  email.sendPriceAlertDigest = async (to, items) => { capturedItems = items; };
+
+  try {
+    await checkRegion('us', [user]);
+
+    assert.ok(capturedItems, 'sendPriceAlertDigest was called');
+    assert.strictEqual(capturedItems.length, 1);
+    assert.strictEqual(capturedItems[0].imageUrl, deal.imageUrl);
+    assert.strictEqual(capturedItems[0].originalPriceFormatted, deal.originalPriceFormatted);
+  } finally {
+    store.getDealsForItadIds = originalGetDeals;
+    email.sendPriceAlertDigest = originalSendDigest;
+    await pool.query('DELETE FROM wishlist_items WHERE user_id = $1', [user.id]);
+    await deleteUser(user.id);
+  }
+});
+
 test('runTick isolates a failing region (releasing its claim) without aborting other eligible regions', async () => {
   const regionOk = `test-runtick-ok-${Date.now()}`;
   const regionFail = `test-runtick-fail-${Date.now()}`;
