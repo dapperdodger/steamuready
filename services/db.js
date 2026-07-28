@@ -126,6 +126,10 @@ async function init() {
     ALTER TABLE wishlist_items ADD COLUMN IF NOT EXISTS last_alerted_price NUMERIC;
     ALTER TABLE wishlist_items ADD COLUMN IF NOT EXISTS last_alerted_deal_since TIMESTAMPTZ;
 
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_id TEXT UNIQUE;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_persona_name TEXT;
+    ALTER TABLE wishlist_items ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'manual';
+
     CREATE TABLE IF NOT EXISTS email_tokens (
       token       TEXT PRIMARY KEY,
       user_id     UUID REFERENCES users(id) ON DELETE CASCADE,

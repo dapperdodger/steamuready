@@ -17,8 +17,8 @@ test('init() creates users, wishlist_items, owned_games, hidden_games with expec
     (byTable[r.table_name] ??= []).push(r.column_name);
   }
 
-  assert.deepStrictEqual(byTable.users, ['id', 'email', 'password_hash', 'preferences', 'hide_owned_default', 'created_at', 'email_verified', 'alerts_enabled', 'alert_mode']);
-  assert.deepStrictEqual(byTable.wishlist_items, ['user_id', 'itad_id', 'added_at', 'last_alerted_price', 'last_alerted_deal_since']);
+  assert.deepStrictEqual(byTable.users, ['id', 'email', 'password_hash', 'preferences', 'hide_owned_default', 'created_at', 'email_verified', 'alerts_enabled', 'alert_mode', 'steam_id', 'steam_persona_name']);
+  assert.deepStrictEqual(byTable.wishlist_items, ['user_id', 'itad_id', 'added_at', 'last_alerted_price', 'last_alerted_deal_since', 'source']);
   assert.deepStrictEqual(byTable.owned_games, ['user_id', 'itad_id', 'source', 'added_at']);
   assert.deepStrictEqual(byTable.hidden_games, ['user_id', 'itad_id', 'added_at']);
 });
