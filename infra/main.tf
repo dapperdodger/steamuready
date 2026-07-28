@@ -283,6 +283,9 @@ resource "aws_ecs_task_definition" "app" {
       protocol      = "tcp"
     }]
 
+    # NOTE: email alerts need SES_FROM_EMAIL, APP_BASE_URL, and UNSUBSCRIBE_SECRET too —
+    # add them to the Secrets Manager blob referenced by AWS_SECRETS_ARN (or as plain
+    # `environment` entries below, for the non-secret ones) before deploying this feature.
     environment = [
       { name = "NODE_ENV",        value = "production" },
       { name = "PORT",            value = "3000" },

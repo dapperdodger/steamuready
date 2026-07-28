@@ -71,6 +71,10 @@ See [docker-compose.yml](docker-compose.yml) for the full configuration.
 | `REFRESH_SECRET` | No | Bearer token to protect `POST /api/refresh` |
 | `AWS_SECRETS_ARN` | No | ARN of an AWS Secrets Manager secret to load env vars from (production) |
 | `PORT` | No | HTTP port (default: `3000`) |
+| `SES_FROM_EMAIL` | Yes, if email alerts enabled | Sender address for verification/reset/alert emails — must be a verified SES identity |
+| `UNSUBSCRIBE_SECRET` | Yes, if email alerts enabled | HMAC secret used to sign one-click unsubscribe links (production); the app fails to start without it unless `EMAIL_DRY_RUN=true` |
+| `APP_BASE_URL` | Yes, if email alerts enabled | Base URL used to build links in emails sent from the background price-alert job (which has no HTTP request to derive one from) |
+| `EMAIL_DRY_RUN` | No | Set to `true` to log composed emails to the console instead of calling SES (local dev/tests only) |
 
 ## How it works
 
