@@ -455,6 +455,22 @@
   </div>
 
   <div class="settings-block">
+    <h3 data-i18n="connectedAccounts">Connected Accounts</h3>
+    <div id="steamNotLinked">
+      <a class="btn-steam" href="/api/steam/link" data-i18n="linkSteamAccount">Link Steam Account</a>
+    </div>
+    <div id="steamLinked" hidden>
+      <div id="steamPersonaLabel"></div>
+      <button id="steamImportBtn" data-i18n="importFromSteam">Import from Steam</button>
+      <p class="settings-hint" data-i18n="steamPrivacyHint">
+        Requires your Steam profile's game details and wishlist to be set to Public — check steamcommunity.com/my/edit/settings.
+      </p>
+      <div id="steamImportSummary"></div>
+      <button id="steamUnlinkBtn" class="btn-danger" data-i18n="unlinkSteamAccount">Unlink</button>
+    </div>
+  </div>
+
+  <div class="settings-block">
     <h3 data-i18n="dangerZone">Danger zone</h3>
     <button id="settingsDeleteAccount" class="btn-danger" data-i18n="deleteAccount">Delete account</button>
   </div>

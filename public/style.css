@@ -1104,6 +1104,7 @@ select option { background: var(--card); }
 .settings-block h3 { font-size: .82rem; font-weight: 600; color: var(--text); margin-bottom: .6rem; }
 .settings-block input { display: block; width: 100%; margin-top: .5rem; }
 .settings-block button { margin-top: .6rem; }
+.settings-hint { font-size: .85rem; opacity: .75; margin: .5rem 0; }
 .btn-danger {
   background: transparent;
   color: var(--red);

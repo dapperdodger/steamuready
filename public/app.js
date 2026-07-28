@@ -120,6 +120,9 @@ Object.assign(api, {
       body: JSON.stringify({ alertsEnabled, alertMode }),
     });
   },
+  steamStatus()  { return api.json('/api/steam/status'); },
+  steamUnlink()  { return fetch('/api/steam/unlink', { method: 'POST' }); },
+  steamImport()  { return fetch('/api/steam/import', { method: 'POST' }); },
 });
 
 /* ── Auth state ────────────────────────────────────────────────────────────── */
@@ -324,6 +327,7 @@ function openAccountSettings() {
   $('settingsNewPw').value = '';
   $('settingsPwError').hidden = true;
   renderAlertSettings();
+  refreshSteamStatus();
 }
 
 function closeAccountSettings() {
@@ -366,6 +370,37 @@ function initAccountSettings() {
     closeAccountSettings();
     await refreshAuthState();
     fetchGames(false);
+  });
+}
+
+/* ── Steam settings ────────────────────────────────────────────────────────── */
+async function refreshSteamStatus() {
+  const status = await api.steamStatus().catch(() => ({ linked: false, personaName: null }));
+  $('steamNotLinked').hidden = status.linked;
+  $('steamLinked').hidden = !status.linked;
+  if (status.linked) {
+    $('steamPersonaLabel').textContent = t('linkedAsSteam')(status.personaName || 'Steam User');
+  }
+  $('steamImportSummary').textContent = '';
+}
+
+function initSteamSettings() {
+  $('steamImportBtn').addEventListener('click', async () => {
+    $('steamImportBtn').disabled = true;
+    const res = await api.steamImport();
+    $('steamImportBtn').disabled = false;
+    if (!res.ok) {
+      $('steamImportSummary').textContent = t('steamImportFailed');
+      return;
+    }
+    const body = await res.json();
+    $('steamImportSummary').textContent = t('steamImportSummary')(body.ownedCount, body.wishlistCount);
+  });
+
+  $('steamUnlinkBtn').addEventListener('click', async () => {
+    if (!confirm(t('unlinkSteamConfirm'))) return;
+    await api.steamUnlink();
+    await refreshSteamStatus();
   });
 }
 
@@ -548,10 +583,21 @@ async function init() {
     initVerifyBanner();
     initTrackedView();
     initAccountSettings();
+    initSteamSettings();
     initAlertSettings();
     initHiddenGamesView();
     initCardMenus();
     await refreshAuthState();
+
+    const params = new URLSearchParams(location.search);
+    if (params.get('steamLinked') === '1') {
+      showToast(t('steamLinkedToast'));
+      history.replaceState(null, '', location.pathname);
+    } else if (params.get('steamError')) {
+      const errorKey = { already_linked: 'steamErrorAlreadyLinked', verification_failed: 'steamErrorVerification', link_failed: 'steamErrorGeneric' }[params.get('steamError')] || 'steamErrorGeneric';
+      showToast(t(errorKey));
+      history.replaceState(null, '', location.pathname);
+    }
 
     if (new URLSearchParams(location.search).get('emailVerified') === '1') {
       showToast(t('emailVerifiedToast'));
