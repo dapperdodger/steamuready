@@ -244,4 +244,32 @@ async function getBestSteamAppId(gameName) {
   return _getBestSteamAppIdThrottled(gameName.toLowerCase(), gameName);
 }
 
-module.exports = { getDevices, getSocs, getPerformanceScales, getListings, getAllListings, getBestSteamAppId, parseBestSteamAppIdResponse, throttledDedup, clearCache };
+// EmuReady's own Zod validation 400s the WHOLE batch if any id is out of
+// range — filter to plausible positive-integer ids defensively so one
+// malformed id can't take down an otherwise-valid batch.
+function filterValidSteamAppIds(steamAppIds) {
+  return steamAppIds.filter(id => /^\d+$/.test(String(id)));
+}
+
+function parseBatchBySteamAppIdsResponse(data) {
+  return Array.isArray(data?.results) ? data.results : [];
+}
+
+async function batchBySteamAppIds(steamAppIds, emulatorIds) {
+  const validIds = filterValidSteamAppIds(steamAppIds);
+  const results = [];
+  for (let i = 0; i < validIds.length; i += 1000) {
+    const batch = validIds.slice(i, i + 1000);
+    try {
+      const input = { steamAppIds: batch };
+      if (emulatorIds?.length) input.emulatorIds = emulatorIds;
+      const data = await trpcGet('games.batchBySteamAppIds', input);
+      results.push(...parseBatchBySteamAppIdsResponse(data));
+    } catch (e) {
+      console.error(`[EmuReady] batchBySteamAppIds error (offset ${i}):`, e.message);
+    }
+  }
+  return results;
+}
+
+module.exports = { getDevices, getSocs, getPerformanceScales, getListings, getAllListings, getBestSteamAppId, parseBestSteamAppIdResponse, batchBySteamAppIds, filterValidSteamAppIds, parseBatchBySteamAppIdsResponse, throttledDedup, clearCache };
