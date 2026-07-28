@@ -12,11 +12,28 @@ const FOOTER_TEXT = '\n\n---\nQuestions? support@steamuready.com | Discord: http
 let _lastDryRunEmail = null;
 function _getLastDryRunEmail() { return _lastDryRunEmail; }
 
-// Header values here are always plain ASCII (game names, addresses we generated
-// ourselves) — this only guards against literal newlines (header injection),
-// not full RFC 2047 encoding of arbitrary text.
+// This only guards against literal newlines (header injection); it does not
+// by itself make a value ASCII-safe. Use encodeHeaderValue for headers (like
+// Subject) whose value may legitimately contain non-ASCII text.
 function sanitizeHeaderValue(value) {
   return String(value).replace(/[\r\n]/g, ' ');
+}
+
+// RFC 2047-encodes a header value if it contains non-ASCII characters (e.g.
+// accented game names, ™/® symbols, non-Latin scripts from ITAD's catalog).
+// Pure-ASCII values pass through unchanged, since headers require ASCII and
+// encoding is only needed when that's not already the case.
+function encodeHeaderValue(value) {
+  const sanitized = sanitizeHeaderValue(value);
+  if (/^[\x00-\x7F]*$/.test(sanitized)) return sanitized;
+  return `=?UTF-8?B?${Buffer.from(sanitized, 'utf-8').toString('base64')}?=`;
+}
+
+// Base64-encodes a MIME part body and wraps it at the RFC 2045-recommended
+// 76-character line length, joined with CRLF as required by the format.
+function encodePartBody(content) {
+  const b64 = Buffer.from(String(content), 'utf-8').toString('base64');
+  return (b64.match(/.{1,76}/g) || ['']).join('\r\n');
 }
 
 function buildRawMime({ to, subject, html, text, extraHeaders = {} }) {
@@ -25,7 +42,7 @@ function buildRawMime({ to, subject, html, text, extraHeaders = {} }) {
     `From: SteamUReady <${process.env.SES_FROM_EMAIL}>`,
     `To: ${sanitizeHeaderValue(to)}`,
     'Reply-To: support@steamuready.com',
-    `Subject: ${sanitizeHeaderValue(subject)}`,
+    `Subject: ${encodeHeaderValue(subject)}`,
     'MIME-Version: 1.0',
     ...Object.entries(extraHeaders).map(([name, value]) => `${name}: ${sanitizeHeaderValue(value)}`),
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
@@ -33,12 +50,14 @@ function buildRawMime({ to, subject, html, text, extraHeaders = {} }) {
   const body = [
     `--${boundary}`,
     'Content-Type: text/plain; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
     '',
-    text,
+    encodePartBody(text),
     `--${boundary}`,
     'Content-Type: text/html; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
     '',
-    html,
+    encodePartBody(html),
     `--${boundary}--`,
   ].join('\r\n');
   return `${headerLines.join('\r\n')}\r\n\r\n${body}`;

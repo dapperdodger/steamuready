@@ -5,6 +5,29 @@ const test = require('node:test');
 const assert = require('node:assert');
 const email = require('../services/email');
 
+// Parses a raw MIME message's multipart/alternative body into its constituent
+// parts, decoding each according to its declared Content-Transfer-Encoding so
+// tests can assert on round-tripped content rather than raw wire bytes.
+function decodeMimeParts(raw) {
+  const headerEnd = raw.indexOf('\r\n\r\n');
+  const headersSection = raw.slice(0, headerEnd);
+  const bodySection = raw.slice(headerEnd + 4);
+  const boundary = headersSection.match(/boundary="([^"]+)"/)[1];
+  const rawParts = bodySection.split(`--${boundary}`).filter(p => p.trim() && p.trim() !== '--');
+  return rawParts.map(part => {
+    const trimmed = part.replace(/^\r\n/, '');
+    const partHeaderEnd = trimmed.indexOf('\r\n\r\n');
+    const partHeaders = trimmed.slice(0, partHeaderEnd);
+    const partBody = trimmed.slice(partHeaderEnd + 4).replace(/\r\n$/, '');
+    const cte = (partHeaders.match(/Content-Transfer-Encoding:\s*(\S+)/i) || [, '7bit'])[1];
+    const contentType = (partHeaders.match(/Content-Type:\s*([^;\r\n]+)/i) || [, ''])[1];
+    const decoded = cte.toLowerCase() === 'base64'
+      ? Buffer.from(partBody.replace(/\r\n/g, ''), 'base64').toString('utf-8')
+      : partBody;
+    return { contentType, cte, decoded };
+  });
+}
+
 test('sendVerificationEmail composes a verify link containing the token', async () => {
   await email.sendVerificationEmail('user@example.com', 'abc123token', 'http://localhost:3000');
   const sent = email._getLastDryRunEmail();
@@ -46,6 +69,58 @@ test('sendPriceAlertDigest uses the region-formatted price string verbatim, not 
   // Must not fall back to a hardcoded "$" re-derivation of the raw price.
   assert.doesNotMatch(sent.text, /\$3\.99/);
   assert.doesNotMatch(sent.text, /\$49\.99/);
+});
+
+test('sendPriceAlertDigest RFC 2047-encodes a non-ASCII subject and it decodes back to the original', async () => {
+  const unsubscribeUrl = 'http://localhost:3000/api/alerts/unsubscribe?u=1&token=x';
+  const gameName = 'Pokémon Company™ Deluxe Edición';
+  await email.sendPriceAlertDigest('user@example.com', [
+    { gameName, priceFormatted: '$4.99', discountPercent: 50, storeUrl: 'x' },
+  ], unsubscribeUrl);
+  const raw = email._getLastDryRunEmail().raw;
+  const [headersSection] = raw.split('\r\n\r\n');
+  const subjectLine = headersSection.split('\r\n').find(l => l.startsWith('Subject:'));
+  assert.ok(subjectLine, 'Subject header exists');
+  const subjectValue = subjectLine.slice('Subject: '.length);
+  // RFC 5322 requires ASCII header values — confirm no literal non-ASCII bytes leaked through.
+  assert.ok(/^[\x00-\x7F]*$/.test(subjectValue), 'Subject header line is pure ASCII on the wire');
+  const match = subjectValue.match(/^=\?UTF-8\?B\?(.+)\?=$/);
+  assert.ok(match, 'Subject is RFC 2047 base64-encoded');
+  const decoded = Buffer.from(match[1], 'base64').toString('utf-8');
+  assert.strictEqual(decoded, `${gameName} just dropped in price!`);
+});
+
+test('sendVerificationEmail leaves a pure-ASCII subject unencoded', async () => {
+  await email.sendVerificationEmail('user@example.com', 'tok', 'http://localhost:3000');
+  const raw = email._getLastDryRunEmail().raw;
+  assert.match(raw, /Subject: Verify your SteamUReady email\r\n/);
+});
+
+test('each MIME part declares a Content-Transfer-Encoding matching how its body is actually encoded, and decodes back to the original text (including the footer\'s non-ASCII · and — characters)', async () => {
+  const unsubscribeUrl = 'http://localhost:3000/api/alerts/unsubscribe?u=1&token=x';
+  await email.sendPriceAlertDigest('user@example.com', [
+    { gameName: 'Portal 2', priceFormatted: '£3.99', discountPercent: 50, storeUrl: 'x' },
+  ], unsubscribeUrl);
+  const sent = email._getLastDryRunEmail();
+  const parts = decodeMimeParts(sent.raw);
+  assert.strictEqual(parts.length, 2);
+
+  const textPart = parts.find(p => p.contentType.includes('text/plain'));
+  const htmlPart = parts.find(p => p.contentType.includes('text/html'));
+  assert.ok(textPart && htmlPart, 'both text/plain and text/html parts are present');
+  assert.strictEqual(textPart.cte.toLowerCase(), 'base64');
+  assert.strictEqual(htmlPart.cte.toLowerCase(), 'base64');
+
+  // Decoded body must round-trip exactly back to the original composed text/html.
+  assert.strictEqual(textPart.decoded, sent.text);
+  assert.strictEqual(htmlPart.decoded, sent.html);
+
+  // The shared HTML footer already contains · (U+00B7) as a separator, and the
+  // digest's HTML row uses an — (U+2014) em dash; every HTML email sent by this
+  // codebase hits this path, so confirm they survive the round trip.
+  assert.match(htmlPart.decoded, /·/);
+  assert.match(htmlPart.decoded, /—/);
+  assert.match(textPart.decoded, /£3\.99/);
 });
 
 test('every email includes the support/Discord/Ko-fi footer', async () => {
