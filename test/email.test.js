@@ -21,15 +21,31 @@ test('sendPasswordResetEmail composes a reset link containing the token', async 
 test('sendPriceAlertDigest uses a singular subject for one game and a plural subject for multiple', async () => {
   const unsubscribeUrl = 'http://localhost:3000/api/alerts/unsubscribe?u=1&token=x';
   await email.sendPriceAlertDigest('user@example.com', [
-    { gameName: 'Portal 2', price: 4.99, discountPercent: 50, storeUrl: 'https://store.steampowered.com/app/620' },
+    { gameName: 'Portal 2', priceFormatted: '$4.99', discountPercent: 50, storeUrl: 'https://store.steampowered.com/app/620' },
   ], unsubscribeUrl);
   assert.match(email._getLastDryRunEmail().subject, /Portal 2 just dropped in price!/);
 
   await email.sendPriceAlertDigest('user@example.com', [
-    { gameName: 'Portal 2', price: 4.99, discountPercent: 50, storeUrl: 'x' },
-    { gameName: 'Half-Life', price: 2.99, discountPercent: 70, storeUrl: 'y' },
+    { gameName: 'Portal 2', priceFormatted: '$4.99', discountPercent: 50, storeUrl: 'x' },
+    { gameName: 'Half-Life', priceFormatted: '$2.99', discountPercent: 70, storeUrl: 'y' },
   ], unsubscribeUrl);
   assert.match(email._getLastDryRunEmail().subject, /2 games on your wishlist just dropped in price!/);
+});
+
+test('sendPriceAlertDigest uses the region-formatted price string verbatim, not a re-derived USD amount', async () => {
+  const unsubscribeUrl = 'http://localhost:3000/api/alerts/unsubscribe?u=1&token=x';
+  await email.sendPriceAlertDigest('user@example.com', [
+    { gameName: 'Portal 2', price: 3.99, priceFormatted: '£3.99', discountPercent: 50, storeUrl: 'https://store.steampowered.com/app/620' },
+    { gameName: 'Wiedźmin', price: 49.99, priceFormatted: 'zł49.99', discountPercent: 30, storeUrl: 'y' },
+  ], unsubscribeUrl);
+  const sent = email._getLastDryRunEmail();
+  assert.match(sent.text, /£3\.99/);
+  assert.match(sent.text, /zł49\.99/);
+  assert.match(sent.html, /£3\.99/);
+  assert.match(sent.html, /zł49\.99/);
+  // Must not fall back to a hardcoded "$" re-derivation of the raw price.
+  assert.doesNotMatch(sent.text, /\$3\.99/);
+  assert.doesNotMatch(sent.text, /\$49\.99/);
 });
 
 test('every email includes the support/Discord/Ko-fi footer', async () => {
@@ -50,7 +66,7 @@ test('every email is sent from the no-reply identity and sets Reply-To to the su
 test('the price-alert digest includes the unsubscribe link and RFC 8058 one-click headers, but verify/reset emails do not', async () => {
   const unsubscribeUrl = 'http://localhost:3000/api/alerts/unsubscribe?u=1&token=abc';
   await email.sendPriceAlertDigest('user@example.com', [
-    { gameName: 'Portal 2', price: 4.99, discountPercent: 50, storeUrl: 'x' },
+    { gameName: 'Portal 2', priceFormatted: '$4.99', discountPercent: 50, storeUrl: 'x' },
   ], unsubscribeUrl);
   const digestSent = email._getLastDryRunEmail();
   assert.match(digestSent.text, /Unsubscribe from these emails/);
@@ -68,7 +84,7 @@ test('the price-alert digest includes the unsubscribe link and RFC 8058 one-clic
 test('extraHeaders values are sanitized against header injection (CRLF removal)', async () => {
   const injectionUrl = 'http://example.com\r\nX-Injected: malicious';
   await email.sendPriceAlertDigest('user@example.com', [
-    { gameName: 'Portal 2', price: 4.99, discountPercent: 50, storeUrl: 'x' },
+    { gameName: 'Portal 2', priceFormatted: '$4.99', discountPercent: 50, storeUrl: 'x' },
   ], injectionUrl);
   const sent = email._getLastDryRunEmail();
   const raw = sent.raw;

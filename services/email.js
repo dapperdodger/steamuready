@@ -71,17 +71,15 @@ async function sendPasswordResetEmail(to, token, baseUrl) {
   await sendEmail(to, 'Reset your SteamUReady password', html, text);
 }
 
-function formatMoney(amount) { return `$${Number(amount).toFixed(2)}`; }
-
 async function sendPriceAlertDigest(to, items, unsubscribeUrl) {
   const subject = items.length === 1
     ? `${items[0].gameName} just dropped in price!`
     : `${items.length} games on your wishlist just dropped in price!`;
   const rowsHtml = items.map(i =>
-    `<li><a href="${i.storeUrl}">${i.gameName}</a> — ${formatMoney(i.price)} (${i.discountPercent}% off)</li>`
+    `<li><a href="${i.storeUrl}">${i.gameName}</a> — ${i.priceFormatted} (${i.discountPercent}% off)</li>`
   ).join('');
   const rowsText = items.map(i =>
-    `- ${i.gameName}: ${formatMoney(i.price)} (${i.discountPercent}% off) ${i.storeUrl}`
+    `- ${i.gameName}: ${i.priceFormatted} (${i.discountPercent}% off) ${i.storeUrl}`
   ).join('\n');
   const unsubHtml = `<p style="font-size:12px;color:#888"><a href="${unsubscribeUrl}">Unsubscribe from these emails</a></p>`;
   const unsubText = `\nUnsubscribe from these emails: ${unsubscribeUrl}`;

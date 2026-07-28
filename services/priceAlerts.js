@@ -68,7 +68,8 @@ async function checkRegion(region, users) {
 
     if (!digestsByUser.has(row.user_id)) digestsByUser.set(row.user_id, []);
     digestsByUser.get(row.user_id).push({
-      gameName: deal.name, price: deal.price, discountPercent: deal.discountPercent, storeUrl: deal.storeUrl,
+      gameName: deal.name, price: deal.price, priceFormatted: deal.priceFormatted,
+      discountPercent: deal.discountPercent, storeUrl: deal.storeUrl,
     });
 
     if (!updatesByUser.has(row.user_id)) updatesByUser.set(row.user_id, []);
