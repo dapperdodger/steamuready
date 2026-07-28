@@ -45,20 +45,30 @@ router.get('/callback', async (req, res) => {
 });
 
 router.post('/unlink', async (req, res) => {
-  await auth.unlinkSteamAccount(req.session.userId);
-  res.json({ ok: true });
+  try {
+    await auth.unlinkSteamAccount(req.session.userId);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[/api/steam/unlink]', e);
+    res.status(500).json({ error: 'Unlink failed' });
+  }
 });
 
 router.get('/status', async (req, res) => {
-  const status = await auth.getSteamLinkStatus(req.session.userId);
-  res.json({ linked: !!status.steamId, personaName: status.personaName });
+  try {
+    const status = await auth.getSteamLinkStatus(req.session.userId);
+    res.json({ linked: !!status.steamId, personaName: status.personaName });
+  } catch (e) {
+    console.error('[/api/steam/status]', e);
+    res.status(500).json({ error: 'Status check failed' });
+  }
 });
 
 router.post('/import', async (req, res) => {
-  const status = await auth.getSteamLinkStatus(req.session.userId);
-  if (!status.steamId) return res.status(400).json({ error: 'No Steam account linked' });
-
   try {
+    const status = await auth.getSteamLinkStatus(req.session.userId);
+    if (!status.steamId) return res.status(400).json({ error: 'No Steam account linked' });
+
     const summary = await steamImport.runImport(req.session.userId, status.steamId);
     res.json(summary);
   } catch (e) {
