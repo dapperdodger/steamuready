@@ -5,6 +5,17 @@ const steamApi = require('../services/steamApi');
 const steamImport = require('../services/steamImport');
 const auth = require('../services/auth');
 const steamLibraryCompat = require('../services/steamLibraryCompat');
+const { redis } = require('../services/cache');
+
+// Non-fatal: a cache-delete failure shouldn't break the unlink/link
+// operation itself — log and continue.
+async function clearLibraryCompatCache(userId) {
+  try {
+    await redis.del(`steam-library-compat:${userId}`);
+  } catch (e) {
+    console.error('[/api/steam] failed to clear library-compat cache:', e.message);
+  }
+}
 
 const router = express.Router();
 router.use(requireAuth);
@@ -20,7 +31,7 @@ router.get('/link', async (req, res) => {
     const authUrl = await steamAuth.getAuthUrl(returnUrl, realm);
     res.redirect(authUrl);
   } catch (e) {
-    console.error('[/api/steam/link]', e);
+    console.error('[/api/steam/link]', e.message);
     res.redirect('/?steamError=link_failed');
   }
 });
@@ -38,9 +49,12 @@ router.get('/callback', async (req, res) => {
 
     const personaName = await steamApi.getPersonaName(steamId).catch(() => null);
     await auth.linkSteamAccount(req.session.userId, steamId, personaName);
+    // Stale cache guard: if the user previously linked a different Steam
+    // account, don't let their old library data leak into the new link.
+    await clearLibraryCompatCache(req.session.userId);
     res.redirect('/?steamLinked=1');
   } catch (e) {
-    console.error('[/api/steam/callback]', e);
+    console.error('[/api/steam/callback]', e.message);
     res.redirect('/?steamError=link_failed');
   }
 });
@@ -48,6 +62,7 @@ router.get('/callback', async (req, res) => {
 router.post('/unlink', async (req, res) => {
   try {
     await auth.unlinkSteamAccount(req.session.userId);
+    await clearLibraryCompatCache(req.session.userId);
     res.json({ ok: true });
   } catch (e) {
     console.error('[/api/steam/unlink]', e);
@@ -73,7 +88,7 @@ router.post('/import', async (req, res) => {
     const summary = await steamImport.runImport(req.session.userId, status.steamId);
     res.json(summary);
   } catch (e) {
-    console.error('[/api/steam/import]', e);
+    console.error('[/api/steam/import]', e.message);
     res.status(500).json({ error: 'Import failed' });
   }
 });

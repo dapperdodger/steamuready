@@ -1,12 +1,20 @@
 const { pool } = require('./db');
 const steamApi = require('./steamApi');
 const store = require('./store');
+const emuready = require('./emuready');
 const { addOwned, listOwnedItadIds } = require('./wishlist');
 
 // The exact-correlation plan already implements and manually-verifies this
 // exact ITAD /lookup/id/shop/61/v1 call in services/store.js — reused here
 // under the name this file's callers expect, rather than duplicated.
 const resolveAppIdsToItadIds = store.resolveSteamAppIdsToItadIds;
+
+// Pure: keep only EmuReady batch results that have at least one
+// Windows-capable-emulator listing (games with no listing anywhere this
+// app can show aren't worth wishlisting/marking owned).
+function filterImportableResults(batchResults, isAllowedEmulatorFn) {
+  return batchResults.filter(r => r.game && r.game.listings?.some(isAllowedEmulatorFn));
+}
 
 async function resyncOwnedFromSteam(userId, itadIds) {
   const idSet = new Set(itadIds);
@@ -57,7 +65,24 @@ async function runImport(userId, steamId) {
     steamApi.getWishlistAppIds(steamId),
   ]);
   const allAppIds = [...new Set([...ownedAppIds, ...wishlistAppIds])];
-  const itadMap = await resolveAppIdsToItadIds(allAppIds);
+  const batchResults = allAppIds.length ? await emuready.batchBySteamAppIds(allAppIds) : [];
+  const importable = filterImportableResults(batchResults, emuready.isAllowedEmulator);
+  const importableAppIds = importable.map(r => r.steamAppId);
+
+  const itadMap = await resolveAppIdsToItadIds(importableAppIds);
+
+  // Persist game_titles for every game we're about to import — same shape
+  // and image-URL convention buildExactEntry already uses for the deals
+  // path, so imported games render with real names/images (no separate
+  // backfill job needed; see Fix C in the final-review batch).
+  const titleEntries = {};
+  for (const r of importable) {
+    const itadId = itadMap.get(r.steamAppId);
+    if (!itadId) continue; // ITAD didn't recognize this Steam App ID either
+    const entry = store.buildExactEntry(r.game.title, r.steamAppId, itadId);
+    if (entry) titleEntries[r.game.title.toLowerCase()] = entry;
+  }
+  if (Object.keys(titleEntries).length) await store.persistGameTitles(titleEntries);
 
   const ownedItadIds = [...new Set(ownedAppIds.map(id => itadMap.get(id)).filter(Boolean))];
   const wishlistItadIds = [...new Set(wishlistAppIds.map(id => itadMap.get(id)).filter(Boolean))];
@@ -73,4 +98,4 @@ async function runImport(userId, steamId) {
   return { ownedCount: Number(ownedRows[0].count), wishlistCount: Number(wishlistRows[0].count) };
 }
 
-module.exports = { resolveAppIdsToItadIds, resyncOwnedFromSteam, resyncWishlistFromSteam, runImport };
+module.exports = { resolveAppIdsToItadIds, resyncOwnedFromSteam, resyncWishlistFromSteam, runImport, filterImportableResults };

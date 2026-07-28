@@ -18,6 +18,15 @@ const LISTINGS_TTL =  4 * 60 * 60 * 1000; //  4 h
 const ALLOWED_EMULATOR_SEARCHES = ['gamenative', 'gamehub', 'winlator'];
 let _allowedEmulatorIds = null;
 
+// Apps supported: GameNative, GameHub / GameHub Lite, Winlator.
+// Matched case-insensitively as substrings of the emulator name.
+const ALLOWED_EMULATOR_TERMS = ['gamenative', 'game native', 'gamehub', 'game hub', 'winlator'];
+
+function isAllowedEmulator(listing) {
+  const name = (listing.emulator?.name ?? '').toLowerCase();
+  return ALLOWED_EMULATOR_TERMS.some(term => name.includes(term));
+}
+
 async function getAllowedEmulatorIds() {
   if (_allowedEmulatorIds) return _allowedEmulatorIds;
   try {
@@ -272,4 +281,4 @@ async function batchBySteamAppIds(steamAppIds, emulatorIds) {
   return results;
 }
 
-module.exports = { getDevices, getSocs, getPerformanceScales, getListings, getAllListings, getBestSteamAppId, parseBestSteamAppIdResponse, batchBySteamAppIds, filterValidSteamAppIds, parseBatchBySteamAppIdsResponse, throttledDedup, clearCache };
+module.exports = { getDevices, getSocs, getPerformanceScales, getListings, getAllListings, getBestSteamAppId, parseBestSteamAppIdResponse, batchBySteamAppIds, filterValidSteamAppIds, parseBatchBySteamAppIdsResponse, throttledDedup, clearCache, isAllowedEmulator, ALLOWED_EMULATOR_TERMS };

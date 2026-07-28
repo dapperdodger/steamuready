@@ -155,6 +155,14 @@ async function refreshAuthState() {
     authState.alertMode = null;
   }
   renderAuthMenu();
+  // Keep the Steam-linked UI (the "My Library Compatibility" account-menu
+  // button) in sync with auth state — a guaranteed-401 network call is
+  // pointless when logged out, so just hide it directly instead.
+  if (authState.loggedIn) {
+    await refreshSteamStatus();
+  } else {
+    $('libraryCompatMenuBtn').hidden = true;
+  }
 }
 
 function renderAuthMenu() {
@@ -243,6 +251,7 @@ function initAuthModal() {
     await api.authLogout();
     $('accountDropdown').hidden = true;
     closeTrackedView(); // the account dropdown stays reachable while the tracked view is open, so logging out from there must not leave it showing stale data behind a hidden .layout
+    closeLibraryCompatView(); // same reasoning — an open Library Compatibility view must not linger with the previous user's data
     await refreshAuthState();
     fetchGames(false);
   });
@@ -305,8 +314,8 @@ function buildCompatCard(g) {
       <img class="card-img" src="${escHtml(g.imageUrl)}" alt="${escHtml(g.gameName)}" />
       <div class="card-img-placeholder" style="display:none">🎮</div>
       <span class="compat-badge compat-${rankClass}">${escHtml(g.compatibility?.label || '')}</span>
-      ${g.owned ? `<span class="owned-badge" data-i18n="ownedBadge">Owned</span>` : ''}
-      ${g.wishlisted ? `<span class="wishlisted-badge" data-i18n="wishlistedBadge">Wishlisted</span>` : ''}
+      ${g.owned ? `<span class="owned-badge">${t('ownedBadge')}</span>` : ''}
+      ${g.wishlisted ? `<span class="wishlisted-badge">${t('wishlistedBadge')}</span>` : ''}
     </div>
     <div class="card-body">
       <div class="card-game-name">${escHtml(g.gameName)}</div>
@@ -646,7 +655,10 @@ async function init() {
     initTrackedView();
     initAccountSettings();
     initSteamSettings();
-    await refreshSteamStatus();
+    // refreshSteamStatus() runs as part of refreshAuthState() below (once
+    // auth state is known), rather than unconditionally here — calling it
+    // before auth state is known would fire a guaranteed-401 request on
+    // every anonymous page load.
     initLibraryCompatView();
     initAlertSettings();
     initHiddenGamesView();

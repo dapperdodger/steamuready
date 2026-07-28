@@ -84,6 +84,17 @@ async function resolveTitlesBatch(titles) {
   }
 
   // Phase D: persist (batched upsert, 200 rows/call).
+  await persistGameTitles(entries);
+
+  return entries;
+}
+
+// Batched upsert into game_titles (200 rows/call). `entries` is
+// { [titleLower]: { id, matchTitle, steamAppId, imageUrl, resolvedVia } },
+// same shape resolveTitlesBatch already builds — extracted so other
+// callers (e.g. Steam import) can persist entries without duplicating
+// resolveTitlesBatch's title-resolution steps.
+async function persistGameTitles(entries) {
   const vals = Object.entries(entries);
   for (let i = 0; i < vals.length; i += 200) {
     const chunk = vals.slice(i, i + 200);
@@ -102,8 +113,6 @@ async function resolveTitlesBatch(titles) {
       params
     );
   }
-
-  return entries;
 }
 
 // ── Phase 2: Fetch overview for a batch of ITAD IDs ───────────────────────────
@@ -423,5 +432,6 @@ async function getDealsForItadIds(itadIds, cc = 'us', shops = []) {
 module.exports = {
   getDealsForTitles, getDealsForItadIds, buildItadIdEntry,
   resolveSteamAppIdsToItadIds, buildExactEntry, buildFallbackEntry, splitForInlineResolution,
+  persistGameTitles,
   getShops, clearCache, REGIONS, STEAM_SHOP_ID,
 };

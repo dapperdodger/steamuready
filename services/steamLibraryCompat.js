@@ -29,7 +29,12 @@ function buildCompatEntry(result, ownedSet, wishlistSet, preferredDeviceIds, pre
   return {
     steamAppId: result.steamAppId,
     gameName: result.game.title,
-    imageUrl: result.game.boxartUrl || result.game.imageUrl || '',
+    // Build from Steam's own CDN (same convention as store.js's buildExactEntry)
+    // rather than EmuReady's boxartUrl/imageUrl — those come from hosts
+    // (media.rawg.io, cdn.thegamesdb.net, images.igdb.com) not in this app's
+    // CSP img-src allowlist, so every card would silently fall back to the
+    // placeholder.
+    imageUrl: `https://cdn.akamai.steamstatic.com/steam/apps/${result.steamAppId}/header.jpg`,
     owned: ownedSet.has(result.steamAppId),
     wishlisted: wishlistSet.has(result.steamAppId),
     compatibility: {

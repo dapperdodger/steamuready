@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const path = require('path');
 const Fuse = require('fuse.js');
 const emuready = require('./services/emuready');
+const { isAllowedEmulator } = emuready;
 const store = require('./services/store');
 const epic = require('./services/epic');
 const steamcontroller = require('./services/steamcontroller');
@@ -92,15 +93,6 @@ app.get('/api/regions', (req, res) => {
 // Stores supported by GameNative (Steam, Epic, GOG, Amazon) and GameHub Lite (Steam).
 // Amazon has no ITAD presence, so we allow Steam + Epic Game Store + GOG.
 const ALLOWED_SHOP_IDS = new Set([61, 16, 35]); // Steam, Epic Game Store, GOG
-
-// Apps supported: GameNative, GameHub / GameHub Lite, Winlator.
-// Matched case-insensitively as substrings of the emulator name.
-const ALLOWED_EMULATOR_TERMS = ['gamenative', 'game native', 'gamehub', 'game hub', 'winlator'];
-
-function isAllowedEmulator(listing) {
-  const name = (listing.emulator?.name ?? '').toLowerCase();
-  return ALLOWED_EMULATOR_TERMS.some(term => name.includes(term));
-}
 
 // Canonical app slugs — order matters: gamehublite before gamehub
 const APP_DEFINITIONS = [

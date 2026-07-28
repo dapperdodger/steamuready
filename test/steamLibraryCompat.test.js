@@ -51,7 +51,7 @@ test('buildCompatEntry assembles a display entry with owned/wishlisted flags and
   assert.deepStrictEqual(entry, {
     steamAppId: '220',
     gameName: 'Half-Life 2',
-    imageUrl: 'https://example.com/box.jpg',
+    imageUrl: 'https://cdn.akamai.steamstatic.com/steam/apps/220/header.jpg',
     owned: true,
     wishlisted: false,
     compatibility: { rank: 1, label: 'Rank 1', deviceName: 'Device dev-a', socName: 'Soc soc-a', emulatorName: 'GameHub' },
