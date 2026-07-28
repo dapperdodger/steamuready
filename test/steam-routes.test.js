@@ -45,3 +45,14 @@ test('POST /api/steam/import requires auth and 400s when no Steam account is lin
 
   await pool.query('DELETE FROM users WHERE email = $1', [email]);
 });
+
+test('GET /api/steam/library-compat requires auth and 400s when no Steam account is linked', async () => {
+  const anon = await request(app).get('/api/steam/library-compat');
+  assert.strictEqual(anon.status, 401);
+
+  const { agent, email } = await signupAgent('steam-compat-unlinked');
+  const res = await agent.get('/api/steam/library-compat');
+  assert.strictEqual(res.status, 400);
+
+  await pool.query('DELETE FROM users WHERE email = $1', [email]);
+});

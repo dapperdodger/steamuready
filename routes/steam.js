@@ -4,6 +4,7 @@ const steamAuth = require('../services/steamAuth');
 const steamApi = require('../services/steamApi');
 const steamImport = require('../services/steamImport');
 const auth = require('../services/auth');
+const steamLibraryCompat = require('../services/steamLibraryCompat');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -74,6 +75,19 @@ router.post('/import', async (req, res) => {
   } catch (e) {
     console.error('[/api/steam/import]', e);
     res.status(500).json({ error: 'Import failed' });
+  }
+});
+
+router.get('/library-compat', async (req, res) => {
+  try {
+    const status = await auth.getSteamLinkStatus(req.session.userId);
+    if (!status.steamId) return res.status(400).json({ error: 'No Steam account linked' });
+
+    const games = await steamLibraryCompat.getLibraryCompat(req.session.userId, status.steamId);
+    res.json({ games });
+  } catch (e) {
+    console.error('[/api/steam/library-compat]', e);
+    res.status(500).json({ error: 'Failed to load library compatibility' });
   }
 });
 
