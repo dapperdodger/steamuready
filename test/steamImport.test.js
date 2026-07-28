@@ -6,7 +6,7 @@ const {
   addWishlistItem, addOwned, listWishlistItadIds, listOwnedItadIds,
   addHidden, listHiddenItadIds,
 } = require('../services/wishlist');
-const { resyncOwnedFromSteam, resyncWishlistFromSteam, filterImportableResults, assertSafeToResync } = require('../services/steamImport');
+const { resyncOwnedFromSteam, resyncWishlistFromSteam, filterImportableResults, assertSafeToResync, assertResyncSetsNotSuspiciouslyEmpty } = require('../services/steamImport');
 const { isAllowedEmulator } = require('../services/emuready');
 const store = require('../services/store');
 const { pool } = require('../services/db');
@@ -121,6 +121,67 @@ test('assertSafeToResync resolves when the new response is non-empty, regardless
   );
 
   await assert.doesNotReject(() => assertSafeToResync(user.id, ['some-appid'], ['some-appid']));
+
+  await deleteUser(user.id);
+});
+
+// ── assertResyncSetsNotSuspiciouslyEmpty (final-review Fix: the resyncs are
+// actually driven by ownedItadIds/wishlistItadIds, derived from the raw
+// Steam App IDs via two more network hops — EmuReady's batch endpoint, then
+// ITAD's resolver. Both can return a successful-looking HTTP 200 that
+// collapses a full, non-empty Steam-side set down to an empty derived set
+// without throwing, which the Steam-layer assertSafeToResync guard can't
+// see. This is an EmuReady/ITAD data-quality failure, not a Steam privacy
+// setting, so it must NOT set steamPrivacyGuard — it should fall through to
+// the generic 500 in routes/steam.js instead of the privacy-specific 400.)
+function assertNotSteamPrivacyGuardButIncomplete(err) {
+  return !err.steamPrivacyGuard && /incomplete data/.test(err.message);
+}
+
+test('assertResyncSetsNotSuspiciouslyEmpty rejects when derived owned is empty but the user already has steam-sourced owned_games', async () => {
+  const user = await makeTestUser('assert-derived-owned');
+  await addOwned(user.id, 'itad-existing-owned-derived', 'steam');
+
+  await assert.rejects(
+    () => assertResyncSetsNotSuspiciouslyEmpty(user.id, [], ['some-wishlist-itad-id']),
+    assertNotSteamPrivacyGuardButIncomplete
+  );
+
+  await deleteUser(user.id);
+});
+
+test('assertResyncSetsNotSuspiciouslyEmpty rejects when derived wishlist is empty but the user already has steam-sourced wishlist_items', async () => {
+  const user = await makeTestUser('assert-derived-wishlist');
+  await pool.query(
+    `INSERT INTO wishlist_items (user_id, itad_id, source) VALUES ($1, $2, 'steam')`,
+    [user.id, 'itad-existing-wish-derived']
+  );
+
+  await assert.rejects(
+    () => assertResyncSetsNotSuspiciouslyEmpty(user.id, ['some-owned-itad-id'], []),
+    assertNotSteamPrivacyGuardButIncomplete
+  );
+
+  await deleteUser(user.id);
+});
+
+test('assertResyncSetsNotSuspiciouslyEmpty resolves for a user with no existing steam-sourced rows even when both derived sets are empty (legitimate first-time empty import)', async () => {
+  const user = await makeTestUser('assert-derived-first-import');
+
+  await assert.doesNotReject(() => assertResyncSetsNotSuspiciouslyEmpty(user.id, [], []));
+
+  await deleteUser(user.id);
+});
+
+test('assertResyncSetsNotSuspiciouslyEmpty resolves when the derived sets are non-empty, regardless of existing rows', async () => {
+  const user = await makeTestUser('assert-derived-nonempty');
+  await addOwned(user.id, 'itad-existing-owned-derived-2', 'steam');
+  await pool.query(
+    `INSERT INTO wishlist_items (user_id, itad_id, source) VALUES ($1, $2, 'steam')`,
+    [user.id, 'itad-existing-wish-derived-2']
+  );
+
+  await assert.doesNotReject(() => assertResyncSetsNotSuspiciouslyEmpty(user.id, ['some-itad-id'], ['some-itad-id']));
 
   await deleteUser(user.id);
 });

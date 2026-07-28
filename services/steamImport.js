@@ -99,6 +99,44 @@ async function assertSafeToResync(userId, ownedAppIds, wishlistAppIds) {
   }
 }
 
+// The resyncs are actually driven by ownedItadIds/wishlistItadIds, not the
+// raw Steam App IDs directly — those are derived via two more network hops
+// (EmuReady's batchBySteamAppIdsStrict, then ITAD's
+// resolveSteamAppIdsToItadIdsStrict). Both can return a successful-looking
+// HTTP 200 (a tRPC error envelope at 200, an unexpected response shape, a
+// WAF/interstitial page, etc.) that the existing parse functions silently
+// coerce to []/an empty Map — collapsing a full, non-empty set of Steam App
+// IDs down to an empty derived set without ever throwing, so the *Strict
+// variants never get a chance to fire. assertSafeToResync (above) only
+// checks the raw Steam-layer inputs and can't see this. Same reasoning,
+// checked independently per collection at the derived layer instead: refuse
+// to resync-to-empty if we already have steam-sourced rows on file. Unlike
+// assertSafeToResync, this is an EmuReady/ITAD data-quality problem, not a
+// Steam privacy setting — there's nothing the user can fix on their end, so
+// this deliberately does NOT set steamPrivacyGuard and falls through to the
+// generic 500 in routes/steam.js instead of surfacing a privacy-specific
+// message.
+async function assertResyncSetsNotSuspiciouslyEmpty(userId, ownedItadIds, wishlistItadIds) {
+  if (ownedItadIds.length === 0) {
+    const { rows } = await pool.query(
+      "SELECT 1 FROM owned_games WHERE user_id = $1 AND source = 'steam' LIMIT 1",
+      [userId]
+    );
+    if (rows.length) {
+      throw new Error("The game-compatibility service returned incomplete data for this import, which would have deleted your previously-imported library — please try again later.");
+    }
+  }
+  if (wishlistItadIds.length === 0) {
+    const { rows } = await pool.query(
+      "SELECT 1 FROM wishlist_items WHERE user_id = $1 AND source = 'steam' LIMIT 1",
+      [userId]
+    );
+    if (rows.length) {
+      throw new Error("The game-compatibility service returned incomplete data for this import, which would have deleted your previously-imported wishlist — please try again later.");
+    }
+  }
+}
+
 async function runImport(userId, steamId) {
   const [ownedAppIds, wishlistAppIds] = await Promise.all([
     steamApi.getOwnedGameAppIds(steamId),
@@ -129,6 +167,8 @@ async function runImport(userId, steamId) {
   const ownedItadIds = [...new Set(ownedAppIds.map(id => itadMap.get(id)).filter(Boolean))];
   const wishlistItadIds = [...new Set(wishlistAppIds.map(id => itadMap.get(id)).filter(Boolean))];
 
+  await assertResyncSetsNotSuspiciouslyEmpty(userId, ownedItadIds, wishlistItadIds);
+
   await resyncOwnedFromSteam(userId, ownedItadIds);
   // Use the full owned set (all sources), not just Steam's, so a game owned
   // via another source never gets re-added to the wishlist by this resync.
@@ -140,4 +180,4 @@ async function runImport(userId, steamId) {
   return { ownedCount: Number(ownedRows[0].count), wishlistCount: Number(wishlistRows[0].count) };
 }
 
-module.exports = { resolveAppIdsToItadIds, resyncOwnedFromSteam, resyncWishlistFromSteam, assertSafeToResync, runImport, filterImportableResults };
+module.exports = { resolveAppIdsToItadIds, resyncOwnedFromSteam, resyncWishlistFromSteam, assertSafeToResync, assertResyncSetsNotSuspiciouslyEmpty, runImport, filterImportableResults };
