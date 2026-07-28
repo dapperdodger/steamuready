@@ -142,7 +142,7 @@ async function fetchOverviewAPI(itadIds, cc, shops) {
 
 // Resolve Steam App IDs → ITAD ids via ITAD's exact shop lookup (batched 200/call).
 // Returns Map(steamAppId → itadId). Steam App IDs ITAD doesn't recognize are omitted.
-async function resolveSteamAppIdsToItadIds(steamAppIds) {
+async function resolveItadIdChunks(steamAppIds, { strict = false } = {}) {
   const result = new Map();
   for (let i = 0; i < steamAppIds.length; i += 200) {
     const batch = steamAppIds.slice(i, i + 200).map(id => `app/${id}`);
@@ -156,10 +156,27 @@ async function resolveSteamAppIdsToItadIds(steamAppIds) {
         if (itadId) result.set(shopKey.replace('app/', ''), itadId);
       }
     } catch (e) {
+      if (strict) throw e;
       console.warn(`[Store] Steam appId → itad_id lookup failed (offset ${i}):`, e.message);
     }
   }
   return result;
+}
+
+async function resolveSteamAppIdsToItadIds(steamAppIds) {
+  return resolveItadIdChunks(steamAppIds);
+}
+
+// Strict variant: rethrows on any chunk failure instead of swallowing it.
+// Used by the Steam import path (services/steamImport.js), where an
+// incomplete ITAD response must not be silently interpreted as "these
+// Steam App IDs don't exist" — that would wipe previously-imported rows on
+// the next resync. The lenient resolveSteamAppIdsToItadIds remains correct
+// for the deals-lookup path (resolveTitlesBatch), where a partial result
+// just means some titles fall back to a different resolution path, not
+// data loss.
+async function resolveSteamAppIdsToItadIdsStrict(steamAppIds) {
+  return resolveItadIdChunks(steamAppIds, { strict: true });
 }
 
 // Pure: assemble a game_titles entry for a title EmuReady resolved to an exact,
@@ -431,7 +448,7 @@ async function getDealsForItadIds(itadIds, cc = 'us', shops = []) {
 
 module.exports = {
   getDealsForTitles, getDealsForItadIds, buildItadIdEntry,
-  resolveSteamAppIdsToItadIds, buildExactEntry, buildFallbackEntry, splitForInlineResolution,
+  resolveSteamAppIdsToItadIds, resolveSteamAppIdsToItadIdsStrict, buildExactEntry, buildFallbackEntry, splitForInlineResolution,
   persistGameTitles,
   getShops, clearCache, REGIONS, STEAM_SHOP_ID,
 };

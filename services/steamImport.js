@@ -6,8 +6,12 @@ const { addOwned, listOwnedItadIds } = require('./wishlist');
 
 // The exact-correlation plan already implements and manually-verifies this
 // exact ITAD /lookup/id/shop/61/v1 call in services/store.js — reused here
-// under the name this file's callers expect, rather than duplicated.
-const resolveAppIdsToItadIds = store.resolveSteamAppIdsToItadIds;
+// under the name this file's callers expect, rather than duplicated. Uses
+// the strict variant: an incomplete ITAD response must abort the import
+// rather than being treated as "these Steam App IDs don't exist," which
+// would wipe previously-imported rows on the next resync (same reasoning
+// as batchBySteamAppIdsStrict below).
+const resolveAppIdsToItadIds = store.resolveSteamAppIdsToItadIdsStrict;
 
 // Pure: keep only EmuReady batch results that have at least one
 // Windows-capable-emulator listing (games with no listing anywhere this

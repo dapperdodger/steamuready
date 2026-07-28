@@ -65,7 +65,7 @@ router.post('/unlink', async (req, res) => {
     await clearLibraryCompatCache(req.session.userId);
     res.json({ ok: true });
   } catch (e) {
-    console.error('[/api/steam/unlink]', e);
+    console.error('[/api/steam/unlink]', e.message);
     res.status(500).json({ error: 'Unlink failed' });
   }
 });
@@ -75,7 +75,7 @@ router.get('/status', async (req, res) => {
     const status = await auth.getSteamLinkStatus(req.session.userId);
     res.json({ linked: !!status.steamId, personaName: status.personaName });
   } catch (e) {
-    console.error('[/api/steam/status]', e);
+    console.error('[/api/steam/status]', e.message);
     res.status(500).json({ error: 'Status check failed' });
   }
 });
