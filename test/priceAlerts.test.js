@@ -3,12 +3,12 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { redis } = require('../services/cache');
 const { pool } = require('../services/db');
-const { createUser, hashPassword, deleteUser } = require('../services/auth');
+const { createUser, hashPassword, deleteUser, setEmailVerified, setAlertsEnabled } = require('../services/auth');
 const store = require('../services/store');
 const email = require('../services/email');
 const { getTargetLocalHour } = require('../services/alertTiming');
 const {
-  claimRegionForToday, releaseRegionClaim, checkRegion, runTick,
+  claimRegionForToday, releaseRegionClaim, checkRegion, runTick, getEligibleUsersByRegion,
 } = require('../services/priceAlerts');
 
 async function makeEligibleUser(tag, region = 'us') {
@@ -20,6 +20,40 @@ async function makeEligibleUser(tag, region = 'us') {
   );
   return { id: user.id, email: testEmail, alert_mode: 'sale_period' };
 }
+
+test('getEligibleUsersByRegion returns only the user with alerts_enabled=TRUE AND email_verified=TRUE (the consent gate)', async () => {
+  const region = `test-consent-${Date.now()}`;
+  const tag = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+
+  const bothTrue = await createUser(`consent-both-${tag}@example.com`, await hashPassword('password123'));
+  const enabledOnly = await createUser(`consent-enabled-${tag}@example.com`, await hashPassword('password123'));
+  const verifiedOnly = await createUser(`consent-verified-${tag}@example.com`, await hashPassword('password123'));
+  const neither = await createUser(`consent-neither-${tag}@example.com`, await hashPassword('password123'));
+  const users = [bothTrue, enabledOnly, verifiedOnly, neither];
+
+  try {
+    await pool.query('UPDATE users SET preferences = $1 WHERE id = ANY($2)', [
+      JSON.stringify({ region }), users.map(u => u.id),
+    ]);
+
+    // createUser defaults: email_verified = FALSE, alerts_enabled = TRUE.
+    await setEmailVerified(bothTrue.id, true); // alerts_enabled stays TRUE (default) -> eligible
+    // enabledOnly: alerts_enabled TRUE (default), email_verified left FALSE (default) -> not eligible
+    await setEmailVerified(verifiedOnly.id, true);
+    await setAlertsEnabled(verifiedOnly.id, false); // email_verified TRUE, alerts_enabled FALSE -> not eligible
+    await setAlertsEnabled(neither.id, false); // both FALSE -> not eligible
+
+    const byRegion = await getEligibleUsersByRegion();
+    const regionUserIds = (byRegion.get(region) || []).map(u => u.id);
+
+    assert.ok(regionUserIds.includes(bothTrue.id), 'alerts_enabled=TRUE AND email_verified=TRUE user is included');
+    assert.ok(!regionUserIds.includes(enabledOnly.id), 'alerts_enabled=TRUE but email_verified=FALSE user is excluded');
+    assert.ok(!regionUserIds.includes(verifiedOnly.id), 'email_verified=TRUE but alerts_enabled=FALSE user is excluded');
+    assert.ok(!regionUserIds.includes(neither.id), 'alerts_enabled=FALSE and email_verified=FALSE user is excluded');
+  } finally {
+    for (const u of users) await deleteUser(u.id);
+  }
+});
 
 test('claimRegionForToday: first claim for a region+day succeeds, a second claim for the same region+day fails', async () => {
   const region = `test-region-${Date.now()}`;
