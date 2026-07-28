@@ -264,7 +264,7 @@ function parseBatchBySteamAppIdsResponse(data) {
   return Array.isArray(data?.results) ? data.results : [];
 }
 
-async function batchBySteamAppIds(steamAppIds, emulatorIds) {
+async function batchAppIdChunks(steamAppIds, emulatorIds, { strict = false } = {}) {
   const validIds = filterValidSteamAppIds(steamAppIds);
   const results = [];
   for (let i = 0; i < validIds.length; i += 1000) {
@@ -275,10 +275,26 @@ async function batchBySteamAppIds(steamAppIds, emulatorIds) {
       const data = await trpcGet('games.batchBySteamAppIds', input);
       results.push(...parseBatchBySteamAppIdsResponse(data));
     } catch (e) {
+      if (strict) throw e;
       console.error(`[EmuReady] batchBySteamAppIds error (offset ${i}):`, e.message);
     }
   }
   return results;
 }
 
-module.exports = { getDevices, getSocs, getPerformanceScales, getListings, getAllListings, getBestSteamAppId, parseBestSteamAppIdResponse, batchBySteamAppIds, filterValidSteamAppIds, parseBatchBySteamAppIdsResponse, throttledDedup, clearCache, isAllowedEmulator, ALLOWED_EMULATOR_TERMS };
+async function batchBySteamAppIds(steamAppIds, emulatorIds) {
+  return batchAppIdChunks(steamAppIds, emulatorIds);
+}
+
+// Strict variant: rethrows on any chunk failure instead of swallowing it.
+// Used by the Steam import path, where an incomplete EmuReady response must
+// not be silently interpreted as "user owns nothing importable" — that
+// would wipe their previously-imported library on the next resync. The
+// lenient batchBySteamAppIds remains correct for the read-only
+// compatibility view, where a partial result just means fewer cards shown,
+// not data loss.
+async function batchBySteamAppIdsStrict(steamAppIds, emulatorIds) {
+  return batchAppIdChunks(steamAppIds, emulatorIds, { strict: true });
+}
+
+module.exports = { getDevices, getSocs, getPerformanceScales, getListings, getAllListings, getBestSteamAppId, parseBestSteamAppIdResponse, batchBySteamAppIds, batchBySteamAppIdsStrict, filterValidSteamAppIds, parseBatchBySteamAppIdsResponse, throttledDedup, clearCache, isAllowedEmulator, ALLOWED_EMULATOR_TERMS };

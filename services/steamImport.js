@@ -65,7 +65,7 @@ async function runImport(userId, steamId) {
     steamApi.getWishlistAppIds(steamId),
   ]);
   const allAppIds = [...new Set([...ownedAppIds, ...wishlistAppIds])];
-  const batchResults = allAppIds.length ? await emuready.batchBySteamAppIds(allAppIds) : [];
+  const batchResults = allAppIds.length ? await emuready.batchBySteamAppIdsStrict(allAppIds) : [];
   const importable = filterImportableResults(batchResults, emuready.isAllowedEmulator);
   const importableAppIds = importable.map(r => r.steamAppId);
 
@@ -79,6 +79,7 @@ async function runImport(userId, steamId) {
   for (const r of importable) {
     const itadId = itadMap.get(r.steamAppId);
     if (!itadId) continue; // ITAD didn't recognize this Steam App ID either
+    if (!r.game.title) continue; // Defensive: EmuReady result with a game but no title
     const entry = store.buildExactEntry(r.game.title, r.steamAppId, itadId);
     if (entry) titleEntries[r.game.title.toLowerCase()] = entry;
   }

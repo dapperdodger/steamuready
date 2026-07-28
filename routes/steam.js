@@ -101,7 +101,7 @@ router.get('/library-compat', async (req, res) => {
     const games = await steamLibraryCompat.getLibraryCompat(req.session.userId, status.steamId);
     res.json({ games });
   } catch (e) {
-    console.error('[/api/steam/library-compat]', e);
+    console.error('[/api/steam/library-compat]', e.message);
     res.status(500).json({ error: 'Failed to load library compatibility' });
   }
 });
