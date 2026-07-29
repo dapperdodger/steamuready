@@ -5,6 +5,7 @@ node_modules/
 DEPLOY.md
 REDEPLOY.md
 AUDIT.md
+REDDIT-ANNOUNCEMENT.md
 
 # Terraform
 infra/.terraform/
