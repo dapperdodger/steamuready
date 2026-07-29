@@ -4,19 +4,7 @@ const steamAuth = require('../services/steamAuth');
 const steamApi = require('../services/steamApi');
 const steamImport = require('../services/steamImport');
 const auth = require('../services/auth');
-const { redis } = require('../services/cache');
-
-// Non-fatal: a cache-delete failure shouldn't break the unlink/link
-// operation itself — log and continue. Guards against a previously-linked
-// Steam account's owned-games compatibility data leaking into a
-// newly-linked (different) account within the cache's TTL.
-async function clearOwnedGamesCompatCache(userId) {
-  try {
-    await redis.del(`owned-games-compat:${userId}`);
-  } catch (e) {
-    console.error('[/api/steam] failed to clear owned-games-compat cache:', e.message);
-  }
-}
+const { clearOwnedGamesCompatCache } = require('../services/steamLibraryCompat');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -87,6 +75,10 @@ router.post('/import', async (req, res) => {
     if (!status.steamId) return res.status(400).json({ error: 'No Steam account linked' });
 
     const summary = await steamImport.runImport(req.session.userId, status.steamId);
+    // Import adds/removes owned_games rows — without this, My Games could
+    // show stale (missing new, or still-showing removed) compat entries
+    // for up to the cache's 5-minute TTL.
+    await clearOwnedGamesCompatCache(req.session.userId);
     res.json(summary);
   } catch (e) {
     console.error('[/api/steam/import]', e.message);

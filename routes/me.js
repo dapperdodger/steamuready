@@ -16,6 +16,10 @@ router.put('/preferences', async (req, res) => {
   }
   try {
     const saved = await auth.updatePreferences(req.session.userId, prefs);
+    // deviceIds/socIds feed My Games' EmuReady compatibility picks —
+    // without this, a changed device preference wouldn't show up there
+    // until the cache's 5-minute TTL expired on its own.
+    await steamLibraryCompat.clearOwnedGamesCompatCache(req.session.userId);
     res.json({ preferences: saved });
   } catch (e) {
     console.error('[/api/me/preferences]', e);

@@ -402,7 +402,10 @@
 <!-- Tracked view (My Wishlist / My Games) -->
 <section id="trackedView" hidden>
   <button class="btn-modal-skip" id="trackedBackBtn" data-i18n="backToSearch">&larr; Back</button>
-  <h2 id="trackedViewTitle"></h2>
+  <div class="tracked-header">
+    <h2 id="trackedViewTitle"></h2>
+    <button class="btn-modal-skip" id="trackedEditPrefsBtn" hidden data-i18n="editPreferences">Edit preferred settings</button>
+  </div>
   <div class="state-box" id="trackedLoading">
     <div class="spinner"></div>
     <p data-i18n="loading">Loading…</p>

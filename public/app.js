@@ -267,6 +267,9 @@ async function openTrackedView(kind) {
   $('trackedView').hidden = false;
   $('trackedView').dataset.kind = kind;
   $('trackedViewTitle').textContent = kind === 'wishlist' ? t('myWishlist') : t('myGames');
+  // Preferred device/SoC only affects compatibility picks, which only My
+  // Games shows — no point offering the shortcut on My Wishlist.
+  $('trackedEditPrefsBtn').hidden = kind !== 'owned';
 
   const grid = $('trackedGrid');
   grid.innerHTML = '';
@@ -356,6 +359,11 @@ function initTrackedView() {
     });
   });
 
+  // Unlike settingsEditPrefs (which closes Account Settings before opening
+  // the modal), My Games stays open behind it — the point of the shortcut
+  // is to tweak compatibility picks without losing your place.
+  $('trackedEditPrefsBtn').addEventListener('click', openPreferredDevicesModal);
+
   // Compare the open view's kind via a data attribute, not translated text —
   // t('myWishlist') can change out from under a stored string if the user
   // switches language while the view is open.
@@ -363,6 +371,11 @@ function initTrackedView() {
     if (!$('trackedView').hidden && $('trackedView').dataset.kind === 'wishlist') openTrackedView('wishlist');
   });
   document.addEventListener('owned-changed', () => {
+    if (!$('trackedView').hidden && $('trackedView').dataset.kind === 'owned') openTrackedView('owned');
+  });
+  // Preferred device/SoC changes affect which EmuReady listing My Games
+  // picks for each card — refresh in place if it's open when saved.
+  document.addEventListener('preferences-changed', () => {
     if (!$('trackedView').hidden && $('trackedView').dataset.kind === 'owned') openTrackedView('owned');
   });
 }
@@ -1528,6 +1541,7 @@ function initPreferredDevicesModal() {
     applyPreferredCompat();
     closePreferredDevicesModal();
     fetchGames(true, true);
+    document.dispatchEvent(new CustomEvent('preferences-changed'));
   });
 
   // Close on overlay click

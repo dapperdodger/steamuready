@@ -89,4 +89,16 @@ async function getOwnedGamesCompat(userId, itadIds) {
   return games;
 }
 
-module.exports = { pickBestListing, buildOwnedCompatEntry, getOwnedGamesCompat };
+// Non-fatal by design — callers (preference changes, Steam unlink/relink)
+// should never let a cache-delete failure block the action that triggered
+// it. Centralized here (rather than each caller hardcoding the key) so the
+// cache key only lives in one place.
+async function clearOwnedGamesCompatCache(userId) {
+  try {
+    await cache.redis.del(`owned-games-compat:${userId}`);
+  } catch (e) {
+    console.error('[steamLibraryCompat] failed to clear owned-games-compat cache:', e.message);
+  }
+}
+
+module.exports = { pickBestListing, buildOwnedCompatEntry, getOwnedGamesCompat, clearOwnedGamesCompatCache };
