@@ -21,6 +21,11 @@ Cross-reference [EmuReady](https://www.emuready.com) emulation compatibility dat
 - **Multi-language UI** — English, French, Spanish, German
 - **Search, sort, paginate** — by name, price, discount, compatibility, or rating
 - **Two-tier caching** — Redis for volatile price/correlation data; PostgreSQL for stable reference data (title mappings, controller support, IGDB ratings)
+- **Exact Steam App ID correlation** — games are matched to deals via their Steam App ID (EmuReady's own title lookup → ITAD's exact shop lookup), falling back to fuzzy title matching only when no Steam App ID is resolvable
+- **Optional accounts** — email/password login; wishlist games, mark them owned, or hide ones you don't want to see again, saved to your account instead of just the browser
+- **Steam library import** — link your Steam account (OpenID) and import your owned games + wishlist in one click; re-importing keeps them in sync (adds new, removes stale) without touching anything added manually
+- **My Games / My Wishlist** — dedicated tracked-game views; My Games shows EmuReady compatibility (device, emulator, rank, and a link to the listing) using your saved device/SoC preference instead of price, since you already own it
+- **Price-drop email alerts** — opt-in notifications when a wishlisted game goes on sale, with a configurable alert mode (every price drop / once per sale / all-time low only) and one-click unsubscribe
 
 ## Requirements
 
@@ -71,6 +76,8 @@ See [docker-compose.yml](docker-compose.yml) for the full configuration.
 | `REFRESH_SECRET` | No | Bearer token to protect `POST /api/refresh` |
 | `AWS_SECRETS_ARN` | No | ARN of an AWS Secrets Manager secret to load env vars from (production) |
 | `PORT` | No | HTTP port (default: `3000`) |
+| `SESSION_SECRET` | Yes, if accounts used | Secret used to sign session cookies — generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `STEAM_API_KEY` | Yes, if Steam import used | Steam Web API key, free at [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey) — used for `GetOwnedGames`, `GetWishlist`, `GetPlayerSummaries` |
 | `SES_FROM_EMAIL` | Yes, if email alerts enabled | Sender address for verification/reset/alert emails — must be a verified SES identity |
 | `UNSUBSCRIBE_SECRET` | Yes, if email alerts enabled | HMAC secret used to sign one-click unsubscribe links (production); the app fails to start without it unless `EMAIL_DRY_RUN=true` |
 | `APP_BASE_URL` | Yes, if email alerts enabled | Base URL used to build links in emails sent from the background price-alert job (which has no HTTP request to derive one from) |
@@ -79,12 +86,23 @@ See [docker-compose.yml](docker-compose.yml) for the full configuration.
 ## How it works
 
 1. **EmuReady** — queries the public tRPC API for device/game/emulator/performance listings, filtered to Android-native apps
-2. **Title resolution** — game titles are batch-looked-up via the ITAD `/lookup/id/title/v1` API to get ITAD UUIDs, then Steam `app/` IDs for cover art; results stored permanently in PostgreSQL (`game_titles` table) and only re-fetched for new titles
+2. **Title resolution** — EmuReady titles are resolved to Steam App IDs via EmuReady's own `getBestSteamAppId`, then to ITAD UUIDs via ITAD's exact `/lookup/id/shop/61/v1` (Steam shop) lookup; titles with no resolvable Steam App ID (or that ITAD doesn't recognize) fall back to ITAD's fuzzy `/lookup/id/title/v1` lookup. Results are stored permanently in PostgreSQL (`game_titles` table, tagged with which method resolved them — `resolved_via`) and only re-fetched for new/never-resolved titles
 3. **Deal data** — ITAD `/games/overview/v2` returns current price, discount, store, and historical low for each resolved title; cached 1 h per region/store combination in Redis, updated incrementally
 4. **Controller support** — fetched from the Steam store API (category IDs 28 = full, 18 = partial) and stored permanently in PostgreSQL; only missing entries are fetched at startup via `warmMissing()`
 5. **IGDB ratings** — resolved via the IGDB API using the Steam app ID, cached in PostgreSQL for 7 days; covers total rating, user rating, and critic rating
 6. **Correlation** — the final game map (EmuReady title → deal entry) is built once per device/region/store combination and cached 1 h in Redis
 7. **Rate limiting** — new searches are limited to 10 per 10 s per IP (pagination exempt); enforced via Redis counters
+
+## Accounts, wishlist & Steam import
+
+Creating an account (email + password) unlocks:
+
+- **Wishlist / owned / hidden tracking** — mark games you want, already own, or never want to see again; saved to your account (Redis-backed sessions), not just the browser
+- **My Wishlist** — a dedicated view of wishlisted games with the same price/discount tracking as search results
+- **My Games** — a dedicated view of owned games showing EmuReady compatibility (device, emulator, performance rank, and a link to the EmuReady listing) instead of price — there's no reason to show sale prices for something you already own. Compatibility picks respect your saved device/SoC preference, editable in place from the page
+- **Steam account linking** — link your Steam account via OpenID from Account Settings (no password is ever shared with this app)
+- **Steam library import** — pulls owned games and wishlist from Steam's Web API, resolved to deals the same way as the main catalog (exact Steam App ID correlation). Only imports games EmuReady actually has a Windows-capable emulator listing for, and backfills their name/image so they render correctly everywhere. Re-importing fully resyncs Steam-sourced entries — adds new, removes stale — without touching anything added manually. Both game-details and wishlist visibility must be set to **Public** on your Steam profile (`steamcommunity.com/my/edit/settings`) for import to see them
+- **Price-drop email alerts** — opt in to get emailed when a wishlisted game's price drops, with three alert modes (every drop, once per sale, or only at an all-time low); requires email verification to send, and every email includes a one-click unsubscribe link (RFC 8058)
 
 ## Seeding controller support
 
@@ -116,17 +134,30 @@ The seed file is written to `seeds/controller_support.json` and can be committed
 | `POST /api/auth/login` | Log in (params: `email`, `password`) |
 | `POST /api/auth/logout` | Log out |
 | `GET /api/auth/me` | Current user's email + preferences + hideOwnedDefault, or `401` |
-| `PUT /api/me/preferences` | Save filter preferences for the logged-in user |
+| `GET /api/auth/verify` | Verify email address from a link sent at signup |
+| `POST /api/auth/resend-verification` | Resend the verification email (requires login) |
+| `POST /api/auth/forgot-password` | Request a password-reset email |
+| `POST /api/auth/reset-password` | Reset password using a token from the email |
+| `PUT /api/me/preferences` | Save filter preferences for the logged-in user (also drives My Games' compatibility picks) |
 | `PUT /api/me/hide-owned-default` | Save the logged-in user's hide-owned-games default |
-| `GET /api/me/wishlist` | Logged-in user's wishlisted games |
+| `PUT /api/me/password` | Change password |
+| `PUT /api/me/alert-settings` | Save price-alert settings (params: `alertsEnabled`, `alertMode`) |
+| `DELETE /api/me` | Delete the account |
+| `GET /api/me/wishlist` | Logged-in user's wishlisted games (price/discount data) |
 | `POST /api/me/wishlist/:itadId` | Add a game to the wishlist |
 | `DELETE /api/me/wishlist/:itadId` | Remove a game from the wishlist |
-| `GET /api/me/owned` | Logged-in user's owned games |
+| `GET /api/me/owned` | Logged-in user's owned games, with EmuReady compatibility instead of price |
 | `POST /api/me/owned/:itadId` | Mark a game as owned |
 | `DELETE /api/me/owned/:itadId` | Unmark a game as owned |
 | `GET /api/me/hidden` | Logged-in user's hidden games (title only, no price) |
 | `POST /api/me/hidden/:itadId` | Hide a game |
 | `DELETE /api/me/hidden/:itadId` | Unhide a game |
+| `GET /api/steam/link` | Redirects to Steam's OpenID login to link your Steam account |
+| `GET /api/steam/callback` | Steam OpenID return URL — completes the link |
+| `POST /api/steam/unlink` | Unlink the Steam account (already-imported games are kept) |
+| `GET /api/steam/status` | Whether a Steam account is linked, and its persona name |
+| `POST /api/steam/import` | Import/resync owned games + wishlist from Steam |
+| `GET /api/alerts/unsubscribe` | One-click unsubscribe from price alerts (RFC 8058) |
 
 ## Docker
 
@@ -145,8 +176,10 @@ The container uses `startup.js` as its entry point, which can optionally pull se
 ## Tech stack
 
 - **Backend** — Node.js, Express, Helmet, Axios, Fuse.js
-- **Persistent cache** — PostgreSQL (via pg) — title mappings, controller support, IGDB ratings
-- **Volatile cache** — Redis (via ioredis) — prices, correlation maps, rate limiting
+- **Accounts** — bcrypt, express-session + connect-redis (Redis-backed sessions), Steam OpenID via the `openid` package
+- **Email** — AWS SES (verification, password reset, price-drop digests)
+- **Persistent cache** — PostgreSQL (via pg) — title mappings, controller support, IGDB ratings, wishlist/owned/hidden state
+- **Volatile cache** — Redis (via ioredis) — prices, correlation maps, sessions, rate limiting
 - **Deal data** — IsThereAnyDeal API
 - **Ratings** — IGDB API (via Twitch OAuth)
 - **Compatibility data** — EmuReady tRPC API
