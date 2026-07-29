@@ -568,30 +568,43 @@ async function warmCaches() {
   });
 }
 
-if (require.main === module) {
+// Actually starts listening — kept out of module-load side effects so tests can
+// `require('./server')` for the Express `app` (via supertest) without opening a
+// real port. Production's entry point is startup.js (CMD ["node", "startup.js"]),
+// which requires this file and then calls start() explicitly — `require.main ===
+// module` is never true in that path since startup.js, not server.js, is the
+// process's entry module.
+async function start() {
   const PORT = process.env.PORT || 3000;
-  db.init().then(() => {
-    const server = app.listen(PORT, () => {
-      console.log(`\n🎮  SteamUReady Running`);
-      warmCaches();
 
-      setInterval(() => {
-        priceAlerts.runTick().catch(e => console.error('[priceAlerts] tick failed:', e.message));
-      }, 60 * 60 * 1000); // hourly; runTick itself only acts once a day per region
-    });
-
-    // ── Graceful shutdown (ECS/ALB task draining) ───────────────────────────────
-    process.on('SIGTERM', () => {
-      console.log('[shutdown] SIGTERM received — draining connections…');
-      server.close(() => {
-        console.log('[shutdown] all connections closed, exiting');
-        process.exit(0);
-      });
-    });
-  }).catch(e => {
-    console.error('[DB] init failed:', e.message);
+  try {
+    await db.init();
+  } catch (err) {
+    console.error('[DB] init failed, exiting:', err.message);
     process.exit(1);
+    return;
+  }
+
+  const server = app.listen(PORT, () => {
+    console.log(`\n🎮  SteamUReady Running`);
+    warmCaches();
+
+    setInterval(() => {
+      priceAlerts.runTick().catch(e => console.error('[priceAlerts] tick failed:', e.message));
+    }, 60 * 60 * 1000); // hourly; runTick itself only acts once a day per region
+  });
+
+  // ── Graceful shutdown (ECS/ALB task draining) ───────────────────────────────
+  process.on('SIGTERM', () => {
+    console.log('[shutdown] SIGTERM received — draining connections…');
+    server.close(() => {
+      console.log('[shutdown] all connections closed, exiting');
+      process.exit(0);
+    });
   });
 }
+
+if (require.main === module) start();
+app.start = start;
 
 module.exports = app;

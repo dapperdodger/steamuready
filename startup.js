@@ -25,7 +25,7 @@ async function loadSecrets() {
 }
 
 loadSecrets()
-  .then(() => require('./server'))
+  .then(() => require('./server').start())
   .catch(err => {
     console.error('[startup] failed to load secrets:', err);
     process.exit(1);

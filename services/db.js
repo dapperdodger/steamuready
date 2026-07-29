@@ -12,6 +12,8 @@ const pool = new Pool({
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
+  statement_timeout: 15000,
+  query_timeout: 15000,
 });
 
 // Run fn() only if this process wins a Postgres session-level advisory lock
