@@ -3,7 +3,12 @@ function shouldAlertPriceDrop(current, lastAlertedPrice) {
 }
 
 function shouldAlertSalePeriod(current, lastAlertedDealSince) {
-  return lastAlertedDealSince == null || current.dealSince !== lastAlertedDealSince;
+  if (lastAlertedDealSince == null) return true;
+  // Compare by instant, not by raw value: current.dealSince is always a string from the ITAD
+  // API (possibly with a non-UTC offset), while lastAlertedDealSince round-trips through a
+  // Postgres TIMESTAMPTZ column and comes back as a Date object. Neither type nor formatting
+  // is guaranteed to match even when the two name the same moment.
+  return new Date(current.dealSince).getTime() !== new Date(lastAlertedDealSince).getTime();
 }
 
 function shouldAlertHistoricalLow(current, lastAlertedPrice) {
